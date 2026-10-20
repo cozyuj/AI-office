@@ -28,6 +28,8 @@ class Store {
     this.selectedFloorId = null;
     this.selectedSessionId = null;
     this.autoFollow = true;
+    this.followCamera = false;   // 선택 세션 캐릭터를 카메라가 따라감
+    this.bubbleMode = 'all';     // 'all' | 'selected'
     this.connected = false;
     this.listeners = new Set();
     this.colorCache = new Map();
@@ -68,6 +70,9 @@ class Store {
     this.reconcileSelection();
     this.emit('remove', { sessionId, floorId });
   }
+
+  setFollowCamera(v) { this.followCamera = v; this.emit('option'); }
+  setBubbleMode(v) { this.bubbleMode = v; this.emit('option'); }
 
   setConnected(v) { if (this.connected !== v) { this.connected = v; this.emit('conn'); } }
 
