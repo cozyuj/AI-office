@@ -38,6 +38,7 @@ class Actor {
     this.room = null;
     this.activity = 'wait'; this.bubble = ''; this.icon = ''; this.since = Date.now();
     this.faceRight = true;
+    this.dir = 'down';   // LPC 4방향
     this.walkT = 0;
     this.dead = false; this.deadAt = 0;
     this.selected = false; this.dim = false;
@@ -59,12 +60,25 @@ class Actor {
     else { this.x += dx / dist * step; this.y += dy / dist * step; }
     const sdx = dx - dy; // 화면 x 방향
     if (Math.abs(sdx) > 0.01) this.faceRight = sdx > 0;
+    // 타일 축 이동 → LPC 방향: +x 오른쪽(화면 우하), -x 왼쪽, +y 아래(화면 좌하), -y 위
+    if (Math.abs(dx) >= Math.abs(dy)) this.dir = dx > 0 ? 'right' : 'left';
+    else this.dir = dy > 0 ? 'down' : 'up';
     this.walkT += dt;
   }
   get walking() { return this.path.length > 0; }
 }
 
 // ---------- 그리기 ----------
+// LPC spec → 코드 그리기용 spec (에셋 로딩 전/실패 시 폴백)
+function drawnFallback(spec) {
+  if (!spec || !spec.body) return spec;
+  const hair = { none: 'bald', plain: 'short', bangs: 'short', page: 'bob', pixie: 'short', bob: 'bob', long: 'long', ponytail: 'pony', high_ponytail: 'pony', curly_short: 'curly', afro: 'curly', buzzcut: 'short' }[spec.hair.id] || 'short';
+  return { gender: spec.body === 'female' ? 'f' : 'm', skin: '#f3c9a6', hair: { style: hair, color: '#5a3b2a' }, top: { style: 'tee', color: spec.top.color === 'auto' ? 'auto' : '#3b6fd6' }, bottom: { style: spec.bottom.id === 'skirt' ? 'skirt' : 'pants', color: '#3a3f4b' }, shoes: { color: '#2b2f3a' } };
+}
+
+let lpc = null;
+export function setLpc(v) { lpc = v; }
+
 function drawPerson(ctx, a, now, spec) {
   const cx = a.x + 0.5, cy = a.y + 0.5;
   const base = project(cx, cy);
@@ -75,12 +89,17 @@ function drawPerson(ctx, a, now, spec) {
   const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : 0);
   const sit = a.activity === 'rest' || a.user ? 5 : 0;
   const fx = base.x, fy = base.y - bob + sit;
-  drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, activity: a.activity, faceRight: a.faceRight });
+  let drawn = false;
+  if (lpc) {
+    drawn = lpc.draw(ctx, fx, base.y + (a.user ? 2 : 0), spec, { dir: a.dir, walking: a.walking, walkT: a.walkT, now, sitting: a.user || a.activity === 'rest', sessionColor: a.color });
+  }
+  if (!drawn) drawAvatar(ctx, fx, fy, drawnFallback(spec), { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, activity: a.activity, faceRight: a.faceRight });
   // 서브에이전트 표식: 파란 안전모
   if (a.kind === 'sub') {
+    const hy = lpc && drawn ? fy - 47 : fy - 42;
     ctx.fillStyle = '#3b6fd6';
-    ctx.beginPath(); ctx.arc(fx, fy - 42, 10, Math.PI, Math.PI * 2); ctx.fill();
-    ctx.fillRect(-11 + fx, fy - 43, 22, 2.5);
+    ctx.beginPath(); ctx.arc(fx, hy, 10, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-11 + fx, hy - 1, 22, 2.5);
   }
   // 활동 소품
   if (a.activity === 'read' || a.activity === 'search') {

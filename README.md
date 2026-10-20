@@ -62,6 +62,16 @@ DEMO_SPEED=3 npm run demo
 
 서브에이전트는 파란 안전모를 쓰고, Agent 도구에 적은 description 이 이름이 된다.
 
+### 캐릭터 스프라이트
+
+캐릭터는 [Universal LPC Spritesheet Character Generator](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator) 의 레이어를 팔레트 치환으로 색 입혀 합성한다 (64x64, 4방향 걷기·대기·앉기). 헤더 👤 외형에서 체형·피부·머리·상의·하의·신발을 고를 수 있다.
+에셋은 저자·라이선스가 제각각(CC0 / OGA-BY / CC-BY-SA / GPL)이라 `public/assets/lpc/CREDITS.csv` 를 함께 배포한다. 파츠를 바꾸려면 `scripts/fetch-lpc.js` 의 `ITEMS` 를 고치고 다시 실행한다.
+
+```bash
+node scripts/fetch-lpc.js            # 레포를 임시 폴더에 클론해서 선택 파츠만 복사
+node scripts/fetch-lpc.js --src ~/src/Universal-LPC-Spritesheet-Character-Generator
+```
+
 ## 구조
 
 ```

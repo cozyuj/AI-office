@@ -1,0 +1,1281 @@
+{
+ "source": "https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator.git",
+ "frame": 64,
+ "animations": {
+  "walk": {
+   "frames": 9,
+   "rows": [
+    "up",
+    "left",
+    "down",
+    "right"
+   ]
+  },
+  "idle": {
+   "frames": 2,
+   "rows": [
+    "up",
+    "left",
+    "down",
+    "right"
+   ]
+  },
+  "sit": {
+   "frames": 3,
+   "rows": [
+    "up",
+    "left",
+    "down",
+    "right"
+   ]
+  }
+ },
+ "bodyTypes": [
+  "male",
+  "female"
+ ],
+ "base": {
+  "body": {
+   "male": {
+    "path": "body/bodies/male/",
+    "zPos": 10,
+    "material": "body",
+    "anims": [
+     "walk",
+     "idle",
+     "sit"
+    ]
+   },
+   "female": {
+    "path": "body/bodies/female/",
+    "zPos": 10,
+    "material": "body",
+    "anims": [
+     "walk",
+     "idle",
+     "sit"
+    ]
+   }
+  },
+  "head": {
+   "male": {
+    "path": "head/heads/human/male/",
+    "zPos": 100,
+    "material": "body",
+    "anims": [
+     "walk",
+     "idle",
+     "sit"
+    ]
+   },
+   "female": {
+    "path": "head/heads/human/female/",
+    "zPos": 100,
+    "material": "body",
+    "anims": [
+     "walk",
+     "idle",
+     "sit"
+    ]
+   }
+  }
+ },
+ "items": {
+  "hair": [
+   {
+    "id": "plain",
+    "name": "짧은 머리",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/plain/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/plain/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/short/hair_plain.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "bangs",
+    "name": "앞머리",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/bangs/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/bangs/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/short/hair_bangs.json",
+    "licenses": [
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "page",
+    "name": "페이지",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/page/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/page/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/short/hair_page.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "pixie",
+    "name": "픽시",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/pixie/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/pixie/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/short/hair_pixie.json",
+    "licenses": [
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "bob",
+    "name": "단발",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/bob/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/bob/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/bob/hair_bob.json",
+    "licenses": [
+     "CC0"
+    ]
+   },
+   {
+    "id": "long",
+    "name": "긴 머리",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/long/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/long/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/long/hair_long.json",
+    "licenses": [
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "ponytail",
+    "name": "포니테일",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/ponytail/adult/fg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/ponytail/adult/fg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     },
+     {
+      "zPos": 9,
+      "paths": {
+       "male": {
+        "path": "hair/ponytail/adult/bg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/ponytail/adult/bg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/braids/hair_ponytail.json",
+    "licenses": [
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "high_ponytail",
+    "name": "높은 포니",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/high_ponytail/adult/fg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/high_ponytail/adult/fg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     },
+     {
+      "zPos": 9,
+      "paths": {
+       "male": {
+        "path": "hair/high_ponytail/adult/bg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/high_ponytail/adult/bg/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/braids/hair_high_ponytail.json",
+    "licenses": [
+     "OGA-BY 3.0"
+    ]
+   },
+   {
+    "id": "curly_short",
+    "name": "곱슬",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/curly_short/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/curly_short/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/curly/hair_curly_short.json",
+    "licenses": [
+     "OGA-BY 3.0"
+    ]
+   },
+   {
+    "id": "afro",
+    "name": "아프로",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/afro/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/afro/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/afro/hair_afro.json",
+    "licenses": [
+     "CC0"
+    ]
+   },
+   {
+    "id": "buzzcut",
+    "name": "버즈컷",
+    "material": "hair",
+    "layers": [
+     {
+      "zPos": 120,
+      "paths": {
+       "male": {
+        "path": "hair/buzzcut/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "hair/buzzcut/adult/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "hair/bald/hair_buzzcut.json",
+    "licenses": [
+     "OGA-BY 3.0"
+    ]
+   }
+  ],
+  "top": [
+   {
+    "id": "tshirt",
+    "name": "티셔츠",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 35,
+      "paths": {
+       "male": {
+        "path": "torso/clothes/shortsleeve/tshirt/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "torso/clothes/shortsleeve/tshirt/female/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "torso/shirts/shortsleeve/torso_clothes_tshirt.json",
+    "licenses": [
+     "OGA-BY 3.0"
+    ]
+   },
+   {
+    "id": "polo",
+    "name": "폴로",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 35,
+      "paths": {
+       "male": {
+        "path": "torso/clothes/shortsleeve/shortsleeve_polo/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "torso/clothes/shortsleeve/shortsleeve_polo/female/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "torso/shirts/shortsleeve/torso_clothes_shortsleeve_polo.json",
+    "licenses": [
+     "OGA-BY 3.0"
+    ]
+   },
+   {
+    "id": "longsleeve",
+    "name": "긴팔",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 35,
+      "paths": {
+       "male": {
+        "path": "torso/clothes/longsleeve/longsleeve2_vneck/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "torso/clothes/longsleeve/longsleeve2_vneck/female/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "torso/shirts/longsleeve/torso_clothes_longsleeve2_vneck.json",
+    "licenses": [
+     "OGA-BY 3.0"
+    ]
+   },
+   {
+    "id": "cardigan",
+    "name": "가디건",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 35,
+      "paths": {
+       "male": {
+        "path": "torso/clothes/shortsleeve/shortsleeve_cardigan/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "torso/clothes/shortsleeve/shortsleeve_cardigan/female/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "torso/shirts/shortsleeve/torso_clothes_shortsleeve_cardigan.json",
+    "licenses": [
+     "OGA-BY 3.0"
+    ]
+   }
+  ],
+  "bottom": [
+   {
+    "id": "pants",
+    "name": "바지",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 20,
+      "paths": {
+       "male": {
+        "path": "legs/pants/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "legs/pants/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "legs/pants/legs_pants.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "GPL 3.0",
+     "CC-BY-SA 3.0"
+    ]
+   },
+   {
+    "id": "formal",
+    "name": "정장 바지",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 20,
+      "paths": {
+       "male": {
+        "path": "legs/formal/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "legs/formal/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "legs/pants/legs_formal.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "cuffed",
+    "name": "롤업 바지",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 20,
+      "paths": {
+       "male": {
+        "path": "legs/cuffed/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "legs/cuffed/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "legs/pants/legs_cuffed.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "shorts",
+    "name": "반바지",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 20,
+      "paths": {
+       "male": {
+        "path": "legs/shorts/shorts/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "legs/shorts/shorts/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "legs/shorts/legs_shorts.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "skirt",
+    "name": "치마",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 20,
+      "paths": {
+       "male": {
+        "path": "legs/skirts/plain/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "legs/skirts/plain/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "legs/skirts/legs_skirts_plain.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   }
+  ],
+  "shoes": [
+   {
+    "id": "basic",
+    "name": "운동화",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 15,
+      "paths": {
+       "male": {
+        "path": "feet/shoes/basic/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "feet/shoes/basic/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "feet/shoes/feet_shoes_basic.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "CC-BY-SA 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "revised",
+    "name": "구두",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 15,
+      "paths": {
+       "male": {
+        "path": "feet/shoes/revised/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "feet/shoes/revised/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "feet/shoes/feet_shoes_revised.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "boots",
+    "name": "부츠",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 25,
+      "paths": {
+       "male": {
+        "path": "feet/boots/basic/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "feet/boots/basic/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "feet/boots/feet_boots_basic.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "CC-BY-SA 3.0",
+     "GPL 2.0",
+     "GPL 3.0"
+    ]
+   },
+   {
+    "id": "sandals",
+    "name": "샌들",
+    "material": "cloth",
+    "layers": [
+     {
+      "zPos": 15,
+      "paths": {
+       "male": {
+        "path": "feet/sandals/male/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       },
+       "female": {
+        "path": "feet/sandals/thin/",
+        "anims": [
+         "walk",
+         "idle",
+         "sit"
+        ]
+       }
+      }
+     }
+    ],
+    "def": "feet/feet_sandals.json",
+    "licenses": [
+     "OGA-BY 3.0",
+     "CC-BY-SA 3.0",
+     "GPL 2.0",
+     "GPL 3.0"
+    ]
+   }
+  ]
+ },
+ "palettes": {
+  "body": {
+   "base": "light",
+   "ramps": {
+    "light": [
+     "#271920",
+     "#99423c",
+     "#cc8665",
+     "#e4a47c",
+     "#f9d5ba",
+     "#faece7"
+    ],
+    "amber": [
+     "#281716",
+     "#9e3e37",
+     "#d28144",
+     "#ea9f54",
+     "#fdd082",
+     "#fbe7a4"
+    ],
+    "olive": [
+     "#271920",
+     "#442725",
+     "#7f4c31",
+     "#ae6b3f",
+     "#d38b59",
+     "#e4a47c"
+    ],
+    "taupe": [
+     "#271920",
+     "#503734",
+     "#785946",
+     "#936849",
+     "#ba8454",
+     "#c7935f"
+    ],
+    "bronze": [
+     "#1a1213",
+     "#442725",
+     "#644133",
+     "#7f4c31",
+     "#ae6b3f",
+     "#d38b59"
+    ],
+    "brown": [
+     "#120e10",
+     "#412b29",
+     "#5f4539",
+     "#76513a",
+     "#9c663e",
+     "#b8773f"
+    ],
+    "black": [
+     "#000000",
+     "#1a1213",
+     "#2e1f1c",
+     "#442725",
+     "#603429",
+     "#7f4c31"
+    ]
+   }
+  },
+  "hair": {
+   "base": "orange",
+   "ramps": {
+    "orange": [
+     "#260d14",
+     "#6a1108",
+     "#a42600",
+     "#bf4000",
+     "#e55600",
+     "#ff8a00"
+    ],
+    "black": [
+     "#000000",
+     "#080a0a",
+     "#101414",
+     "#1c2222",
+     "#31313e",
+     "#4a5057"
+    ],
+    "raven": [
+     "#010107",
+     "#040b18",
+     "#061421",
+     "#071f2a",
+     "#0d384d",
+     "#1a5369"
+    ],
+    "dark_brown": [
+     "#050100",
+     "#160701",
+     "#290e02",
+     "#421603",
+     "#5f1f04",
+     "#792806"
+    ],
+    "chestnut": [
+     "#200c0d",
+     "#3a130e",
+     "#63200b",
+     "#81310a",
+     "#b6550e",
+     "#d28102"
+    ],
+    "light_brown": [
+     "#1a0e04",
+     "#301b07",
+     "#60350f",
+     "#7d4513",
+     "#ae682a",
+     "#c88d58"
+    ],
+    "blonde": [
+     "#331313",
+     "#552b15",
+     "#ac5d1f",
+     "#e09e2b",
+     "#fccf56",
+     "#ffe67d"
+    ],
+    "platinum": [
+     "#1c0e06",
+     "#7d5d5d",
+     "#a87d52",
+     "#c0ab81",
+     "#eddf95",
+     "#f6f6f3"
+    ],
+    "gray": [
+     "#0e0e0e",
+     "#292929",
+     "#4b4b4b",
+     "#777777",
+     "#aaaaaa",
+     "#d9d9d9"
+    ],
+    "white": [
+     "#1d1d21",
+     "#484e57",
+     "#8b9498",
+     "#b8bbbc",
+     "#d8dcdc",
+     "#ffffff"
+    ],
+    "ginger": [
+     "#300500",
+     "#6a1a00",
+     "#9c3b01",
+     "#cc6901",
+     "#faa301",
+     "#ffe01e"
+    ],
+    "red": [
+     "#300000",
+     "#870000",
+     "#a40712",
+     "#cb0000",
+     "#e21414",
+     "#f1583a"
+    ],
+    "pink": [
+     "#330410",
+     "#71043a",
+     "#b60a68",
+     "#e941aa",
+     "#e976c4",
+     "#ea95d5"
+    ],
+    "purple": [
+     "#13112d",
+     "#2b225a",
+     "#402e82",
+     "#7141b2",
+     "#a966dd",
+     "#d085ed"
+    ],
+    "blue": [
+     "#000027",
+     "#00005e",
+     "#000091",
+     "#0041b4",
+     "#0074cb",
+     "#1e85ef"
+    ],
+    "green": [
+     "#000400",
+     "#001400",
+     "#002d00",
+     "#005000",
+     "#007c00",
+     "#00a700"
+    ]
+   }
+  },
+  "cloth": {
+   "base": "white",
+   "ramps": {
+    "white": [
+     "#281820",
+     "#4d4a5d",
+     "#958080",
+     "#c4b59f",
+     "#e5e6c7",
+     "#ffffff"
+    ],
+    "gray": [
+     "#0e0e18",
+     "#201e2b",
+     "#373340",
+     "#585561",
+     "#797580",
+     "#a2a0a4"
+    ],
+    "charcoal": [
+     "#000000",
+     "#130d14",
+     "#1c2222",
+     "#2a3034",
+     "#4a5057",
+     "#6e7675"
+    ],
+    "black": [
+     "#000000",
+     "#101414",
+     "#1c2222",
+     "#22282a",
+     "#2a3034",
+     "#4a5057"
+    ],
+    "red": [
+     "#1d131e",
+     "#400b1f",
+     "#651117",
+     "#82171c",
+     "#ab1e1e",
+     "#cd2429"
+    ],
+    "orange": [
+     "#301723",
+     "#5f1d1b",
+     "#9c3f23",
+     "#d75b1a",
+     "#ef7e19",
+     "#ffa749"
+    ],
+    "yellow": [
+     "#301723",
+     "#5f2f25",
+     "#ba5b23",
+     "#d99431",
+     "#f3c03f",
+     "#ffe360"
+    ],
+    "green": [
+     "#101820",
+     "#192832",
+     "#0b5c2f",
+     "#214437",
+     "#2f8136",
+     "#64a42c"
+    ],
+    "forest": [
+     "#09131d",
+     "#07391d",
+     "#0b1f25",
+     "#0b2b28",
+     "#134507",
+     "#1b5502"
+    ],
+    "teal": [
+     "#180716",
+     "#1b2b47",
+     "#0e4e72",
+     "#156c99",
+     "#0098b2",
+     "#00cfdf"
+    ],
+    "sky": [
+     "#1a0d18",
+     "#313148",
+     "#586b90",
+     "#9fbbcb",
+     "#c6eefd",
+     "#ffffff"
+    ],
+    "blue": [
+     "#180716",
+     "#281e41",
+     "#322d6a",
+     "#3c49ad",
+     "#466ac9",
+     "#61a0ef"
+    ],
+    "navy": [
+     "#180716",
+     "#20102b",
+     "#281e41",
+     "#322d6a",
+     "#3c49ad",
+     "#466ac9"
+    ],
+    "purple": [
+     "#180716",
+     "#13112d",
+     "#261044",
+     "#411357",
+     "#621e78",
+     "#813089"
+    ],
+    "lavender": [
+     "#13112d",
+     "#2b225a",
+     "#402e82",
+     "#7141b2",
+     "#a966dd",
+     "#d085ed"
+    ],
+    "pink": [
+     "#1d131e",
+     "#54242e",
+     "#6c3536",
+     "#ae424a",
+     "#c36072",
+     "#e08080"
+    ],
+    "rose": [
+     "#1d131e",
+     "#301723",
+     "#562323",
+     "#77372b",
+     "#8a3d28",
+     "#b05f3c"
+    ],
+    "tan": [
+     "#3e2613",
+     "#684415",
+     "#986a20",
+     "#b78c41",
+     "#b7996a",
+     "#cfc587"
+    ],
+    "brown": [
+     "#1d131e",
+     "#411e05",
+     "#4b2b13",
+     "#62351c",
+     "#744b30",
+     "#996b4a"
+    ]
+   }
+  }
+ }
+}

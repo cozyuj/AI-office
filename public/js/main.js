@@ -2,7 +2,8 @@
 import { store } from './store.js';
 import { renderAll, renderHeader, renderPeople, bindPanelEvents } from './panels.js';
 import { createScene } from './scene/index.js';
-import { createActors } from './scene/actors.js';
+import { createActors, setLpc } from './scene/actors.js';
+import { loadLpc } from './scene/lpc.js';
 import { project } from './scene/map.js';
 import { createTooltip } from './tooltip.js';
 import { createAvatarStore } from './avatarStore.js';
@@ -10,7 +11,9 @@ import { createCustomizer } from './customize.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
-const avatars = createAvatarStore();
+const lpc = await loadLpc();   // 없으면 코드로 그리는 캐릭터로 폴백
+setLpc(lpc);
+const avatars = createAvatarStore(lpc);
 const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
 
@@ -169,4 +172,4 @@ if (copyBtn) copyBtn.onclick = async () => {
 };
 fetch('/api/state').then((r) => r.json()).then((st) => { if (st.installDir) document.getElementById('install-dir').textContent = st.installDir; }).catch(() => {});
 
-window.aiOffice = { store, scene, actors, tooltip, avatars, customizer }; // 디버그용
+window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, lpc }; // 디버그용

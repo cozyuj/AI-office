@@ -190,3 +190,6 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
   #left { display: none; }
 }
 .card.grow .list { flex: 1; min-height: 0; }
+
+.cz-credit { font-size: 11px; margin-top: 4px; }
+.cz-credit a { color: var(--blue); }
