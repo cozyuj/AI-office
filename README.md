@@ -13,24 +13,30 @@ Claude Code 가 터미널에서 뭘 하고 있는지 한눈에 보려고 차린 
 
 ## 설치
 
-Node 18 이상. 외부 의존성 없음.
+Node 18 이상만 있으면 됩니다. Windows · macOS · Linux 공통 한 줄:
 
 ```bash
-git clone git@github.com:cozyuj/AI-office.git
-cd AI-office
-npm run install-hooks   # ~/.claude/settings.json 에 훅 등록 (백업 생성, 재실행 안전)
-npm start               # http://127.0.0.1:4777
+npx github:cozyuj/AI-office
 ```
 
-훅은 **새로 시작하는** Claude Code 세션부터 적용된다. 이미 열려 있던 세션은 재시작해야 보인다.
+이 한 줄이 (1) 앱을 `~/.ai-office/app` 에 복사하고 (2) `~/.claude/settings.json` 에 훅을 등록한 뒤 (3) 서버를 띄우고 브라우저를 엽니다. 다음부터는 같은 명령으로 서버만 다시 띄우면 됩니다. 훅은 **새로 시작하는** Claude Code 세션부터 적용됩니다.
 
-제거:
+다른 명령:
 
 ```bash
-npm run uninstall-hooks
+npx github:cozyuj/AI-office doctor            # Node·훅·포트 점검
+npx github:cozyuj/AI-office start --port 4800 # 다른 포트 (훅도 AI_OFFICE_PORT=4800 으로 띄운 세션만 보임)
+npx github:cozyuj/AI-office uninstall-hooks   # 훅 제거
 ```
 
-서버를 재시작해도 최근 2시간의 훅 이벤트가 `~/.ai-office/events.jsonl` 에서 재생되어 층·세션·캐릭터가 복원된다. 끄려면 `node server.js --no-journal`, 경로를 바꾸려면 `AI_OFFICE_HOME`.
+레포를 받아서 쓰려면:
+
+```bash
+git clone git@github.com:cozyuj/AI-office.git && cd AI-office
+node bin/ai-office.js        # 또는 npm run install-hooks && npm start
+```
+
+훅은 `node hooks/emit.js` 로 등록되어 셸이나 curl 이 없어도 동작합니다 (Windows 포함).
 
 ## 데모
 
