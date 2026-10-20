@@ -72,7 +72,7 @@ function drawPerson(ctx, a, now, spec) {
   ctx.globalAlpha = a.dim ? 0.45 : 1;
   shadow(ctx, cx, cy, 0.28, 0.14, 0.2);
   const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : 0);
-  const sit = a.activity === 'rest' || a.user ? 4 : 0;
+  const sit = a.activity === 'rest' ? 4 : 0;
   const fx = base.x, fy = base.y - bob + sit;
   drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, faceRight: a.faceRight, thinking: a.activity === 'think', hardHat: a.kind === 'sub' });
   // 활동 소품 (손 높이)
