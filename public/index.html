@@ -1,5 +1,68 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><title>AI Office</title></head>
-<body style="font-family:system-ui;padding:24px">
-<h1>AI Office</h1><p>UI는 FE-1 에서 만들어집니다. 지금은 <a href="/api/state">/api/state</a> 와 <code>/events</code>(SSE) 만 동작합니다.</p>
-</body></html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Office</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="left" class="panel">
+    <div class="panel-head">
+      <span class="panel-title">층별 안내</span>
+      <span class="panel-sub">FLOOR GUIDE</span>
+    </div>
+    <div id="floors" class="scroll"></div>
+    <div class="panel-foot" id="left-foot"></div>
+  </aside>
+
+  <main id="center">
+    <header id="office-head">
+      <span id="head-badge" class="floor-badge">–</span>
+      <div class="head-text">
+        <div id="head-title" class="head-title">사무실</div>
+        <div id="head-sub" class="head-sub">훅 이벤트를 기다리는 중</div>
+      </div>
+      <span id="live" class="live off"><i></i><b>OFFLINE</b></span>
+    </header>
+    <div id="stage">
+      <canvas id="office"></canvas>
+      <div id="stage-empty" class="stage-empty">
+        <div class="stage-empty-title">아직 출근한 사람이 없습니다</div>
+        <div class="stage-empty-sub">Claude Code 세션이 시작되면 여기에 나타납니다.<br>미리 보려면 <code>npm run demo</code></div>
+      </div>
+      <div id="zoom">
+        <button id="zoom-in" title="확대">+</button>
+        <button id="zoom-out" title="축소">−</button>
+        <button id="zoom-reset" title="초기 위치">⟲</button>
+      </div>
+      <div id="stage-hint">드래그로 이동 · 휠로 확대 · 캐릭터를 클릭하면 세션 선택</div>
+    </div>
+  </main>
+
+  <aside id="right" class="panel">
+    <section class="card" id="session-card">
+      <div class="kv"><span class="k">프로젝트</span><span class="v" id="info-project">–</span></div>
+      <div class="kv"><span class="k">세션</span><span class="v mono" id="info-session">–</span></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><span>사무실 사람들</span><span class="muted" id="people-count"></span></div>
+      <div id="people" class="list"></div>
+    </section>
+
+    <section class="card grow">
+      <div class="card-head"><span>활동 로그</span><span class="muted" id="log-count"></span></div>
+      <div id="log" class="list scroll"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><span>어디서 무엇을 하나</span></div>
+      <div id="legend" class="legend"></div>
+    </section>
+  </aside>
+</div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
