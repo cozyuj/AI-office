@@ -30,6 +30,8 @@ npm start               # http://127.0.0.1:4777
 npm run uninstall-hooks
 ```
 
+서버를 재시작해도 최근 2시간의 훅 이벤트가 `~/.ai-office/events.jsonl` 에서 재생되어 층·세션·캐릭터가 복원된다. 끄려면 `node server.js --no-journal`, 경로를 바꾸려면 `AI_OFFICE_HOME`.
+
 ## 데모
 
 실제 세션 없이 화면을 보고 싶으면 서버를 띄운 상태에서:
@@ -71,6 +73,7 @@ Claude Code 세션 ─hooks─▶ hooks/emit.sh ─POST /hook─▶ server.js �
 - `server.js` 훅 수신, 상태 머신 적용, SSE 중계, 정적 서빙
 - `lib/normalize.js` 훅 payload 축소 + 도구 → 방/말풍선 해석
 - `lib/state.js` 층/세션/캐릭터 상태 머신
+- `lib/journal.js` 이벤트 JSONL 기록 + 기동 시 재생
 - `public/js/scene/*` 아이소메트릭 맵·가구·캐릭터·A*·카메라
 - `scripts/install-hooks.js` 훅 등록/제거, `scripts/demo.js` 데모
 

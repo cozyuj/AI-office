@@ -2,7 +2,7 @@
 import { SLOTS, SPAWN, USER_SEAT, project } from './map.js';
 import { findPath, nearestWalkable } from './pathfind.js';
 import { shadow, shade } from './sprites.js';
-import { roundRect } from './render.js';
+import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 
 const SPEED = 3.6;          // 타일/초
@@ -120,6 +120,17 @@ function drawPerson(ctx, a, now) {
     ctx.fillStyle = '#fff'; ctx.fillRect(fx + 6, fy - 20, 5, 6);
     ctx.fillStyle = '#e8683a'; ctx.fillRect(fx + 6, fy - 20, 5, 2);
   }
+  // 답을 기다리는 중: 머리 위 느낌표 펄스
+  if (a.activity === 'ask') {
+    const pulse = 0.5 + 0.5 * Math.sin(now / 180);
+    const ty = fy - 54 - pulse * 3;
+    ctx.fillStyle = '#e05252';
+    ctx.beginPath(); ctx.arc(fx, ty, 7 + pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', fx, ty + 0.5);
+  }
   // 선택 표시
   if (a.selected) {
     ctx.strokeStyle = '#e8683a'; ctx.lineWidth = 2;
@@ -218,6 +229,15 @@ export function createActors(store, scene) {
     }
   }
 
+  // 캐릭터 AABB: 발 위치 타일 안쪽 0.25~0.75, 높이 1.7
+  function entityOf(a) {
+    return makeEntity(
+      { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 1.7 },
+      (ctx, t) => drawPerson(ctx, a, t),
+      { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor' },
+    );
+  }
+
   function tick(now) {
     const dt = Math.min(0.1, (now - (last || now)) / 1000);
     last = now;
@@ -225,9 +245,9 @@ export function createActors(store, scene) {
     for (const [key, a] of actors) {
       a.update(dt);
       if (a.dead && (!a.walking || now - a.deadAt > LEAVE_TIMEOUT)) { actors.delete(key); continue; }
-      out.push({ key: a.x + 1 + a.y + 1, draw: (ctx, t) => drawPerson(ctx, a, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode) });
+      out.push(entityOf(a));
     }
-    out.push({ key: user.x + 1 + user.y + 1, draw: (ctx, t) => drawPerson(ctx, user, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, user, t, store.bubbleMode) });
+    out.push(entityOf(user));
     return out;
   }
 

@@ -1,6 +1,12 @@
 // 장면 렌더: 바닥 → 깊이 정렬된 가구/벽/캐릭터 → (화면 공간) 방 이름표.
+//
+// 깊이 정렬: 각 엔티티는 3D AABB {x0,y0,x1,y1,z0,z1} 를 가진다. 화면에서 겹치는 두 상자 A, B 에 대해
+//   A.x1 <= B.x0  또는  A.y1 <= B.y0  또는  A.z1 <= B.z0  이면 A 가 뒤(먼저 그림).
+// 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
 import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, project, roomAt } from './map.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece } from './sprites.js';
+
+const EPS = 1e-3;
 
 // ---------- 바닥 ----------
 export function drawFloor(ctx) {
@@ -10,7 +16,6 @@ export function drawFloor(ctx) {
       tile(ctx, x, y, r.floor, r.trim);
     }
   }
-  // 방 외곽선을 조금 더 진하게
   ctx.lineWidth = 1.2;
   for (const r of ROOMS) {
     const a = project(r.x0, r.y0), b = project(r.x1 + 1, r.y0), c = project(r.x1 + 1, r.y1 + 1), d = project(r.x0, r.y1 + 1);
@@ -19,27 +24,129 @@ export function drawFloor(ctx) {
   }
 }
 
-// ---------- 정적 엔티티 (가구 + 벽) ----------
+// ---------- 엔티티 ----------
+/** 3D AABB → 월드 화면 bbox (8 꼭짓점 투영) */
+export function screenBox(b) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const x of [b.x0, b.x1]) for (const y of [b.y0, b.y1]) for (const z of [b.z0, b.z1]) {
+    const p = project(x, y, z);
+    if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+  }
+  return { x0, y0, x1, y1 };
+}
+
+export function makeEntity(box, draw, extra = {}) {
+  return { box, sb: screenBox(box), draw, far: box.x1 + box.y1, ...extra };
+}
+
+function overlaps(a, b) {
+  return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+}
+
+/** A 가 B 뒤에 있으면 -1, 앞이면 1, 관계 없음 0 */
+export function compare(A, B) {
+  if (!overlaps(A.sb, B.sb)) return 0;
+  const a = A.box, b = B.box;
+  const aBehind = a.x1 <= b.x0 + EPS || a.y1 <= b.y0 + EPS || a.z1 <= b.z0 + EPS;
+  const bBehind = b.x1 <= a.x0 + EPS || b.y1 <= a.y0 + EPS || b.z1 <= a.z0 + EPS;
+  if (aBehind && !bBehind) return -1;
+  if (bBehind && !aBehind) return 1;
+  return A.far < B.far ? -1 : A.far > B.far ? 1 : 0; // 둘 다/둘 다 아님 → far corner 로
+}
+
+// 가구 높이 (AABB z1)
+const HEIGHT = {
+  shelf: 2.05, desk: 1.2, desk2: 1.2, chair: 0.8, table: 0.75, coffeetable: 0.45, sofa: 0.95, armchair: 0.9,
+  counter: 1.55, vending: 1.85, rack: 2.25, ac: 1.95, wallscreen: 2.05, globe: 1.35, whiteboard: 2.05,
+  plant: 1.35, cabinet: 1.05, reception: 1.15, sign: 1.45, bench: 0.5, elevator: 2.35,
+};
+
 const STATIC = [];
 for (const f of FURNITURE) {
-  STATIC.push({ key: (f.x + (f.w || 1)) + (f.y + (f.d || 1)), draw: (ctx) => drawFurniture(ctx, f) });
+  const w = f.w || 1, d = f.d || 1;
+  // 얇은 소품은 footprint 를 타일 안쪽으로 줄여 이웃 타일과의 불필요한 관계를 피한다
+  const inset = f.type === 'chair' || f.type === 'plant' || f.type === 'sign' || f.type === 'globe' ? 0.2 : 0.05;
+  STATIC.push(makeEntity(
+    { x0: f.x + inset, y0: f.y + inset, x1: f.x + w - inset, y1: f.y + d - inset, z0: 0, z1: HEIGHT[f.type] || 1 },
+    (ctx) => drawFurniture(ctx, f), { label: f.type },
+  ));
 }
 for (const w of WALLS) {
   for (const p of wallPieces(w)) {
-    // 벽은 얇아서 far corner 만으로는 캐릭터와 순서가 꼬인다. 벽의 "중심선" 기준으로 약간 뒤로.
-    const key = w.dir === 'h' ? (p.x + p.w) + (w.y) - 0.5 : (w.x) + (p.y + p.d) - 0.5;
-    STATIC.push({ key, draw: (ctx) => drawWallPiece(ctx, p) });
+    STATIC.push(makeEntity({ x0: p.x, y0: p.y, x1: p.x + p.w, y1: p.y + p.d, z0: 0, z1: p.h }, (ctx) => drawWallPiece(ctx, p), { label: 'wall' }));
   }
 }
 
+// 정적 엔티티끼리의 "뒤" 관계 (인덱스 쌍), 한 번만 계산
+const STATIC_EDGES = []; // [behindIdx, frontIdx]
+for (let i = 0; i < STATIC.length; i++) {
+  for (let j = i + 1; j < STATIC.length; j++) {
+    const c = compare(STATIC[i], STATIC[j]);
+    if (c < 0) STATIC_EDGES.push([i, j]);
+    else if (c > 0) STATIC_EDGES.push([j, i]);
+  }
+}
+
+let debugDepth = false;
+export function setDebugDepth(v) { debugDepth = v; }
+
 /**
  * 가구·벽·캐릭터를 깊이순으로 그린다.
- * actors: [{ key, draw(ctx, now) }]
+ * actors: makeEntity() 로 만든 엔티티 (매 프레임 새로 만들어도 된다)
  */
 export function drawEntities(ctx, now, actors = []) {
-  const all = actors.length ? STATIC.concat(actors) : STATIC;
-  all.sort((a, b) => a.key - b.key);
-  for (const e of all) e.draw(ctx, now);
+  const order = sortEntities(actors);
+  for (let k = 0; k < order.length; k++) {
+    const e = order[k];
+    e.draw(ctx, now);
+    if (debugDepth) {
+      const p = project((e.box.x0 + e.box.x1) / 2, (e.box.y0 + e.box.y1) / 2, 0);
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(String(k), p.x, p.y);
+    }
+  }
+}
+
+/** 정적 엔티티 + actors 를 그릴 순서대로 반환 */
+export function sortEntities(actors = []) {
+  const n = STATIC.length, total = n + actors.length;
+  const adj = new Array(total);
+  const indeg = new Int32Array(total);
+  for (let i = 0; i < total; i++) adj[i] = [];
+  for (const [a, b] of STATIC_EDGES) { adj[a].push(b); indeg[b]++; }
+  for (let k = 0; k < actors.length; k++) {
+    const A = actors[k], ai = n + k;
+    for (let i = 0; i < n; i++) {
+      const c = compare(A, STATIC[i]);
+      if (c < 0) { adj[ai].push(i); indeg[i]++; }
+      else if (c > 0) { adj[i].push(ai); indeg[ai]++; }
+    }
+    for (let m = k + 1; m < actors.length; m++) {
+      const c = compare(A, actors[m]);
+      if (c < 0) { adj[ai].push(n + m); indeg[n + m]++; }
+      else if (c > 0) { adj[n + m].push(ai); indeg[ai]++; }
+    }
+  }
+  // Kahn 위상 정렬. 동률은 far corner 작은 것부터 (안정적인 결과)
+  const all = (i) => (i < n ? STATIC[i] : actors[i - n]);
+  const ready = [];
+  for (let i = 0; i < total; i++) if (indeg[i] === 0) ready.push(i);
+  const order = [];
+  while (ready.length) {
+    let bi = 0;
+    for (let i = 1; i < ready.length; i++) if (all(ready[i]).far < all(ready[bi]).far) bi = i;
+    const cur = ready.splice(bi, 1)[0];
+    order.push(cur);
+    for (const nx of adj[cur]) if (--indeg[nx] === 0) ready.push(nx);
+  }
+  if (order.length < total) { // 순환이 생기면 남은 것을 far corner 순으로 붙인다
+    const seen = new Set(order);
+    const rest = [];
+    for (let i = 0; i < total; i++) if (!seen.has(i)) rest.push(i);
+    rest.sort((a, b) => all(a).far - all(b).far);
+    order.push(...rest);
+  }
+  return order.map(all);
 }
 
 // ---------- 방 이름표 (화면 공간) ----------

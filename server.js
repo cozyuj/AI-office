@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createState } = require('./lib/state');
+const { createJournal } = require('./lib/journal');
 
 const PORT = Number(process.env.AI_OFFICE_PORT || 4777);
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -25,6 +26,14 @@ const MIME = {
 
 const state = createState({ me: os.userInfo().username });
 const clients = new Set();
+
+// 이벤트 저널: 재시작해도 최근 2시간 상태를 복원한다. --no-journal 로 끌 수 있다.
+const journal = createJournal({ enabled: !process.argv.includes('--no-journal') });
+if (journal.enabled) {
+  const n = journal.replay((payload, t) => state.apply(payload, t), Date.now());
+  state.sweep(Date.now());
+  console.log(`journal    →  ${journal.file} (${n}건 재생, 세션 ${state.snapshot().sessions.length}개 복원)`);
+}
 
 function sse(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -65,7 +74,9 @@ async function handleHook(req, res) {
   // 훅 호출 쪽은 응답을 기다리지 않으므로 먼저 응답하고 처리한다.
   res.writeHead(204).end();
   try {
-    state.apply(payload, Date.now());
+    const now = Date.now();
+    state.apply(payload, now);
+    journal.append(now, payload);
   } catch (e) {
     console.error('[hook] apply failed:', e && e.message);
   }
@@ -116,3 +127,6 @@ server.listen(PORT, '127.0.0.1', () => {
 
 // 예약 작업(서브에이전트 퇴근, 세션 제거) 실행 + 오래 조용한 세션 정리
 setInterval(() => state.sweep(Date.now()), 1000).unref();
+
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { journal.close(); process.exit(0); });
+process.on('exit', () => journal.close());

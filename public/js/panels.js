@@ -45,6 +45,7 @@ export function renderFloors() {
           <div class="floor-name">${esc(f.name)}</div>
           <div class="floor-meta">세션 ${sessions.length}개 · ${status === 'idle' ? timeAgo(f.lastActivity, now) : STATUS_LABEL[status]}</div>
         </div>
+        ${store.waitingOfFloor(f.id).length ? `<span class="badge-wait">${store.waitingOfFloor(f.id).length}</span>` : ''}
         <span class="dot ${status}"></span>
       </div>`;
     if (!selected) return `<div class="floor">${head}</div>`;
@@ -52,6 +53,7 @@ export function renderFloors() {
       <div class="session ${s.id === store.selectedSessionId ? 'selected' : ''} ${s.title ? '' : 'untitled'} ${s.status === 'away' || s.status === 'ended' ? 'away' : ''}" data-session="${esc(s.id)}" title="${esc(s.title || s.id)}">
         <span class="dot ${s.status}"></span>
         <span class="session-title">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span>
+        ${s.status === 'waiting' ? '<span class="badge-wait">답 기다림</span>' : ''}
         ${s.id === store.selectedSessionId ? '<span class="session-tag">지금 보는 중</span>' : `<span class="session-time">${timeAgo(s.lastActivity, now)}</span>`}
       </div>`).join('');
     return `<div class="floor selected">${head}
