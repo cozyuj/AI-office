@@ -3,7 +3,7 @@ import { store, ROOM_LABEL, LEGEND, timeAgo, elapsed, clock, shortPath } from '.
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const STATUS_LABEL = { working: '작업 중', thinking: '고민 중', waiting: '답 기다리는 중', idle: '대기', ended: '퇴근' };
+const STATUS_LABEL = { working: '작업 중', thinking: '고민 중', waiting: '답 기다리는 중', idle: '대기', away: '자리 비움', ended: '퇴근' };
 
 function initials(name) { return (name || '?').trim().slice(0, 1).toUpperCase(); }
 
@@ -49,7 +49,7 @@ export function renderFloors() {
       </div>`;
     if (!selected) return `<div class="floor">${head}</div>`;
     const list = sessions.map((s) => `
-      <div class="session ${s.id === store.selectedSessionId ? 'selected' : ''} ${s.title ? '' : 'untitled'}" data-session="${esc(s.id)}" title="${esc(s.title || s.id)}">
+      <div class="session ${s.id === store.selectedSessionId ? 'selected' : ''} ${s.title ? '' : 'untitled'} ${s.status === 'away' || s.status === 'ended' ? 'away' : ''}" data-session="${esc(s.id)}" title="${esc(s.title || s.id)}">
         <span class="dot ${s.status}"></span>
         <span class="session-title">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span>
         ${s.id === store.selectedSessionId ? '<span class="session-tag">지금 보는 중</span>' : `<span class="session-time">${timeAgo(s.lastActivity, now)}</span>`}

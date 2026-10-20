@@ -121,3 +121,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .tool { border: 1px solid var(--line); background: #fff; color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 11px; cursor: pointer; white-space: nowrap; }
 .tool:hover { background: #f6f7f9; }
 .tool.on { background: var(--accent-soft); border-color: #f2b79a; color: var(--accent); font-weight: 600; }
+
+/* ---------- 자리 비움 ---------- */
+.dot.away { background: transparent; border: 1.5px dashed var(--gray); }
+.session.away { opacity: .55; }
