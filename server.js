@@ -114,5 +114,5 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`hooks POST →  http://127.0.0.1:${PORT}/hook   (AI_OFFICE_PORT=${PORT})`);
 });
 
-// 오래 조용한 세션 정리
-setInterval(() => state.sweep(Date.now()), 60 * 1000).unref();
+// 예약 작업(서브에이전트 퇴근, 세션 제거) 실행 + 오래 조용한 세션 정리
+setInterval(() => state.sweep(Date.now()), 1000).unref();

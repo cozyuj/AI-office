@@ -8,7 +8,10 @@
     "start": "node server.js",
     "demo": "node scripts/demo.js",
     "install-hooks": "node scripts/install-hooks.js",
-    "uninstall-hooks": "node scripts/install-hooks.js --remove"
+    "uninstall-hooks": "node scripts/install-hooks.js --remove",
+    "test": "node --test test/*.test.js"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }
