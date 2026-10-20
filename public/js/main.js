@@ -2,9 +2,11 @@
 import { store } from './store.js';
 import { renderAll, renderHeader, renderPeople, bindPanelEvents } from './panels.js';
 import { createScene } from './scene/index.js';
+import { createActors } from './scene/actors.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
+const actors = createActors(store, scene);
 
 // ---------- 렌더 스케줄 ----------
 let dirty = true;
