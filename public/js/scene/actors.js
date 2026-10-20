@@ -251,13 +251,28 @@ export function createActors(store, scene) {
     return out;
   }
 
-  function pick({ tx, ty }) {
-    let best = null, bd = 0.9;
+  function nearest(tx, ty, radius = 0.9) {
+    let best = null, bd = radius;
     for (const a of actors.values()) {
       const d = Math.hypot(a.x + 0.5 - tx, a.y + 0.5 - ty - 0.4); // 몸통이 위로 솟아 있어 살짝 위쪽도 허용
       if (d < bd) { bd = d; best = a; }
     }
+    return best;
+  }
+
+  function pick({ tx, ty }) {
+    const best = nearest(tx, ty);
     if (best && best.sessionId) store.selectSession(best.sessionId);
+  }
+
+  /** 마우스 아래 캐릭터 (없으면 null) */
+  function hoverAt(p) { return p ? nearest(p.tx, p.ty) : null; }
+
+  /** 캐릭터의 머리 위 화면 좌표 */
+  function screenPosOf(a, camera) {
+    const base = project(a.x + 0.5, a.y + 0.5, 0);
+    const s = camera.worldToScreen(base.x, base.y);
+    return { x: s.x, y: s.y - 44 * camera.cam.zoom };
   }
 
   store.subscribe((kind) => { if (kind === 'snapshot') sync(true); else sync(false); });
@@ -270,5 +285,5 @@ export function createActors(store, scene) {
     return actors.get(`${sid}/main`) || [...actors.values()].find((a) => a.sessionId === sid) || null;
   }
 
-  return { sync, tick, pick, selectedActor, get actors() { return actors; }, user };
+  return { sync, tick, pick, hoverAt, screenPosOf, selectedActor, get actors() { return actors; }, user };
 }

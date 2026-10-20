@@ -4,10 +4,12 @@ import { renderAll, renderHeader, renderPeople, bindPanelEvents } from './panels
 import { createScene } from './scene/index.js';
 import { createActors } from './scene/actors.js';
 import { project } from './scene/map.js';
+import { createTooltip } from './tooltip.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
 const actors = createActors(store, scene);
+const tooltip = createTooltip();
 
 // ---------- 렌더 스케줄 ----------
 let dirty = true;
@@ -25,6 +27,7 @@ function frame(now) {
     }
   }
   scene.frame(now);
+  tooltip.frame(now);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -107,4 +110,47 @@ store.subscribe((kind, detail) => {
   if (kind === 'waiting-count') renderTitle();
 });
 
-window.aiOffice = { store, scene, actors }; // 디버그용
+// ---------- 툴팁: 캔버스 hover + 사람 목록 hover ----------
+let hovered = null;
+scene.onHover((p) => {
+  const a = actors.hoverAt(p);
+  if (a === hovered) return;
+  hovered = a;
+  canvas.classList.toggle('hover-actor', !!a);
+  if (!a || a.user) { tooltip.hide(); return; }
+  const s = store.sessions.get(a.sessionId);
+  const agent = s && s.agents[a.agentId];
+  if (!agent) { tooltip.hide(); return; }
+  const rect = () => canvas.getBoundingClientRect();
+  tooltip.show({ agent, session: s }, () => {
+    const live = actors.actors.get(a.key);
+    if (!live) return null;
+    const sp = actors.screenPosOf(live, scene.camera);
+    const r = rect();
+    return { x: r.left + sp.x, y: r.top + sp.y };
+  });
+});
+const people = document.getElementById('people');
+const lastMouse = { x: -1, y: -1 };
+document.addEventListener('mousemove', (e) => { lastMouse.x = e.clientX; lastMouse.y = e.clientY; }, { passive: true });
+people.addEventListener('mouseover', (e) => {
+  const row = e.target.closest('.person');
+  if (!row || row === people._hoverRow) return;
+  people._hoverRow = row;
+  const s = store.sessions.get(row.dataset.session);
+  const agent = s && s.agents[row.dataset.agent];
+  if (!agent) return;
+  // 목록은 자주 다시 그려지므로 행을 매번 다시 찾는다
+  const sel = `.person[data-session="${CSS.escape(row.dataset.session)}"][data-agent="${CSS.escape(row.dataset.agent)}"]`;
+  tooltip.show({ agent, session: s }, () => {
+    const live = people.querySelector(sel);
+    if (!live) return null;
+    const r = live.getBoundingClientRect();
+    // 목록이 다시 그려져도 마우스가 그 행 위에 있으면 유지
+    if (lastMouse.x < r.left || lastMouse.x > r.right || lastMouse.y < r.top || lastMouse.y > r.bottom) return null;
+    return { x: r.left - 10, y: r.top + r.height / 2 };
+  });
+});
+people.addEventListener('mouseleave', () => { people._hoverRow = null; tooltip.hide(); });
+
+window.aiOffice = { store, scene, actors, tooltip }; // 디버그용

@@ -1,6 +1,6 @@
 // 카메라: 팬(드래그), 줌(휠/버튼), 맵 맞춤, 클릭 판정. 월드 ↔ 화면 변환.
 
-export function createCamera(canvas, { onClick } = {}) {
+export function createCamera(canvas, { onClick, onHover } = {}) {
   const cam = { x: 0, y: 0, zoom: 1, w: 0, h: 0 };
   let drag = null;
 
@@ -47,7 +47,7 @@ export function createCamera(canvas, { onClick } = {}) {
     canvas.classList.add('dragging');
   });
   canvas.addEventListener('pointermove', (e) => {
-    if (!drag) return;
+    if (!drag) { if (onHover) { const p = pointer(e); onHover(screenToWorld(p.x, p.y), p); } return; }
     const p = pointer(e);
     const dx = p.x - drag.sx, dy = p.y - drag.sy;
     if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
@@ -63,6 +63,7 @@ export function createCamera(canvas, { onClick } = {}) {
   };
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', () => { drag = null; canvas.classList.remove('dragging'); });
+  canvas.addEventListener('pointerleave', () => { if (onHover) onHover(null, null); });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
     const p = pointer(e);

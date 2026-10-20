@@ -70,7 +70,7 @@ export function renderPeople() {
   const items = store.agentsOfFloor(store.selectedFloorId);
   $('people-count').textContent = items.length ? `${items.length}명 근무 중` : '';
   $('people').innerHTML = items.length ? items.map(({ agent: a, session: s }) => `
-    <div class="person ${s.id === store.selectedSessionId ? 'selected' : 'dim'}" data-session="${esc(s.id)}" title="${esc(s.title || s.id)}">
+    <div class="person ${s.id === store.selectedSessionId ? 'selected' : 'dim'}" data-session="${esc(s.id)}" data-agent="${esc(a.id)}">
       <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(a.name)}</span>
       <div class="person-body">
         <div class="person-name">${esc(a.name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${ROOM_LABEL[a.room] || a.room}</span></div>
