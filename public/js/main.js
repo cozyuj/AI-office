@@ -64,4 +64,47 @@ canvas.addEventListener('pointerdown', () => { if (store.followCamera) store.set
 store.subscribe((kind) => { if (kind === 'option') renderTools(); });
 renderTools();
 
+// ---------- 대기 알림: 탭 제목 + 브라우저 알림 ----------
+const BASE_TITLE = 'AI Office';
+let blink = false;
+function renderTitle() {
+  const n = store.waitingSessions().length;
+  if (!n) { document.title = BASE_TITLE; return; }
+  blink = !blink;
+  document.title = blink ? `(${n}) 🙋 답을 기다립니다 · ${BASE_TITLE}` : `(${n}) ${BASE_TITLE}`;
+}
+setInterval(renderTitle, 1000);
+
+const notifyBtn = document.getElementById('notify-btn');
+const canNotify = () => typeof Notification !== 'undefined';
+function renderNotifyBtn() {
+  if (!canNotify()) { notifyBtn.classList.add('off'); notifyBtn.title = '이 브라우저는 알림을 지원하지 않습니다'; return; }
+  notifyBtn.classList.toggle('on', Notification.permission === 'granted');
+  notifyBtn.classList.toggle('off', Notification.permission === 'denied');
+  notifyBtn.textContent = Notification.permission === 'granted' ? '🔔 알림 켜짐' : '🔔 알림';
+}
+notifyBtn.onclick = async () => {
+  if (!canNotify()) return;
+  if (Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
+  renderNotifyBtn();
+};
+renderNotifyBtn();
+
+store.subscribe((kind, detail) => {
+  if (kind === 'waiting') {
+    renderTitle();
+    const { session, floor } = detail;
+    const main = session.agents && session.agents.main;
+    if (!canNotify() || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification(`${floor ? floor.no + 'F ' + floor.name : '사무실'} · ${session.title || '제목 없는 세션'}`, {
+        body: main ? `${main.icon || '🙋'} ${main.bubble}` : '답을 기다리고 있어요',
+        tag: `ai-office-${session.id}`,
+      });
+      n.onclick = () => { window.focus(); store.selectSession(session.id); n.close(); };
+    } catch {}
+  }
+  if (kind === 'waiting-count') renderTitle();
+});
+
 window.aiOffice = { store, scene, actors }; // 디버그용
