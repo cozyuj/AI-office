@@ -3,8 +3,8 @@
 // 깊이 정렬: 각 엔티티는 3D AABB {x0,y0,x1,y1,z0,z1} 를 가진다. 화면에서 겹치는 두 상자 A, B 에 대해
 //   A.x1 <= B.x0  또는  A.y1 <= B.y0  또는  A.z1 <= B.z0  이면 A 가 뒤(먼저 그림).
 // 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
-import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, project, roomAt } from './map.js';
-import { tile, drawFurniture, wallPieces, drawWallPiece } from './sprites.js';
+import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, project, roomAt } from './map.js';
+import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
 
 const EPS = 1e-3;
 
@@ -16,6 +16,7 @@ export function drawFloor(ctx) {
       tile(ctx, x, y, r.floor, r.trim);
     }
   }
+  for (const d of DOORS) drawDoorMat(ctx, d);
   ctx.lineWidth = 1.2;
   for (const r of ROOMS) {
     const a = project(r.x0, r.y0), b = project(r.x1 + 1, r.y0), c = project(r.x1 + 1, r.y1 + 1), d = project(r.x0, r.y1 + 1);
@@ -75,6 +76,14 @@ for (const w of WALLS) {
   for (const p of wallPieces(w)) {
     STATIC.push(makeEntity({ x0: p.x, y0: p.y, x1: p.x + p.w, y1: p.y + p.d, z0: 0, z1: p.h }, (ctx) => drawWallPiece(ctx, p), { label: 'wall' }));
   }
+}
+
+// 문설주: 문 구멍의 양 끝
+for (const d of DOORS) {
+  const wall = WALLS.find((w) => w.dir === 'h' && w.y === d.y && d.x >= w.x && d.x < w.x + w.len);
+  const h = wall ? wall.h : 0.9;
+  if (d.first) STATIC.push(makeEntity({ x0: d.x - 0.09, y0: d.y - 0.09, x1: d.x + 0.09, y1: d.y + 0.09, z0: 0, z1: h + 0.15 }, (ctx) => drawDoorPost(ctx, d.x, d.y, h), { label: 'doorpost' }));
+  if (d.last) STATIC.push(makeEntity({ x0: d.x + 0.91, y0: d.y - 0.09, x1: d.x + 1.09, y1: d.y + 0.09, z0: 0, z1: h + 0.15 }, (ctx) => drawDoorPost(ctx, d.x + 1, d.y, h), { label: 'doorpost' }));
 }
 
 // 정적 엔티티끼리의 "뒤" 관계 (인덱스 쌍), 한 번만 계산

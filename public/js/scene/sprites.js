@@ -244,6 +244,21 @@ export function drawWallPiece(ctx, p) {
   box(ctx, p.x, p.y, p.w, p.d, p.h, color, { top: shade(color, 1.04), line: null });
 }
 
+/** 문매트: 문이 있는 변을 가로지르는 얇은 띠 (바닥 위에 그린다) */
+export function drawDoorMat(ctx, d) {
+  const y0 = d.y - 0.35, y1 = d.y + 0.35;
+  poly(ctx, [project(d.x, y0), project(d.x + 1, y0), project(d.x + 1, y1), project(d.x, y1)], 'rgba(90,70,50,0.16)');
+  // 문턱 선
+  const a = project(d.x, d.y), b = project(d.x + 1, d.y);
+  ctx.strokeStyle = 'rgba(90,70,50,0.35)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+}
+
+/** 문설주: 문 양 끝의 짧은 기둥 */
+export function drawDoorPost(ctx, x, y, h) {
+  box(ctx, x - 0.09, y - 0.09, 0.18, 0.18, h + 0.15, '#b89a74', { line: null });
+}
+
 /** 호환용: 통짜 벽 그리기 (디버그) */
 export function drawWall(ctx, w) { for (const p of wallPieces(w)) drawWallPiece(ctx, p); }
 
