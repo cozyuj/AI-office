@@ -33,6 +33,7 @@ class Store {
     this.connected = false;
     this.listeners = new Set();
     this.colorCache = new Map();
+    this.prevWaiting = new Set(); // 대기 전이 감지용
   }
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -45,6 +46,7 @@ class Store {
     this.sessions = new Map(snap.sessions.map((s) => [s.id, s]));
     this.log = snap.log || [];
     this.reconcileSelection();
+    this.prevWaiting = new Set(this.waitingSessions().map((s) => s.id)); // 첫 로드는 알리지 않는다
     this.emit('snapshot');
   }
 
@@ -58,6 +60,7 @@ class Store {
     }
     this.reconcileSelection();
     this.emit('update', { session, floor, log });
+    this.detectWaiting();
   }
 
   applyRemove({ sessionId, floorId, floorRemoved }) {
@@ -69,6 +72,7 @@ class Store {
     }
     this.reconcileSelection();
     this.emit('remove', { sessionId, floorId });
+    this.detectWaiting();
   }
 
   setFollowCamera(v) { this.followCamera = v; this.emit('option'); }
@@ -117,7 +121,20 @@ class Store {
     this.emit('select');
   }
 
+  /** 비대기 → 대기 로 바뀐 세션을 'waiting' 이벤트로 알린다 */
+  detectWaiting() {
+    const now = new Set();
+    for (const s of this.waitingSessions()) {
+      now.add(s.id);
+      if (!this.prevWaiting.has(s.id)) this.emit('waiting', { session: s, floor: this.floors.get(s.floorId) });
+    }
+    if (now.size !== this.prevWaiting.size) this.emit('waiting-count', now.size);
+    this.prevWaiting = now;
+  }
+
   // ---------- 파생 ----------
+  waitingSessions() { return this.sessionsSorted().filter((s) => s.status === 'waiting'); }
+  waitingOfFloor(floorId) { return this.waitingSessions().filter((s) => s.floorId === floorId); }
   floorsSorted() { return [...this.floors.values()].sort((a, b) => b.lastActivity - a.lastActivity); }
   floorsByNo() { return [...this.floors.values()].sort((a, b) => b.no - a.no); }
   sessionsSorted() { return [...this.sessions.values()].sort((a, b) => b.lastActivity - a.lastActivity); }
