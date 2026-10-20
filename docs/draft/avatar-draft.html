@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>외형 선택 초안</title>
+<style>
+@import url('https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@master/nanumsquare.css');
+@font-face{font-family:'D2Coding';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff') format('woff');font-weight:normal;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F}
+:root{--line:#e3e6ea;--muted:#7a828c;--accent:#e8683a;--accent-soft:#fff1ea;--text:#1f2328}
+body{margin:0;background:#eef0f3;font-family:'D2Coding','NanumSquare',-apple-system,sans-serif;color:var(--text);font-size:12px}
+.card{width:760px;margin:20px auto;background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(20,24,30,.18);overflow:hidden}
+.head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);font-weight:800;font-size:14px}
+.body{display:grid;grid-template-columns:230px 1fr;gap:16px;padding:14px 16px}
+.left{display:flex;flex-direction:column;gap:10px}
+.targets{display:flex;flex-direction:column;gap:4px}
+.target{text-align:left;border:1px solid var(--line);background:#fafbfc;border-radius:8px;padding:7px 10px;cursor:pointer;font:inherit;font-size:12px}
+.target.on{border-color:var(--accent);background:var(--accent-soft);font-weight:800}
+.preview{align-self:center;background:linear-gradient(#fff,#f3f4f7);border:1px solid var(--line);border-radius:12px}
+.actions{display:flex;gap:4px;flex-wrap:wrap}
+.tool{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 10px;font:inherit;font-size:11px;cursor:pointer}
+.tool.on{background:var(--accent-soft);border-color:#f2b79a;color:var(--accent);font-weight:800}
+.opts{display:flex;flex-direction:column;gap:12px}
+.label{font-size:11px;color:var(--muted);font-weight:800;margin-bottom:4px}
+.chips{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;font:inherit;font-size:11px;cursor:pointer}
+.chip.on{background:var(--accent-soft);border-color:#f2b79a;color:var(--accent);font-weight:800}
+.sw{display:flex;gap:6px;flex-wrap:wrap}
+.swatch{width:24px;height:24px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.swatch.on{box-shadow:0 0 0 2px var(--accent)}
+.swatch.custom{position:relative;display:inline-flex;align-items:center;justify-content:center;font-weight:800;color:#8a919b;font-size:14px;border:2px dashed #cfd4da;box-shadow:none}
+.swatch.custom.on{border-style:solid;border-color:#fff;box-shadow:0 0 0 2px var(--accent);color:#fff}
+.swatch.custom input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.foot{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.gallery{margin:0 auto 30px;width:760px;background:#fff;border-radius:14px;padding:12px 16px;box-shadow:0 2px 10px rgba(20,24,30,.06)}
+.gallery h4{margin:0 0 6px;font-size:12px;color:var(--muted)}
+</style></head>
+<body>
+<div class="card">
+  <div class="head"><span>캐릭터 외형</span><button class="tool">닫기</button></div>
+  <div class="body">
+    <div class="left">
+      <div class="targets"><button class="target on">jinyu (나)</button><button class="target">Claude 기본 <span style="color:var(--muted);font-weight:400">· 기본</span></button><button class="target">서브에이전트 기본 <span style="color:var(--muted);font-weight:400">· 기본</span></button><button class="target">1F ai-office 의 Claude <span style="color:var(--muted);font-weight:400">· 기본</span></button></div>
+      <canvas class="preview" id="pv" width="200" height="230"></canvas>
+      <div class="actions"><button class="tool" id="rnd">🎲 랜덤</button><button class="tool">↺ 초기화</button><button class="tool">🗑 저장 삭제</button></div>
+    </div>
+    <div class="opts" id="opts"></div>
+  </div>
+  <div class="foot"><span>저장은 이 브라우저에만 남습니다 (localStorage)</span><button class="tool on">저장</button></div>
+</div>
+<div class="gallery"><h4>랜덤 샘플</h4><canvas id="gal" width="728" height="120"></canvas></div>
+<script>
+const OPT={
+ skin:['#fbe3cf','#f6d7bf','#eec4a3','#d8a97f','#b6865c','#8d5a3b','#5c3a24'],
+ hair:[['short','짧은'],['bangs','앞머리'],['bob','단발'],['long','긴 머리'],['pony','포니테일'],['bun','똥머리'],['curly','곱슬'],['bald','민머리']],
+ hairColor:['#2b2320','#4a3528','#7a5236','#a86b3b','#d9a24a','#e8d8b8','#c0504d','#3b6fd6','#7a4fa3','#2fa36b'],
+ top:[['tee','티셔츠'],['hoodie','후드'],['shirt','셔츠'],['suit','정장'],['dress','원피스']],
+ topColor:['auto','#e8683a','#3b6fd6','#2fa36b','#9b59b6','#e0a526','#1fa2b5','#d9507a','#f4f4f4','#2f3542'],
+ bottom:[['pants','바지'],['shorts','반바지'],['skirt','치마']],
+ bottomColor:['#3a3f4b','#2f4a7a','#6b4e3d','#8a8f99','#d8cfc0','#1f2430','#b85c5c'],
+ shoes:['#2b2f3a','#6b4e3d','#f4f4f4','#c0504d','#3b6fd6','#e8683a'],
+ glasses:[['none','없음'],['round','둥근 안경'],['square','네모 안경'],['sun','선글라스']],
+ hat:[['none','없음'],['cap','캡'],['beanie','비니'],['beret','베레모'],['band','머리띠']],
+ extra:[['none','없음'],['headphones','헤드폰'],['scarf','스카프'],['badge','사원증'],['earring','귀걸이']],
+};
+let spec={skin:'#f6d7bf',hair:{style:'bangs',color:'#2b2320'},top:{style:'shirt',color:'#f4f4f4'},bottom:{style:'pants',color:'#1f2430'},shoes:'#2b2f3a',glasses:'round',hat:'none',hatColor:'#2f3542',extra:'badge'};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function chips(g,k,items,cur){return `<div class="chips">${items.map(([v,l])=>`<button class="chip ${v===cur?'on':''}" data-g="${g}" data-k="${k}" data-v="${v}">${esc(l)}</button>`).join('')}</div>`}
+function sw(g,k,colors,cur){const custom=!colors.includes(cur)&&cur!=='auto';return `<div class="sw">${colors.map(c=>`<button class="swatch ${c===cur?'on':''}" data-g="${g}" data-k="${k}" data-v="${c}" title="${c}" style="${c==='auto'?'background:conic-gradient(#e8683a,#3b6fd6,#2fa36b,#e0a526,#e8683a)':'background:'+c}"></button>`).join('')}<label class="swatch custom ${custom?'on':''}" title="직접 고르기" style="background:${custom?cur:'#fff'}"><input type="color" data-g="${g}" data-k="${k}" value="${custom?cur:'#888888'}"><span>+</span></label></div>`}
+function render(){document.getElementById('opts').innerHTML=`
+ <div><div class="label">피부색</div>${sw('','skin',OPT.skin,spec.skin)}</div>
+ <div><div class="label">머리</div>${chips('hair','style',OPT.hair,spec.hair.style)}${sw('hair','color',OPT.hairColor,spec.hair.color)}</div>
+ <div><div class="label">상의</div>${chips('top','style',OPT.top,spec.top.style)}${sw('top','color',OPT.topColor,spec.top.color)}</div>
+ <div><div class="label">하의</div>${chips('bottom','style',OPT.bottom,spec.bottom.style)}${sw('bottom','color',OPT.bottomColor,spec.bottom.color)}</div>
+ <div><div class="label">신발</div>${sw('','shoes',OPT.shoes,spec.shoes)}</div>
+ <div><div class="label">안경</div>${chips('','glasses',OPT.glasses,spec.glasses)}</div>
+ <div><div class="label">모자</div>${chips('','hat',OPT.hat,spec.hat)}${spec.hat!=='none'?sw('','hatColor',OPT.topColor.slice(1),spec.hatColor):''}</div>
+ <div><div class="label">소품</div>${chips('','extra',OPT.extra,spec.extra)}</div>`}
+document.getElementById('opts').addEventListener('click',e=>{if(e.target.closest('label.custom'))return;const b=e.target.closest('[data-k]');if(!b)return;const{g,k,v}=b.dataset;if(g)spec[g][k]=v;else spec[k]=v;render()});
+document.getElementById('opts').addEventListener('input',e=>{const i=e.target;if(i.type!=='color')return;const{g,k}=i.dataset;if(g)spec[g][k]=i.value;else spec[k]=i.value;const lab=i.closest('label');lab.style.background=i.value;lab.classList.add('on');lab.parentElement.querySelectorAll('button.swatch.on').forEach(b=>b.classList.remove('on'))});
+function rnd(seed){let x=Math.floor(seed*2**31)||1;const r=()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return((x>>>0)%10000)/10000};const p=a=>a[Math.floor(r()*a.length)];return{skin:p(OPT.skin),hair:{style:p(OPT.hair)[0],color:p(OPT.hairColor)},top:{style:p(OPT.top)[0],color:p(OPT.topColor.slice(1))},bottom:{style:p(OPT.bottom)[0],color:p(OPT.bottomColor)},shoes:p(OPT.shoes),glasses:r()<.35?p(OPT.glasses.slice(1))[0]:'none',hat:r()<.3?p(OPT.hat.slice(1))[0]:'none',hatColor:p(OPT.topColor.slice(1)),extra:r()<.4?p(OPT.extra.slice(1))[0]:'none'}}
+document.getElementById('rnd').onclick=()=>{spec=rnd(Math.random());render()};
+function rr(ctx,x,y,w,h,r,fill){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();ctx.fillStyle=fill;ctx.fill()}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);const c=v=>Math.max(0,Math.min(255,Math.round(v*f)));return `rgb(${c(n>>16&255)},${c(n>>8&255)},${c(n&255)})`}
+// ---------- 치비 ----------
+function chibi(ctx,fx,fy,s,o={}){const sc=o.scale||1;ctx.save();ctx.translate(fx,fy);ctx.scale(sc,sc);
+ const top=s.top.color==='auto'?(o.session||'#e8683a'):s.top.color,skin=s.skin,hair=s.hair.color,bot=s.bottom.color;
+ const swing=o.walking?Math.sin((o.t||0)*9)*3:0;
+ // 그림자
+ ctx.fillStyle='rgba(40,40,60,.14)';ctx.beginPath();ctx.ellipse(0,2,16,6,0,0,Math.PI*2);ctx.fill();
+ // 다리
+ const legSkin=s.bottom.style!=='pants';
+ rr(ctx,-7,-12+Math.max(0,swing),6,10-Math.max(0,swing),2,legSkin?skin:bot);rr(ctx,1,-12+Math.max(0,-swing),6,10-Math.max(0,-swing),2,legSkin?skin:bot);
+ if(s.bottom.style==='shorts'){rr(ctx,-7,-12,6,5,2,bot);rr(ctx,1,-12,6,5,2,bot)}
+ // 신발
+ rr(ctx,-8,-4,7,4,2,s.shoes);rr(ctx,1,-4,7,4,2,s.shoes);
+ // 뒷머리 (몸통 뒤)
+ const hy=-44,R=14;
+ if(s.hair.style==='long'){rr(ctx,-R-1,hy-4,2*R+2,24,6,hair)}
+ if(s.hair.style==='bob'){rr(ctx,-R-1.5,hy-4,2*R+3,17,6,hair)}
+ if(s.hair.style==='pony'){rr(ctx,R-2,hy-2,6,22,3,hair)}
+ if(s.hair.style==='bun'){ctx.fillStyle=hair;ctx.beginPath();ctx.arc(0,hy-14,6,0,Math.PI*2);ctx.fill()}
+ // 몸통
+ const isDress=s.top.style==='dress';const bodyC=s.top.style==='suit'?'#2f3542':top;
+ if(s.top.style==='hoodie'){ctx.fillStyle=shade(top,.8);ctx.beginPath();ctx.arc(0,-31,11,Math.PI,Math.PI*2);ctx.fill()}
+ rr(ctx,-10,-30,20,isDress?22:20,7,bodyC);
+ if(s.bottom.style==='skirt'||isDress){ctx.fillStyle=isDress?bodyC:bot;ctx.beginPath();ctx.moveTo(-9,-14);ctx.lineTo(9,-14);ctx.lineTo(12,-6);ctx.lineTo(-12,-6);ctx.closePath();ctx.fill()}
+ // 팔
+ rr(ctx,-14,-28,4,12,2,s.top.style==='tee'||isDress?skin:bodyC);rr(ctx,10,-28,4,12,2,s.top.style==='tee'||isDress?skin:bodyC);if(s.top.style==='tee'||isDress){rr(ctx,-14,-28,4,5,2,bodyC);rr(ctx,10,-28,4,5,2,bodyC)}
+ rr(ctx,-14,-17,4,4,2,skin);rr(ctx,10,-17,4,4,2,skin);
+ if(s.top.style==='shirt'){ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(-4,-30);ctx.lineTo(0,-25);ctx.lineTo(4,-30);ctx.fill();ctx.fillStyle=shade(top,.75);for(let i=0;i<3;i++)ctx.fillRect(-.7,-23+i*4,1.4,1.4)}
+ if(s.top.style==='suit'){ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(-5,-30);ctx.lineTo(0,-21);ctx.lineTo(5,-30);ctx.fill();ctx.fillStyle=top==='#2f3542'?'#c0504d':top;ctx.fillRect(-1.5,-28,3,8)}
+ if(s.top.style==='hoodie'){ctx.fillStyle=shade(top,.8);ctx.fillRect(-5,-17,10,5);ctx.fillStyle='#fff';ctx.fillRect(-2,-28,1,6);ctx.fillRect(1,-28,1,6)}
+ // 머리 (크게)
+ ctx.fillStyle=skin;ctx.beginPath();ctx.arc(0,hy,R,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=hair;
+ if(s.hair.style==='bald'){ctx.fillStyle=shade(skin,.96);ctx.beginPath();ctx.arc(0,hy-1,R,Math.PI*1.15,Math.PI*1.85);ctx.fill()}
+ else if(s.hair.style==='curly'){for(const [dx,dy,r] of [[-11,-6,6],[-5,-12,6.5],[3,-13,6.5],[10,-6,6],[-14,2,4.5],[14,2,4.5]]){ctx.beginPath();ctx.arc(dx,hy+dy,r,0,Math.PI*2);ctx.fill()}}
+ else{ctx.beginPath();ctx.arc(0,hy-2,R+.5,Math.PI,Math.PI*2);ctx.fill();rr(ctx,-R-.5,hy-3,2*R+1,5,2,hair);
+  if(s.hair.style==='bangs'||s.hair.style==='bob'||s.hair.style==='long'){ctx.beginPath();ctx.moveTo(-12,hy+2);for(let i=0;i<5;i++){ctx.lineTo(-12+i*6+3,hy+6);ctx.lineTo(-12+(i+1)*6,hy+2)}ctx.lineTo(12,hy-3);ctx.lineTo(-12,hy-3);ctx.closePath();ctx.fill()}
+  if(s.hair.style==='short'||s.hair.style==='pony'||s.hair.style==='bun'){rr(ctx,-R-.5,hy-3,2*R+1,3,1,hair);ctx.beginPath();ctx.moveTo(-13,hy+1);ctx.lineTo(-6,hy-2);ctx.lineTo(2,hy+1);ctx.lineTo(9,hy-2);ctx.lineTo(13,hy+1);ctx.lineTo(13,hy-4);ctx.lineTo(-13,hy-4);ctx.closePath();ctx.fill()}}
+ // 얼굴
+ ctx.fillStyle='#2b2f3a';ctx.beginPath();ctx.arc(-5,hy+5,1.8,0,Math.PI*2);ctx.arc(5,hy+5,1.8,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='rgba(240,120,120,.35)';ctx.beginPath();ctx.arc(-8,hy+9,2.5,0,Math.PI*2);ctx.arc(8,hy+9,2.5,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#b0605a';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,hy+9,2,.2,Math.PI-.2);ctx.stroke();
+ // 안경
+ if(s.glasses&&s.glasses!=='none'){ctx.strokeStyle='#2b2f3a';ctx.lineWidth=1.2;ctx.fillStyle=s.glasses==='sun'?'rgba(43,47,58,.85)':'rgba(180,220,255,.25)';
+  for(const dx of [-5,5]){ctx.beginPath();if(s.glasses==='round'||s.glasses==='sun')ctx.arc(dx,hy+5,4.2,0,Math.PI*2);else ctx.rect(dx-4,hy+1.5,8,7);ctx.fill();ctx.stroke()}
+  ctx.beginPath();ctx.moveTo(-1,hy+5);ctx.lineTo(1,hy+5);ctx.moveTo(-9,hy+4);ctx.lineTo(-13,hy+2);ctx.moveTo(9,hy+4);ctx.lineTo(13,hy+2);ctx.stroke()}
+ // 소품
+ if(s.extra==='headphones'){ctx.strokeStyle='#2b2f3a';ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(0,hy-1,R+2,Math.PI*1.05,Math.PI*1.95);ctx.stroke();rr(ctx,-R-5,hy-3,5,9,2.5,'#2b2f3a');rr(ctx,R,hy-3,5,9,2.5,'#2b2f3a');rr(ctx,-R-4,hy-2,3,7,1.5,'#e8683a');rr(ctx,R+1,hy-2,3,7,1.5,'#e8683a')}
+ if(s.extra==='scarf'){rr(ctx,-11,-32,22,6,3,'#c0504d');rr(ctx,3,-30,6,12,2,'#c0504d')}
+ if(s.extra==='badge'){rr(ctx,4,-26,5,7,1,'#fff');rr(ctx,4,-26,5,2,1,'#3b6fd6');ctx.strokeStyle='#8a919b';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(6.5,-26);ctx.lineTo(6.5,-30);ctx.stroke()}
+ if(s.extra==='earring'){ctx.fillStyle='#e0a526';ctx.beginPath();ctx.arc(-R+1,hy+6,1.6,0,Math.PI*2);ctx.arc(R-1,hy+6,1.6,0,Math.PI*2);ctx.fill()}
+ // 모자
+ const hc=s.hatColor||'#2f3542';
+ if(s.hat==='cap'){ctx.fillStyle=hc;ctx.beginPath();ctx.arc(0,hy-4,R+1,Math.PI,Math.PI*2);ctx.fill();rr(ctx,-R-1,hy-5,2*R+2,4,2,hc);rr(ctx,-2,hy-3,R+6,3.5,1.5,shade(hc,.8))}
+ if(s.hat==='beanie'){ctx.fillStyle=hc;ctx.beginPath();ctx.arc(0,hy-3,R+2,Math.PI,Math.PI*2);ctx.fill();rr(ctx,-R-2,hy-5,2*R+4,5,2,shade(hc,.85));ctx.beginPath();ctx.arc(0,hy-R-4,3.5,0,Math.PI*2);ctx.fillStyle=shade(hc,1.15);ctx.fill()}
+ if(s.hat==='beret'){ctx.fillStyle=hc;ctx.beginPath();ctx.ellipse(-1.5,hy-8,R+3.5,9.5,-.18,0,Math.PI*2);ctx.fill();ctx.fillStyle=shade(hc,.9);ctx.beginPath();ctx.arc(-1,hy-17,2,0,Math.PI*2);ctx.fill()}
+ if(s.hat==='band'){rr(ctx,-R-1,hy-7,2*R+2,3.5,1.5,hc)}
+ if(o.hat){ctx.fillStyle='#3b6fd6';ctx.beginPath();ctx.arc(0,hy-4,15,Math.PI,Math.PI*2);ctx.fill();rr(ctx,-17,hy-5,34,3,1.5,'#3b6fd6')}
+ ctx.restore()}
+// ---------- 미리보기 / 갤러리 ----------
+const pv=document.getElementById('pv').getContext('2d');
+function loop(){pv.clearRect(0,0,200,230);const t=performance.now()/1000;chibi(pv,100,205,spec,{walking:true,t,scale:3.2});requestAnimationFrame(loop)}
+const gal=document.getElementById('gal').getContext('2d');
+function gallery(){gal.clearRect(0,0,728,120);const t=performance.now()/1000;for(let i=0;i<8;i++){const s=rnd(0.13+i*0.11);chibi(gal,50+i*90,108,s,{walking:true,t:t+i,scale:1.6,hat:i===5,session:'#3b6fd6'})}requestAnimationFrame(gallery)}
+render();
+Promise.all([document.fonts.load("11px 'NanumSquare'"),document.fonts.load("11px 'D2Coding'")]).catch(()=>{}).then(()=>{loop();gallery()});
+</script></body></html>

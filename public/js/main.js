@@ -4,6 +4,7 @@ import { renderAll, renderHeader, renderPeople, bindPanelEvents } from './panels
 import { createScene } from './scene/index.js';
 import { createActors } from './scene/actors.js';
 import { project } from './scene/map.js';
+import { setLabels } from './scene/sprites.js';
 import { createTooltip } from './tooltip.js';
 import { createAvatarStore } from './avatarStore.js';
 import { createCustomizer } from './customize.js';
@@ -16,7 +17,7 @@ const tooltip = createTooltip();
 
 // ---------- 렌더 스케줄 ----------
 let dirty = true;
-store.subscribe(() => { dirty = true; });
+store.subscribe((kind) => { dirty = true; if (kind === 'snapshot') setLabels({ me: store.me }); });
 
 function frame(now) {
   if (dirty) { renderAll(); dirty = false; }

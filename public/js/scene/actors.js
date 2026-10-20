@@ -1,7 +1,7 @@
 // 캐릭터: 서버 상태(Agent.room/activity/bubble) → 자리 배정 → A* 로 걸어가기 → 그리기 + 말풍선.
 import { SLOTS, SPAWN, USER_SEAT, project } from './map.js';
 import { findPath, nearestWalkable } from './pathfind.js';
-import { shadow, shade } from './sprites.js';
+import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 import { drawAvatar } from './avatar.js';
@@ -68,21 +68,14 @@ class Actor {
 function drawPerson(ctx, a, now, spec) {
   const cx = a.x + 0.5, cy = a.y + 0.5;
   const base = project(cx, cy);
-  const alpha = a.dim ? 0.45 : 1;
   ctx.save();
-  ctx.globalAlpha = alpha;
-  shadow(ctx, cx, cy, 0.26, 0.13, 0.2);
+  ctx.globalAlpha = a.dim ? 0.45 : 1;
+  shadow(ctx, cx, cy, 0.28, 0.14, 0.2);
   const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : 0);
-  const sit = a.activity === 'rest' || a.user ? 5 : 0;
+  const sit = a.activity === 'rest' || a.user ? 4 : 0;
   const fx = base.x, fy = base.y - bob + sit;
-  drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, activity: a.activity, faceRight: a.faceRight });
-  // 서브에이전트 표식: 파란 안전모
-  if (a.kind === 'sub') {
-    ctx.fillStyle = '#3b6fd6';
-    ctx.beginPath(); ctx.arc(fx, fy - 42, 10, Math.PI, Math.PI * 2); ctx.fill();
-    ctx.fillRect(-11 + fx, fy - 43, 22, 2.5);
-  }
-  // 활동 소품
+  drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, faceRight: a.faceRight, thinking: a.activity === 'think', hardHat: a.kind === 'sub' });
+  // 활동 소품 (손 높이)
   if (a.activity === 'read' || a.activity === 'search') {
     ctx.fillStyle = '#fff'; ctx.fillRect(fx - 7, fy - 20, 14, 8);
     ctx.fillStyle = '#c0504d'; ctx.fillRect(fx - 7, fy - 20, 2, 8);
@@ -96,18 +89,15 @@ function drawPerson(ctx, a, now, spec) {
   // 답을 기다리는 중: 머리 위 느낌표 펄스
   if (a.activity === 'ask') {
     const pulse = 0.5 + 0.5 * Math.sin(now / 180);
-    const ty = fy - 56 - pulse * 3;
+    const ty = fy - 68 - pulse * 3;
     ctx.fillStyle = '#e05252';
     ctx.beginPath(); ctx.arc(fx, ty, 7 + pulse, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('!', fx, ty + 0.5);
   }
-  // 선택 표시
   if (a.selected) {
     ctx.strokeStyle = '#e8683a'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(base.x, base.y + 1, 15, 7, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(base.x, base.y + 1, 17, 8, 0, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }
@@ -119,51 +109,54 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
   const base = project(a.x + 0.5, a.y + 0.5);
   const s = camera.worldToScreen(base.x, base.y);
   const z = camera.cam.zoom;
-  const alpha = a.dim ? 0.5 : 1;
   ctx.save();
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha = a.dim ? 0.5 : 1;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   // 이름표 (발 아래)
-  ctx.font = '600 10px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif';
+  ctx.font = `700 9.5px ${FONT}`;
   const name = a.user ? `${a.name} (나)` : a.name;
   const nw = ctx.measureText(name).width + 18;
   const ny = s.y + 10;
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  ctx.strokeStyle = a.selected ? '#e8683a' : 'rgba(0,0,0,0.12)';
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.strokeStyle = a.selected ? '#e8683a' : 'rgba(0,0,0,0.1)';
   ctx.lineWidth = a.selected ? 1.5 : 1;
-  roundRect(ctx, s.x - nw / 2, ny - 8, nw, 16, 8); ctx.fill(); ctx.stroke();
+  roundRect(ctx, s.x - nw / 2, ny - 7.5, nw, 15, 7.5); ctx.fill(); ctx.stroke();
   ctx.fillStyle = a.color;
-  ctx.beginPath(); ctx.arc(s.x - nw / 2 + 8, ny, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(s.x - nw / 2 + 8, ny, 2.8, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#2b2f3a';
   ctx.fillText(name, s.x + 4, ny + 0.5);
-  // 말풍선 (머리 위)
+  // 말풍선 (머리 위) — 본체와 꼬리를 한 경로로
   if (a.bubble && !a.user && (bubbleMode !== 'selected' || a.selected)) {
-    ctx.font = '11px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif';
+    ctx.font = `8px ${FONT}`;
     let text = `${a.icon ? a.icon + ' ' : ''}${a.bubble}`;
-    if (text.length > 28) text = text.slice(0, 27) + '…';
+    if (text.length > 30) text = text.slice(0, 29) + '…';
     const ago = elapsed(a.since, now);
     const full = `${text} · ${ago}`;
-    const bw = Math.min(260, ctx.measureText(full).width + 18);
-    let by = s.y - 48 * z - 16;
-    // 앞서 그린 말풍선과 겹치면 위로 올린다
+    const bw = Math.min(240, ctx.measureText(full).width + 16), bh = 17, r = 8.5;
+    const headTop = s.y - 62 * z;
+    let by = headTop - 14;
     for (let guard = 0; guard < 8; guard++) {
-      const hit = placedBubbles.find((r) => s.x - bw / 2 < r.x1 && s.x + bw / 2 > r.x0 && by - 11 < r.y1 && by + 11 > r.y0);
+      const hit = placedBubbles.find((q) => s.x - bw / 2 < q.x1 && s.x + bw / 2 > q.x0 && by - bh / 2 < q.y1 && by + bh / 2 > q.y0);
       if (!hit) break;
-      by = hit.y0 - 14;
+      by = hit.y0 - bh / 2 - 3;
     }
-    placedBubbles.push({ x0: s.x - bw / 2, x1: s.x + bw / 2, y0: by - 11, y1: by + 11 });
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.strokeStyle = a.selected ? '#e8683a' : 'rgba(0,0,0,0.14)';
+    placedBubbles.push({ x0: s.x - bw / 2, x1: s.x + bw / 2, y0: by - bh / 2, y1: by + bh / 2 });
+    const bx = s.x - bw / 2, y0 = by - bh / 2;
+    ctx.beginPath();
+    ctx.moveTo(bx + r, y0); ctx.arcTo(bx + bw, y0, bx + bw, y0 + bh, r); ctx.arcTo(bx + bw, y0 + bh, bx, y0 + bh, r);
+    ctx.lineTo(s.x + 4, y0 + bh); ctx.lineTo(s.x, y0 + bh + 5); ctx.lineTo(s.x - 4, y0 + bh);
+    ctx.arcTo(bx, y0 + bh, bx, y0, r); ctx.arcTo(bx, y0, bx + bw, y0, r); ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.97)';
+    ctx.strokeStyle = a.selected ? '#e8683a' : 'rgba(0,0,0,0.13)';
     ctx.lineWidth = a.selected ? 1.5 : 1;
-    roundRect(ctx, s.x - bw / 2, by - 11, bw, 22, 11); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(s.x - 4, by + 11); ctx.lineTo(s.x + 4, by + 11); ctx.lineTo(s.x, by + 16); ctx.closePath(); ctx.fill();
-    if (by + 16 < s.y - 48 * z - 6) { ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(s.x, by + 16); ctx.lineTo(s.x, s.y - 48 * z - 6); ctx.stroke(); }
+    ctx.fill(); ctx.stroke();
+    if (y0 + bh + 5 < headTop - 6) { ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(s.x, y0 + bh + 5); ctx.lineTo(s.x, headTop - 6); ctx.stroke(); }
     ctx.fillStyle = '#2b2f3a';
-    ctx.fillText(text, s.x - ctx.measureText(` · ${ago}`).width / 2, by + 0.5);
+    const agoW = ctx.measureText(` · ${ago}`).width;
+    ctx.fillText(text, s.x - agoW / 2, by + 0.5);
     ctx.fillStyle = '#8a919b';
-    ctx.font = '10px -apple-system, system-ui, sans-serif';
-    ctx.fillText(`· ${ago}`, s.x + ctx.measureText(text).width / 2 + 2, by + 1);
+    ctx.fillText(` · ${ago}`, s.x + ctx.measureText(text).width / 2, by + 0.5);
   }
   ctx.restore();
 }
@@ -216,7 +209,7 @@ export function createActors(store, scene, avatars) {
   // 캐릭터 AABB: 발 위치 타일 안쪽 0.25~0.75, 높이 1.7
   function entityOf(a) {
     return makeEntity(
-      { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 1.7 },
+      { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 2.2 },
       (ctx, t) => drawPerson(ctx, a, t, avatars.forActor(a, floorId)),
       { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor' },
     );
@@ -258,7 +251,7 @@ export function createActors(store, scene, avatars) {
   function screenPosOf(a, camera) {
     const base = project(a.x + 0.5, a.y + 0.5, 0);
     const s = camera.worldToScreen(base.x, base.y);
-    return { x: s.x, y: s.y - 44 * camera.cam.zoom };
+    return { x: s.x, y: s.y - 50 * camera.cam.zoom };
   }
 
   store.subscribe((kind) => { if (kind === 'snapshot') sync(true); else sync(false); });
