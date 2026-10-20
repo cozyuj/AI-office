@@ -34,6 +34,7 @@ class Store {
     this.listeners = new Set();
     this.colorCache = new Map();
     this.prevWaiting = new Set(); // 대기 전이 감지용
+    this.orderCache = new Map();  // floorId → { t, ids }  목록 순서를 5초마다만 바꾼다
   }
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -139,6 +140,17 @@ class Store {
   floorsByNo() { return [...this.floors.values()].sort((a, b) => b.no - a.no); }
   sessionsSorted() { return [...this.sessions.values()].sort((a, b) => b.lastActivity - a.lastActivity); }
   sessionsOfFloor(floorId) { return this.sessionsSorted().filter((s) => s.floorId === floorId); }
+  /** 목록 표시용: 순서는 5초에 한 번만 갱신 (클릭 중에 행이 튀지 않게). 새 세션은 바로 위에 추가, 사라진 세션은 바로 제거 */
+  sessionsOfFloorStable(floorId, now = Date.now()) {
+    const live = this.sessionsOfFloor(floorId);
+    const c = this.orderCache.get(floorId);
+    if (!c || now - c.t > 5000) { this.orderCache.set(floorId, { t: now, ids: live.map((s) => s.id) }); return live; }
+    const byId = new Map(live.map((s) => [s.id, s]));
+    const kept = c.ids.filter((id) => byId.has(id)).map((id) => byId.get(id));
+    const fresh = live.filter((s) => !c.ids.includes(s.id));
+    if (fresh.length) c.ids = [...fresh.map((s) => s.id), ...c.ids];
+    return [...fresh, ...kept];
+  }
   selectedFloor() { return this.floors.get(this.selectedFloorId) || null; }
   selectedSession() { return this.sessions.get(this.selectedSessionId) || null; }
 

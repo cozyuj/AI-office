@@ -112,6 +112,9 @@ function drawPerson(ctx, a, now, spec) {
   ctx.restore();
 }
 
+const placedBubbles = []; // 이번 프레임에 그린 말풍선 사각형 (겹침 방지)
+export function resetBubbles() { placedBubbles.length = 0; }
+
 function drawOverlay(ctx, camera, a, now, bubbleMode) {
   const base = project(a.x + 0.5, a.y + 0.5);
   const s = camera.worldToScreen(base.x, base.y);
@@ -142,12 +145,20 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
     const ago = elapsed(a.since, now);
     const full = `${text} · ${ago}`;
     const bw = Math.min(260, ctx.measureText(full).width + 18);
-    const by = s.y - 48 * z - 16;
+    let by = s.y - 48 * z - 16;
+    // 앞서 그린 말풍선과 겹치면 위로 올린다
+    for (let guard = 0; guard < 8; guard++) {
+      const hit = placedBubbles.find((r) => s.x - bw / 2 < r.x1 && s.x + bw / 2 > r.x0 && by - 11 < r.y1 && by + 11 > r.y0);
+      if (!hit) break;
+      by = hit.y0 - 14;
+    }
+    placedBubbles.push({ x0: s.x - bw / 2, x1: s.x + bw / 2, y0: by - 11, y1: by + 11 });
     ctx.fillStyle = 'rgba(255,255,255,0.95)';
     ctx.strokeStyle = a.selected ? '#e8683a' : 'rgba(0,0,0,0.14)';
     ctx.lineWidth = a.selected ? 1.5 : 1;
     roundRect(ctx, s.x - bw / 2, by - 11, bw, 22, 11); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(s.x - 4, by + 11); ctx.lineTo(s.x + 4, by + 11); ctx.lineTo(s.x, by + 16); ctx.closePath(); ctx.fill();
+    if (by + 16 < s.y - 48 * z - 6) { ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(s.x, by + 16); ctx.lineTo(s.x, s.y - 48 * z - 6); ctx.stroke(); }
     ctx.fillStyle = '#2b2f3a';
     ctx.fillText(text, s.x - ctx.measureText(` · ${ago}`).width / 2, by + 0.5);
     ctx.fillStyle = '#8a919b';
@@ -214,8 +225,10 @@ export function createActors(store, scene, avatars) {
   function tick(now) {
     const dt = Math.min(0.1, (now - (last || now)) / 1000);
     last = now;
+    resetBubbles();
     const out = [];
-    for (const [key, a] of actors) {
+    const ordered = [...actors.entries()].sort(([, a], [, b]) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0));
+    for (const [key, a] of ordered) {
       a.update(dt);
       if (a.dead && (!a.walking || now - a.deadAt > LEAVE_TIMEOUT)) { actors.delete(key); continue; }
       out.push(entityOf(a));

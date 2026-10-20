@@ -162,3 +162,31 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .cz-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
 .cz-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
 .cz-swatch.on { box-shadow: 0 0 0 2px var(--accent); }
+
+/* ---------- FE-10 UI 다듬기 ---------- */
+.head-sub .dot { display: inline-block; vertical-align: middle; margin-right: 2px; }
+.head-tools.seg { border: 1px solid var(--line); border-radius: 999px; padding: 2px; background: #fafbfc; gap: 2px; }
+.head-tools.seg .tool { border: 0; background: transparent; padding: 4px 9px; }
+.head-tools.seg .tool:hover { background: #eef0f3; }
+.head-tools.seg .tool.on { background: var(--accent-soft); }
+.stage-empty-card { pointer-events: auto; margin-top: 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.stage-empty-card .cmd { display: flex; gap: 8px; align-items: center; }
+.stage-empty-card code { font-size: 12px; padding: 4px 8px; }
+.people-group { border: 1px solid transparent; border-radius: 10px; padding: 2px; }
+.people-group.selected { border-color: #f5c9b3; background: #fff8f4; }
+.people-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px 2px; font-size: 11px; }
+.people-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #444; }
+.people-group .person.selected { background: transparent; }
+.people-group .person { padding: 5px 8px; }
+.log-item { border-left: 3px solid transparent; padding-left: 6px; }
+.log-item.cont { border-bottom: 0; padding-top: 0; }
+.log-item.cont + .log-item:not(.cont) { border-top: 1px dashed var(--line); }
+@media (max-width: 1100px) {
+  #app { grid-template-columns: 220px 1fr; }
+  #right { display: none; }
+}
+@media (max-width: 760px) {
+  #app { grid-template-columns: 1fr; }
+  #left { display: none; }
+}
+.card.grow .list { flex: 1; min-height: 0; }

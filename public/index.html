@@ -24,7 +24,7 @@
         <div id="head-title" class="head-title">사무실</div>
         <div id="head-sub" class="head-sub">훅 이벤트를 기다리는 중</div>
       </div>
-      <div class="head-tools">
+      <div class="head-tools seg">
         <button id="follow-btn" class="tool" title="선택한 세션의 Claude 를 카메라가 따라갑니다">📍 따라가기</button>
         <button id="bubbles-btn" class="tool" title="말풍선을 선택한 세션만 보일지 전체를 보일지">💬 말풍선: 전체</button>
         <button id="notify-btn" class="tool" title="Claude 가 질문하거나 허락을 기다리면 브라우저 알림을 보냅니다">🔔 알림</button>
@@ -36,7 +36,12 @@
       <canvas id="office"></canvas>
       <div id="stage-empty" class="stage-empty">
         <div class="stage-empty-title">아직 출근한 사람이 없습니다</div>
-        <div class="stage-empty-sub">Claude Code 세션이 시작되면 여기에 나타납니다.<br>미리 보려면 <code>npm run demo</code></div>
+        <div class="stage-empty-sub">Claude Code 세션이 시작되면 여기에 나타납니다.</div>
+        <div class="stage-empty-card">
+          <div class="muted">훅을 아직 설치하지 않았다면</div>
+          <div class="cmd"><code id="install-cmd">cd <span id="install-dir">ai-office</span> && npm run install-hooks</code><button id="copy-cmd" class="tool">복사</button></div>
+          <div class="muted">미리 보려면 <code>npm run demo</code></div>
+        </div>
       </div>
       <div id="zoom">
         <button id="zoom-in" title="확대">+</button>
