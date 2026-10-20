@@ -120,6 +120,17 @@ function drawPerson(ctx, a, now) {
     ctx.fillStyle = '#fff'; ctx.fillRect(fx + 6, fy - 20, 5, 6);
     ctx.fillStyle = '#e8683a'; ctx.fillRect(fx + 6, fy - 20, 5, 2);
   }
+  // 답을 기다리는 중: 머리 위 느낌표 펄스
+  if (a.activity === 'ask') {
+    const pulse = 0.5 + 0.5 * Math.sin(now / 180);
+    const ty = fy - 54 - pulse * 3;
+    ctx.fillStyle = '#e05252';
+    ctx.beginPath(); ctx.arc(fx, ty, 7 + pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', fx, ty + 0.5);
+  }
   // 선택 표시
   if (a.selected) {
     ctx.strokeStyle = '#e8683a'; ctx.lineWidth = 2;

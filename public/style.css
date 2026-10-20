@@ -121,3 +121,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .tool { border: 1px solid var(--line); background: #fff; color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 11px; cursor: pointer; white-space: nowrap; }
 .tool:hover { background: #f6f7f9; }
 .tool.on { background: var(--accent-soft); border-color: #f2b79a; color: var(--accent); font-weight: 600; }
+
+/* ---------- 대기 배지 ---------- */
+.badge-wait { font-size: 10px; font-weight: 700; color: #fff; background: var(--red); padding: 1px 7px; border-radius: 999px; flex: none; animation: pulse 1.2s infinite; }
+.tool.off { color: var(--muted); text-decoration: line-through; }
