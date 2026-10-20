@@ -191,3 +191,13 @@ test('describeTool: 입력이 없어도 깨지지 않는다', () => {
   assert.equal(describeTool('Bash', null).bubble, '명령 실행 중');
   assert.equal(describeTool('', undefined).room, 'dev');
 });
+
+test('UserPromptSubmit: <task-notification> 같은 시스템 메시지는 제목/프롬프트 로그로 쓰지 않는다', () => {
+  const { st, main, s, updates } = fresh();
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '<task-notification>\n<task-id>abc</task-id>\n</task-notification>' }), 1000);
+  assert.equal(s().title, '');
+  assert.equal(main().bubble, '알림 확인 중');
+  assert.match(updates[0].log.text, /알림 수신 \(task-notification\)/);
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '진짜 요청' }), 1100);
+  assert.equal(s().title, '진짜 요청');
+});

@@ -128,7 +128,7 @@ function drawPerson(ctx, a, now) {
   ctx.restore();
 }
 
-function drawOverlay(ctx, camera, a, now) {
+function drawOverlay(ctx, camera, a, now, bubbleMode) {
   const base = project(a.x + 0.5, a.y + 0.5);
   const s = camera.worldToScreen(base.x, base.y);
   const z = camera.cam.zoom;
@@ -151,7 +151,7 @@ function drawOverlay(ctx, camera, a, now) {
   ctx.fillStyle = '#2b2f3a';
   ctx.fillText(name, s.x + 4, ny + 0.5);
   // 말풍선 (머리 위)
-  if (a.bubble && !a.user) {
+  if (a.bubble && !a.user && (bubbleMode !== 'selected' || a.selected)) {
     ctx.font = '11px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif';
     let text = `${a.icon ? a.icon + ' ' : ''}${a.bubble}`;
     if (text.length > 28) text = text.slice(0, 27) + '…';
@@ -225,9 +225,9 @@ export function createActors(store, scene) {
     for (const [key, a] of actors) {
       a.update(dt);
       if (a.dead && (!a.walking || now - a.deadAt > LEAVE_TIMEOUT)) { actors.delete(key); continue; }
-      out.push({ key: a.x + 1 + a.y + 1, draw: (ctx, t) => drawPerson(ctx, a, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t) });
+      out.push({ key: a.x + 1 + a.y + 1, draw: (ctx, t) => drawPerson(ctx, a, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode) });
     }
-    out.push({ key: user.x + 1 + user.y + 1, draw: (ctx, t) => drawPerson(ctx, user, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, user, t) });
+    out.push({ key: user.x + 1 + user.y + 1, draw: (ctx, t) => drawPerson(ctx, user, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, user, t, store.bubbleMode) });
     return out;
   }
 
@@ -243,5 +243,12 @@ export function createActors(store, scene) {
   store.subscribe((kind) => { if (kind === 'snapshot') sync(true); else sync(false); });
   scene.setActorProvider(tick);
   scene.onClick(pick);
-  return { sync, tick, pick, get actors() { return actors; }, user };
+  /** 선택 세션의 main 캐릭터 (카메라 따라가기용) */
+  function selectedActor() {
+    const sid = store.selectedSessionId;
+    if (!sid) return null;
+    return actors.get(`${sid}/main`) || [...actors.values()].find((a) => a.sessionId === sid) || null;
+  }
+
+  return { sync, tick, pick, selectedActor, get actors() { return actors; }, user };
 }

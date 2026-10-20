@@ -115,3 +115,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 
 .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px; color: #444; }
 .legend span b { font-weight: 600; color: var(--text); }
+
+/* ---------- 헤더 도구 ---------- */
+.head-tools { display: flex; gap: 6px; }
+.tool { border: 1px solid var(--line); background: #fff; color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.tool:hover { background: #f6f7f9; }
+.tool.on { background: var(--accent-soft); border-color: #f2b79a; color: var(--accent); font-weight: 600; }
