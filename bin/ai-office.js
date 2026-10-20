@@ -23,7 +23,10 @@ const PKG = JSON.parse(fs.readFileSync(path.join(SRC, 'package.json'), 'utf8'));
 const FILES = ['package.json', 'server.js', 'README.md', 'lib', 'hooks', 'public', 'scripts'];
 
 const args = process.argv.slice(2);
-const cmd = args.find((a) => !a.startsWith('--')) || 'up';
+const VALUE_FLAGS = new Set(['--port']);
+const positional = [];
+for (let i = 0; i < args.length; i++) { if (args[i].startsWith('--')) { if (VALUE_FLAGS.has(args[i])) i++; continue; } positional.push(args[i]); }
+const cmd = positional[0] || 'up';
 const flag = (name) => args.includes(`--${name}`);
 const opt = (name, def) => { const i = args.indexOf(`--${name}`); return i >= 0 && args[i + 1] ? args[i + 1] : def; };
 const PORT = Number(opt('port', process.env.AI_OFFICE_PORT || 4777));
