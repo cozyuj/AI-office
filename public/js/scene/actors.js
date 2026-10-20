@@ -4,6 +4,7 @@ import { findPath, nearestWalkable } from './pathfind.js';
 import { shadow, shade } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
+import { drawAvatar } from './avatar.js';
 
 const SPEED = 3.6;          // 타일/초
 const LEAVE_TIMEOUT = 8000; // 퇴근 중 최대 대기
@@ -64,7 +65,7 @@ class Actor {
 }
 
 // ---------- 그리기 ----------
-function drawPerson(ctx, a, now) {
+function drawPerson(ctx, a, now, spec) {
   const cx = a.x + 0.5, cy = a.y + 0.5;
   const base = project(cx, cy);
   const alpha = a.dim ? 0.45 : 1;
@@ -74,42 +75,14 @@ function drawPerson(ctx, a, now) {
   const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : 0);
   const sit = a.activity === 'rest' || a.user ? 5 : 0;
   const fx = base.x, fy = base.y - bob + sit;
-  const color = a.color;
-  const dark = shade(color, 0.72);
-  // 다리
-  const legSwing = a.walking ? Math.sin(a.walkT * 9) * 3 : 0;
-  ctx.fillStyle = '#3a3f4b';
-  ctx.fillRect(fx - 6, fy - 11 + Math.max(0, legSwing), 5, 11 - Math.max(0, legSwing));
-  ctx.fillRect(fx + 1, fy - 11 + Math.max(0, -legSwing), 5, 11 - Math.max(0, -legSwing));
-  // 몸통
-  ctx.fillStyle = color;
-  roundRect(ctx, fx - 9, fy - 30, 18, 21, 6); ctx.fill();
-  ctx.fillStyle = dark;
-  roundRect(ctx, fx - 9, fy - 16, 18, 7, 3); ctx.fill(); // 벨트/하의
-  // 팔
-  ctx.fillStyle = color;
-  const arm = a.activity === 'think' ? -4 : 0;
-  roundRect(ctx, fx - 13, fy - 27, 4, 14 + arm, 2); ctx.fill();
-  roundRect(ctx, fx + 9, fy - 27, 4, 14, 2); ctx.fill();
-  // 머리
-  ctx.fillStyle = '#f3d2b5';
-  ctx.beginPath(); ctx.arc(fx, fy - 38, 9, 0, Math.PI * 2); ctx.fill();
-  // 머리카락
-  ctx.fillStyle = a.user ? '#4a3b32' : dark;
-  ctx.beginPath(); ctx.arc(fx, fy - 40, 9, Math.PI, Math.PI * 2); ctx.fill();
-  ctx.fillRect(fx - 9, fy - 40, 18, 3);
-  // 눈
-  ctx.fillStyle = '#2b2f3a';
-  const ex = a.faceRight ? 3 : -3;
-  ctx.fillRect(fx + ex - 1, fy - 38, 2, 2);
-  ctx.fillRect(fx + ex + (a.faceRight ? -5 : 5) - 1, fy - 38, 2, 2);
-  // 서브에이전트 표식: 작은 안전모
+  drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, activity: a.activity, faceRight: a.faceRight });
+  // 서브에이전트 표식: 파란 안전모
   if (a.kind === 'sub') {
     ctx.fillStyle = '#3b6fd6';
-    ctx.beginPath(); ctx.arc(fx, fy - 41, 9.5, Math.PI, Math.PI * 2); ctx.fill();
-    ctx.fillRect(fx - 11, fy - 42, 22, 2.5);
+    ctx.beginPath(); ctx.arc(fx, fy - 42, 10, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-11 + fx, fy - 43, 22, 2.5);
   }
-  // 책 / 노트북 소품
+  // 활동 소품
   if (a.activity === 'read' || a.activity === 'search') {
     ctx.fillStyle = '#fff'; ctx.fillRect(fx - 7, fy - 20, 14, 8);
     ctx.fillStyle = '#c0504d'; ctx.fillRect(fx - 7, fy - 20, 2, 8);
@@ -123,7 +96,7 @@ function drawPerson(ctx, a, now) {
   // 답을 기다리는 중: 머리 위 느낌표 펄스
   if (a.activity === 'ask') {
     const pulse = 0.5 + 0.5 * Math.sin(now / 180);
-    const ty = fy - 54 - pulse * 3;
+    const ty = fy - 56 - pulse * 3;
     ctx.fillStyle = '#e05252';
     ctx.beginPath(); ctx.arc(fx, ty, 7 + pulse, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff';
@@ -185,7 +158,7 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
 }
 
 // ---------- 관리자 ----------
-export function createActors(store, scene) {
+export function createActors(store, scene, avatars) {
   const slots = new Slots();
   let actors = new Map();   // key → Actor
   let floorId = null;
@@ -233,7 +206,7 @@ export function createActors(store, scene) {
   function entityOf(a) {
     return makeEntity(
       { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 1.7 },
-      (ctx, t) => drawPerson(ctx, a, t),
+      (ctx, t) => drawPerson(ctx, a, t, avatars.forActor(a, floorId)),
       { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor' },
     );
   }

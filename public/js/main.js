@@ -5,10 +5,13 @@ import { createScene } from './scene/index.js';
 import { createActors } from './scene/actors.js';
 import { project } from './scene/map.js';
 import { createTooltip } from './tooltip.js';
+import { createAvatarStore } from './avatarStore.js';
+import { createCustomizer } from './customize.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
-const actors = createActors(store, scene);
+const avatars = createAvatarStore();
+const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
 
 // ---------- 렌더 스케줄 ----------
@@ -153,4 +156,8 @@ people.addEventListener('mouseover', (e) => {
 });
 people.addEventListener('mouseleave', () => { people._hoverRow = null; tooltip.hide(); });
 
-window.aiOffice = { store, scene, actors, tooltip }; // 디버그용
+// ---------- 외형 커스터마이즈 ----------
+const customizer = createCustomizer(store, avatars);
+document.getElementById('customize-btn').onclick = () => customizer.open();
+
+window.aiOffice = { store, scene, actors, tooltip, avatars, customizer }; // 디버그용

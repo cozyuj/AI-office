@@ -28,6 +28,7 @@
         <button id="follow-btn" class="tool" title="선택한 세션의 Claude 를 카메라가 따라갑니다">📍 따라가기</button>
         <button id="bubbles-btn" class="tool" title="말풍선을 선택한 세션만 보일지 전체를 보일지">💬 말풍선: 전체</button>
         <button id="notify-btn" class="tool" title="Claude 가 질문하거나 허락을 기다리면 브라우저 알림을 보냅니다">🔔 알림</button>
+        <button id="customize-btn" class="tool" title="나 / Claude / 서브에이전트 캐릭터 외형 고르기">👤 외형</button>
       </div>
       <span id="live" class="live off"><i></i><b>OFFLINE</b></span>
     </header>
@@ -69,6 +70,24 @@
   </aside>
 </div>
 <div id="tooltip" class="tooltip hidden"></div>
+<div id="customize" class="modal hidden">
+  <div class="modal-card cz">
+    <div class="modal-head"><span>캐릭터 외형</span><button class="tool" data-action="close">닫기</button></div>
+    <div class="cz-body">
+      <div class="cz-left">
+        <div class="cz-targets"></div>
+        <canvas class="cz-preview"></canvas>
+        <div class="cz-actions">
+          <button class="tool" data-action="random">🎲 랜덤</button>
+          <button class="tool" data-action="reset">↺ 초기화</button>
+          <button class="tool" data-action="delete" title="저장한 설정을 지우고 기본값으로">🗑 저장 삭제</button>
+        </div>
+      </div>
+      <div class="cz-options"></div>
+    </div>
+    <div class="modal-foot"><span class="muted">저장은 이 브라우저에만 남습니다 (localStorage)</span><button class="tool on" data-action="save">저장</button></div>
+  </div>
+</div>
 <script type="module" src="/js/main.js"></script>
 </body>
 </html>

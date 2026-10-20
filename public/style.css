@@ -140,3 +140,25 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .tooltip .tt-prompt { color: #444; font-style: italic; }
 .tooltip .tt-foot { margin-top: 6px; color: var(--muted); font-size: 11px; }
 #office.hover-actor { cursor: pointer; }
+
+/* ---------- 모달 / 외형 ---------- */
+.modal { position: fixed; inset: 0; z-index: 100; background: rgba(20,24,30,.35); display: flex; align-items: center; justify-content: center; }
+.modal.hidden { display: none; }
+.modal-card { background: #fff; border-radius: 14px; box-shadow: 0 20px 60px rgba(20,24,30,.3); width: min(760px, calc(100vw - 40px)); max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 14px; }
+.modal-foot { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 11px; }
+.cz-body { display: grid; grid-template-columns: 220px 1fr; gap: 16px; padding: 14px 16px; overflow: auto; }
+.cz-left { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.cz-targets { display: flex; flex-direction: column; gap: 4px; }
+.cz-target { text-align: left; border: 1px solid var(--line); background: #fafbfc; border-radius: 8px; padding: 7px 10px; cursor: pointer; font-size: 12px; }
+.cz-target.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.cz-preview { align-self: center; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.cz-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.cz-options { display: flex; flex-direction: column; gap: 12px; }
+.cz-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.cz-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+.cz-chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+.cz-chip.on { background: var(--accent-soft); border-color: #f2b79a; color: var(--accent); font-weight: 600; }
+.cz-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.cz-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+.cz-swatch.on { box-shadow: 0 0 0 2px var(--accent); }
