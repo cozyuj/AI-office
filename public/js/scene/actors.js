@@ -2,7 +2,7 @@
 import { SLOTS, SPAWN, USER_SEAT, project } from './map.js';
 import { findPath, nearestWalkable } from './pathfind.js';
 import { shadow, shade } from './sprites.js';
-import { roundRect } from './render.js';
+import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 
 const SPEED = 3.6;          // 타일/초
@@ -229,6 +229,15 @@ export function createActors(store, scene) {
     }
   }
 
+  // 캐릭터 AABB: 발 위치 타일 안쪽 0.25~0.75, 높이 1.7
+  function entityOf(a) {
+    return makeEntity(
+      { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 1.7 },
+      (ctx, t) => drawPerson(ctx, a, t),
+      { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor' },
+    );
+  }
+
   function tick(now) {
     const dt = Math.min(0.1, (now - (last || now)) / 1000);
     last = now;
@@ -236,9 +245,9 @@ export function createActors(store, scene) {
     for (const [key, a] of actors) {
       a.update(dt);
       if (a.dead && (!a.walking || now - a.deadAt > LEAVE_TIMEOUT)) { actors.delete(key); continue; }
-      out.push({ key: a.x + 1 + a.y + 1, draw: (ctx, t) => drawPerson(ctx, a, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode) });
+      out.push(entityOf(a));
     }
-    out.push({ key: user.x + 1 + user.y + 1, draw: (ctx, t) => drawPerson(ctx, user, t), overlay: (ctx, cam, t) => drawOverlay(ctx, cam, user, t, store.bubbleMode) });
+    out.push(entityOf(user));
     return out;
   }
 

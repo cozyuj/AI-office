@@ -1,10 +1,11 @@
 // 사무실 장면 진입점: 캔버스 크기, 카메라, 프레임 루프. 캐릭터(FE-03)는 actorProvider 로 끼워 넣는다.
 import { createCamera } from './camera.js';
-import { drawFloor, drawEntities, drawLabels } from './render.js';
+import { drawFloor, drawEntities, drawLabels, setDebugDepth } from './render.js';
 import { worldBounds, unproject } from './map.js';
 
 export function createScene(canvas, store) {
   const ctx = canvas.getContext('2d');
+  setDebugDepth(new URLSearchParams(location.search).get('debug') === 'depth');
   let fitted = false;
   let actorProvider = null;   // () => [{ key, draw(ctx, now), overlay?(ctx, camera, now), hit?(world) }]
   let clickHandler = null;

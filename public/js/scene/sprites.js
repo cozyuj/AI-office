@@ -223,43 +223,28 @@ export function drawFurniture(ctx, f) {
   else box(ctx, f.x, f.y, f.w || 1, f.d || 1, 0.8, '#cccccc');
 }
 
-/** 벽: 문 구멍을 비우고 조각으로 그린다 */
-export function drawWall(ctx, w) {
-  const color = w.outer ? '#e6e3dc' : '#d6dbe3';
-  const th = w.outer ? 0.22 : 0.14;
-  let i = 0;
-  while (i < w.len) {
-    if (w.doors.includes(i)) { i++; continue; }
-    let j = i;
-    while (j < w.len && !w.doors.includes(j)) j++;
-    const len = j - i;
-    if (w.dir === 'h') box(ctx, w.x + i, w.y - th / 2, len, th, w.h, color, { top: shade(color, 1.04) });
-    else box(ctx, w.x - th / 2, w.y + i, th, len, w.h, color, { top: shade(color, 1.04) });
-    i = j;
-  }
-}
-
-/** 벽 조각의 깊이 정렬용 footprint 목록 */
+/** 벽 조각: 문 구멍을 비우고 1타일 단위로 쪼갠다 (깊이 정렬 정확도를 위해) */
 export function wallPieces(w) {
   const th = w.outer ? 0.22 : 0.14;
   const out = [];
-  let i = 0;
-  while (i < w.len) {
-    if (w.doors.includes(i)) { i++; continue; }
-    let j = i;
-    while (j < w.len && !w.doors.includes(j)) j++;
-    const len = j - i;
+  for (let i = 0; i < w.len; i++) {
+    if (w.doors.includes(i)) continue;
+    const first = i === 0 || w.doors.includes(i - 1);
+    const last = i === w.len - 1 || w.doors.includes(i + 1);
     out.push(w.dir === 'h'
-      ? { wall: w, x: w.x + i, y: w.y - th / 2, w: len, d: th, h: w.h, i, j }
-      : { wall: w, x: w.x - th / 2, y: w.y + i, w: th, d: len, h: w.h, i, j });
-    i = j;
+      ? { wall: w, x: w.x + i, y: w.y - th / 2, w: 1, d: th, h: w.h, first, last }
+      : { wall: w, x: w.x - th / 2, y: w.y + i, w: th, d: 1, h: w.h, first, last });
   }
   return out;
 }
 
 export function drawWallPiece(ctx, p) {
   const color = p.wall.outer ? '#e6e3dc' : '#d6dbe3';
-  box(ctx, p.x, p.y, p.w, p.d, p.h, color, { top: shade(color, 1.04) });
+  // 조각 사이 이음새가 보이지 않도록 외곽선 없이 면만 그린다
+  box(ctx, p.x, p.y, p.w, p.d, p.h, color, { top: shade(color, 1.04), line: null });
 }
+
+/** 호환용: 통짜 벽 그리기 (디버그) */
+export function drawWall(ctx, w) { for (const p of wallPieces(w)) drawWallPiece(ctx, p); }
 
 export { ZH };
