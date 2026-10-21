@@ -82,3 +82,17 @@ test('slim: 필요한 키만 남기고 긴 문자열은 200자', () => {
   assert.equal(s.tool_input.file_path, '/f');
   assert.equal(s.prompt.length, 200);
 });
+
+test('compactNow: maxAge 지난 줄을 주기 압축으로 지우고 stats 가 줄/바이트를 센다', () => {
+  const dir = tmp();
+  const j = createJournal({ dir, maxAge: 1000 });
+  j.append(0, ev({ hook_event_name: 'Stop', session_id: 'old' }));
+  j.append(5000, ev({ hook_event_name: 'Stop', session_id: 'new' }));
+  j.flush();
+  assert.equal(j.stats().lines, 2);
+  assert.equal(j.compactNow(5500), 1);
+  assert.equal(j.stats().lines, 1);
+  assert.ok(j.stats().bytes > 0);
+  assert.equal(j.compactNow(99999), 0);
+  assert.equal(j.stats().lines, 0);
+});

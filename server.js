@@ -49,7 +49,7 @@ function stopDemo() {
   broadcast('demo', { on: false });
   return n;
 }
-function withPorts(snap) { return { ...snap, serverPort: PORT, hookPort, version: VERSION, demo: demoRunning() }; }
+function withPorts(snap) { return { ...snap, serverPort: PORT, hookPort, version: VERSION, demo: demoRunning(), journal: journal.enabled ? journal.stats() : null }; }
 const clients = new Set();
 
 // 이벤트 저널: 재시작해도 최근 2시간 상태를 복원한다. --no-journal 로 끌 수 있다.
@@ -58,6 +58,7 @@ if (journal.enabled) {
   const n = journal.replay((payload, t) => state.apply(payload, t), Date.now());
   state.sweep(Date.now());
   console.log(`journal    →  ${journal.file} (${n}건 재생, 세션 ${state.snapshot().sessions.length}개 복원)`);
+  journal.startAutoCompact();
 }
 
 function sse(res, event, data) {

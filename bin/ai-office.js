@@ -137,6 +137,7 @@ async function doctor() {
   } catch { log(`settings  ${settings} ✗ 읽을 수 없음`); }
   log(`app       ${installedVersion() ? `${installedVersion()} @ ${APP} ✓` : '미설치 (ai-office install)'}`);
   log(`port      ${PORT} ${(await portInUse(PORT)) ? '사용 중 (서버 떠 있음)' : '비어 있음'}`);
+  try { const j = path.join(HOME, 'events.jsonl'); const st = fs.statSync(j); log(`journal   ${j} ${(st.size / 1024).toFixed(0)}KB`); } catch { log('journal   없음'); }
   const hp = readHookPort(settings);
   if (hp === null) log('hook port 훅 없음 ✗ → ai-office install-hooks');
   else log(`hook port ${hp} ${hp === PORT ? '✓' : `✗ 서버 포트 ${PORT} 와 다름 → ai-office install-hooks --port ${PORT}`}`);
