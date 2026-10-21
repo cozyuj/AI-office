@@ -180,6 +180,18 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .head-tools.seg .tool { border: 0; background: transparent; padding: 4px 9px; }
 .head-tools.seg .tool:hover { background: #eef0f3; }
 .head-tools.seg .tool.on { background: var(--accent-soft); }
+/* ⚙️ 설정 팝오버 */
+#settings-wrap { position: relative; }
+.settings-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; min-width: 270px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(20,24,30,.16); padding: 6px; display: flex; flex-direction: column; }
+.settings-menu.hidden { display: none; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px; border-radius: 8px; }
+.settings-row:hover { background: var(--accent-soft, #fdf1ea); }
+.settings-label { font-size: 12px; white-space: nowrap; }
+.settings-label kbd { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; font-family: inherit; }
+.head-tools.seg .settings-menu .tool { border: 1px solid var(--line); background: var(--panel); padding: 3px 10px; min-width: 96px; text-align: center; }
+.head-tools.seg .settings-menu .tool.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.head-tools.seg .settings-menu .tool.off { color: var(--muted); text-decoration: none; }
+#settings-btn.on { background: var(--accent-soft); }
 .stage-empty-card { pointer-events: auto; margin-top: 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
 .stage-empty-card .cmd { display: flex; gap: 8px; align-items: center; }
 .stage-empty-card code { font-size: 12px; padding: 4px 8px; }
