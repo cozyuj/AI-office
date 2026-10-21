@@ -261,3 +261,20 @@ test('transcript 가 마지막 훅 이후 갱신되지 않고 60분 지나면 �
   st.sweep(1000 + GONE_MS);
   assert.equal(st.get('s1').status, 'ended');
 });
+
+test('같은 폴더명 프로젝트는 상위 폴더를 붙여 구분하고, 하나가 사라지면 짧은 이름으로 복원', () => {
+  const st = createState({ statFile: () => ({ mtimeMs: Number.MAX_SAFE_INTEGER }) });
+  const floorEvents = [];
+  st.on('floor', (f) => floorEvents.push(f));
+  st.apply({ session_id: 'a', cwd: '/Users/me/work/nccx', hook_event_name: 'SessionStart', source: 'startup' }, 1000);
+  assert.equal(st.snapshot().floors[0].name, 'nccx');
+  st.apply({ session_id: 'b', cwd: '/Users/me/bitbucket/nccx', hook_event_name: 'SessionStart', source: 'startup' }, 1001);
+  assert.deepEqual(st.snapshot().floors.map((f) => f.name).sort(), ['bitbucket/nccx', 'work/nccx']);
+  assert.equal(floorEvents.length, 1, '기존 층 이름 변경이 floor 이벤트로 나감');
+  assert.equal(floorEvents[0].name, 'work/nccx');
+  st.apply({ session_id: 'c', cwd: '/Users/me/other/mcp-hub', hook_event_name: 'SessionStart', source: 'startup' }, 1002);
+  assert.ok(st.snapshot().floors.some((f) => f.name === 'mcp-hub'), '겹치지 않는 이름은 그대로');
+  st.apply({ session_id: 'b', cwd: '/Users/me/bitbucket/nccx', hook_event_name: 'SessionEnd', reason: 'other' }, 2000);
+  st.sweep(2000 + SESSION_LEAVE_MS);
+  assert.ok(st.snapshot().floors.some((f) => f.name === 'nccx'), '혼자 남으면 다시 짧은 이름');
+});

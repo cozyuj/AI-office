@@ -16,14 +16,15 @@ const SETTINGS = process.env.CLAUDE_SETTINGS || path.join(os.homedir(), '.claude
 const argAppDir = (() => { const i = process.argv.indexOf('--app-dir'); return i >= 0 ? process.argv[i + 1] : null; })();
 const APP_DIR = path.resolve(argAppDir || path.join(__dirname, '..'));
 const remove = process.argv.includes('--remove');
+const argPort = (() => { const i = process.argv.indexOf('--port'); return i >= 0 ? Number(process.argv[i + 1]) : null; })();
 
 // Windows/macOS/Linux 공통: "<node 절대경로>" "<app>/hooks/emit.js"  (공백·역슬래시 경로 대비 따옴표)
 const q = (s) => `"${s}"`;
-const COMMAND = buildCommand(process.execPath, path.join(APP_DIR, 'hooks', 'emit.js'));
-function buildCommand(nodePath, emitPath) { return `${q(nodePath)} ${q(emitPath)}`; }
+const COMMAND = buildCommand(process.execPath, path.join(APP_DIR, 'hooks', 'emit.js'), argPort);
+function buildCommand(nodePath, emitPath, port) { return `${q(nodePath)} ${q(emitPath)}${port && port !== 4777 ? ` --port ${port}` : ''}`; }
 
 function isOurs(h) {
-  return h && h.type === 'command' && typeof h.command === 'string' && /hooks[\\/]emit\.(js|sh)"?\s*$/.test(h.command);
+  return h && h.type === 'command' && typeof h.command === 'string' && /hooks[\\/]emit\.(js|sh)"?(\s+--port\s+\d+)?\s*$/.test(h.command);
 }
 
 if (require.main !== module) { module.exports = { buildCommand, isOurs }; return; }
@@ -67,4 +68,4 @@ console.log(remove
   : `added ${added}, skipped ${skipped} (already present) → ${SETTINGS}`);
 console.log(`hook command: ${COMMAND}`);
 module.exports = { buildCommand, isOurs };
-if (!remove) console.log('새 Claude Code 세션부터 적용됩니다. 서버: npm start');
+if (!remove) console.log(`새 Claude Code 세션부터 적용됩니다. 훅 포트: ${argPort || 4777}. 서버: ai-office start${argPort && argPort !== 4777 ? ` --port ${argPort}` : ''}`);

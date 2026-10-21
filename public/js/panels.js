@@ -7,7 +7,19 @@ const STATUS_LABEL = { working: '작업 중', thinking: '고민 중', waiting: '
 
 function initials(name) { return (name || '?').trim().slice(0, 1).toUpperCase(); }
 
+export function renderBanner() {
+  const el = $('banner');
+  const sp = store.serverPort, hp = store.hookPort;
+  const show = (html) => { el.innerHTML = html; el.classList.remove('hidden'); document.body.classList.add('has-banner'); };
+  const hide = () => { el.classList.add('hidden'); document.body.classList.remove('has-banner'); };
+  if (!sp || !store.connected) { hide(); return; }
+  if (hp === null) { show('Claude Code 훅이 아직 등록되지 않았습니다. 터미널에서 <code>npx github:cozyuj/AI-office install-hooks</code> 를 실행하세요.'); return; }
+  if (hp !== sp) { show(`훅은 포트 <b>${hp}</b> 로 보내는데 이 서버는 <b>${sp}</b> 에 떠 있어 이벤트가 안 들어옵니다. <code>ai-office install-hooks --port ${sp}</code> 로 맞추거나 서버를 <code>--port ${hp}</code> 로 띄우세요.`); return; }
+  hide();
+}
+
 export function renderHeader() {
+  renderBanner();
   const f = store.selectedFloor();
   const s = store.selectedSession();
   $('head-badge').textContent = f ? `${f.no}F` : '–';

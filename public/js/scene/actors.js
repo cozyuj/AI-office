@@ -211,7 +211,7 @@ export function createActors(store, scene, avatars) {
     return makeEntity(
       { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 2.2 },
       (ctx, t) => drawPerson(ctx, a, t, avatars.forActor(a, floorId)),
-      { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor' },
+      { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor', isActor: true },
     );
   }
 

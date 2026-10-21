@@ -16,6 +16,7 @@ const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
 
 // ---------- 렌더 스케줄 ----------
+const stats = { last: 0, avg: 0, frames: 0 }; // scene.frame 소요 ms (EMA)
 let dirty = true;
 store.subscribe((kind) => { dirty = true; if (kind === 'snapshot') setLabels({ me: store.me }); });
 
@@ -30,7 +31,11 @@ function frame(now) {
       cam.y += (p.y - cam.y) * 0.08;
     }
   }
+  const t0 = performance.now();
   scene.frame(now);
+  stats.last = performance.now() - t0;
+  stats.avg = stats.avg ? stats.avg * 0.95 + stats.last * 0.05 : stats.last;
+  stats.frames++;
   tooltip.frame(now);
   requestAnimationFrame(frame);
 }
@@ -45,6 +50,7 @@ function connect() {
   es.addEventListener('snapshot', (e) => { store.applySnapshot(JSON.parse(e.data)); store.setConnected(true); });
   es.addEventListener('update', (e) => store.applyUpdate(JSON.parse(e.data)));
   es.addEventListener('remove', (e) => store.applyRemove(JSON.parse(e.data)));
+  es.addEventListener('floor', (e) => store.applyFloor(JSON.parse(e.data)));
   es.onopen = () => store.setConnected(true);
   es.onerror = () => { store.setConnected(false); renderHeader(); }; // EventSource 가 알아서 재접속한다
 }
@@ -71,16 +77,31 @@ canvas.addEventListener('pointerdown', () => { if (store.followCamera) store.set
 store.subscribe((kind) => { if (kind === 'option') renderTools(); });
 renderTools();
 
-// ---------- 대기 알림: 탭 제목 + 브라우저 알림 ----------
+// ---------- 탭 제목 "(7F) ai-office" 고정 + 파비콘 (대기 세션이 있으면 빨간 점) ----------
 const BASE_TITLE = 'AI Office';
-let blink = false;
+let faviconState = null;
 function renderTitle() {
-  const n = store.waitingSessions().length;
-  if (!n) { document.title = BASE_TITLE; return; }
-  blink = !blink;
-  document.title = blink ? `(${n}) 🙋 답을 기다립니다 · ${BASE_TITLE}` : `(${n}) ${BASE_TITLE}`;
+  const f = store.selectedFloor();
+  document.title = f ? `(${f.no}F) ${f.name}` : BASE_TITLE;
+  const waiting = store.waitingSessions().length > 0;
+  if (waiting !== faviconState) { faviconState = waiting; renderFavicon(waiting); }
+}
+function renderFavicon(badge) {
+  const link = document.getElementById('favicon');
+  if (!badge) { link.href = '/favicon.svg'; return; }
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, 64, 64);
+    ctx.fillStyle = '#e05252'; ctx.beginPath(); ctx.arc(50, 14, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    link.href = c.toDataURL('image/png');
+  };
+  img.src = '/favicon.svg';
 }
 setInterval(renderTitle, 1000);
+store.subscribe((kind) => { if (kind === 'snapshot' || kind === 'select' || kind === 'update' || kind === 'remove' || kind === 'waiting-count') renderTitle(); });
 
 const notifyBtn = document.getElementById('notify-btn');
 const canNotify = () => typeof Notification !== 'undefined';
@@ -190,4 +211,4 @@ themeBtn.onclick = () => { try { localStorage.setItem('aiOffice.theme', currentT
 if (mql) mql.addEventListener('change', applyTheme);
 applyTheme();
 
-window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, applyTheme }; // 디버그용
+window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, stats, applyTheme }; // 디버그용

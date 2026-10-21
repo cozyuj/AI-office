@@ -1,11 +1,13 @@
 // 사무실 장면 진입점: 캔버스 크기, 카메라, 프레임 루프. 캐릭터(FE-03)는 actorProvider 로 끼워 넣는다.
 import { createCamera } from './camera.js';
-import { drawFloor, drawEntities, drawLabels, setDebugDepth, setTheme } from './render.js';
+import { drawFloor, drawEntities, drawLabels, setDebugDepth, setCacheEnabled, setTheme } from './render.js';
 import { worldBounds, unproject } from './map.js';
 
 export function createScene(canvas, store) {
   const ctx = canvas.getContext('2d');
-  setDebugDepth(new URLSearchParams(location.search).get('debug') === 'depth');
+  const params = new URLSearchParams(location.search);
+  setDebugDepth(params.get('debug') === 'depth');
+  setCacheEnabled(params.get('cache') !== '0');
   let fitted = false;
   let actorProvider = null;   // () => [{ key, draw(ctx, now), overlay?(ctx, camera, now), hit?(world) }]
   let clickHandler = null;
@@ -43,10 +45,11 @@ export function createScene(canvas, store) {
     const { width, height } = resize();
     ctx.clearRect(0, 0, width, height);
     const actors = actorProvider ? actorProvider(now) : [];
+    const scale = camera.cam.zoom * (window.devicePixelRatio || 1);
     ctx.save();
     camera.applyTransform(ctx);
-    drawFloor(ctx);
-    drawEntities(ctx, now, actors);
+    drawFloor(ctx, scale);
+    drawEntities(ctx, now, actors, scale);
     ctx.restore();
     drawLabels(ctx, camera);
     for (const a of actors) if (a.overlay) a.overlay(ctx, camera, now);

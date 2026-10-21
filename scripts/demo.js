@@ -116,6 +116,9 @@ const SESSIONS = [
   makeSession('9f0a1c22', 'nccx', 'resolveStatus 제거 리팩터링'),
   makeSession('a77e2d10', 'mcp-hub', 'MCP 서버 헬스체크 추가'),
 ];
+// DEMO_SESSIONS=12 처럼 늘리면 nccx 층에 세션을 더 만든다 (성능 측정용)
+const WANT = Number(process.env.DEMO_SESSIONS || SESSIONS.length);
+for (let i = SESSIONS.length; i < WANT; i++) SESSIONS.push(makeSession(`demo${String(i).padStart(4, '0')}`, 'nccx', `추가 세션 ${i + 1}`));
 
 console.log(`demo → http://127.0.0.1:${PORT}  (세션 ${SESSIONS.length}개, 프로젝트 ${Object.keys(PROJECTS).length}개, speed x${SPEED}${ONCE ? ', once' : ''})`);
 Promise.all(SESSIONS.map((s, i) => runSession(s, i * 2500))).then(() => console.log('demo 종료'));

@@ -44,6 +44,8 @@ class Store {
   // ---------- 서버 이벤트 ----------
   applySnapshot(snap) {
     this.me = snap.me || this.me;
+    this.serverPort = snap.serverPort || null;
+    this.hookPort = snap.hookPort === undefined ? null : snap.hookPort;
     this.floors = new Map(snap.floors.map((f) => [f.id, f]));
     this.sessions = new Map(snap.sessions.map((s) => [s.id, s]));
     this.log = snap.log || [];
@@ -64,6 +66,8 @@ class Store {
     this.emit('update', { session, floor, log });
     this.detectWaiting();
   }
+
+  applyFloor(floor) { if (this.floors.has(floor.id)) { this.floors.set(floor.id, floor); this.emit('update', { floor }); } }
 
   applyRemove({ sessionId, floorId, floorRemoved }) {
     this.sessions.delete(sessionId);
