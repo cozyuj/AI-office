@@ -12,6 +12,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 const PORT: u16 = 4777;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+/// Windows 에서 GUI 앱이 콘솔 프로그램(node)을 띄우면 검은 창이 뜬다 → CREATE_NO_WINDOW
+fn quiet(cmd: &mut Command) -> &mut Command {
+    #[cfg(windows)]
+    { cmd.creation_flags(0x0800_0000); }
+    cmd
+}
+
 fn port_open(port: u16) -> bool {
     let addr: SocketAddr = ([127, 0, 0, 1], port).into();
     TcpStream::connect_timeout(&addr, Duration::from_millis(300)).is_ok()
@@ -85,7 +94,7 @@ fn ensure_installed(app: &AppHandle) -> Option<PathBuf> {
         let _ = std::fs::write(&stamp, format!("{version}\n"));
     }
     // 훅 등록 (멱등). 명령은 내장 node 절대경로를 쓴다
-    let _ = Command::new(node_path())
+    let _ = quiet(&mut Command::new(node_path()))
         .arg(dest.join("scripts").join("install-hooks.js"))
         .arg("--app-dir").arg(&dest)
         .arg("--node").arg(hook_node_path())
@@ -110,7 +119,7 @@ fn server_script(app: &AppHandle) -> Option<PathBuf> {
 fn spawn_server(app: &AppHandle) -> Option<Child> {
     if port_open(PORT) { return None; } // 이미 떠 있음 → 재사용
     let script = server_script(app)?;
-    Command::new(node_path())
+    quiet(&mut Command::new(node_path()))
         .arg(script)
         .env("AI_OFFICE_PORT", PORT.to_string())
         .env("AI_OFFICE_WATCH_PARENT", "1") // 앱이 강제 종료돼도 서버가 스스로 끝나게

@@ -5,6 +5,7 @@
 // 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
 import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, LABEL, project, roomAt, worldBounds, setTheme as setMapTheme, setFloorStyle as setMapFloorStyle } from './map.js';
 import * as MAP from './map.js';
+import { tr } from '../i18n.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
 import { resolve as resolveDaylight, setPeriod as setDaylightPeriod, palette as daylight } from './daylight.js';
 
@@ -383,7 +384,7 @@ export function drawLabels(ctx, camera) {
   for (const r of ROOMS) {
     const p = project(r.x0 + 0.5, r.y0 + 0.5, 0);
     const s = camera.worldToScreen(p.x, p.y);
-    const text = r.label;
+    const text = tr(r.label);
     const w = ctx.measureText(text).width + 16;
     const x = s.x, y = s.y - 6;
     const dark = MAP.THEME === 'dark';

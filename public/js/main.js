@@ -14,6 +14,7 @@ import { createFloorStyleBook } from './scene/floorStyle.js';
 import { createFloorStylePicker } from './floorStylePicker.js';
 import { layoutOfPreset } from './scene/map.js';
 import { buildLayout, roomLabelIn } from './scene/layouts.js';
+import { attach as attachI18n, setLang, getLang, tr } from './i18n.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
@@ -248,8 +249,8 @@ store.subscribe((kind, detail) => {
     const main = session.agents && session.agents.main;
     if (!canNotify() || Notification.permission !== 'granted') return;
     try {
-      const n = new Notification(`${floor ? floor.no + 'F ' + floor.name : '사무실'} · ${session.title || '제목 없는 세션'}`, {
-        body: main ? `${main.icon || '🙋'} ${main.bubble}` : '답을 기다리고 있어요',
+      const n = new Notification(`${floor ? floor.no + 'F ' + tr(floor.name) : tr('사무실')} · ${session.title || tr('제목 없는 세션')}`, {
+        body: main ? `${main.icon || '🙋'} ${tr(main.bubble)}` : tr('답을 기다리고 있어요'),
         tag: `ai-office-${session.id}`,
       });
       n.onclick = () => { window.focus(); store.selectSession(session.id); n.close(); };
@@ -359,6 +360,13 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
 });
 document.getElementById('stage-hint').textContent += ' · ? 단축키';
+
+// ---------- 언어 (FE-45): DOM 은 i18n 이 자동 번역, 캔버스 글자는 tr() 로 그린다 ----------
+const langSel = document.getElementById('lang-select');
+langSel.value = getLang();
+document.documentElement.lang = getLang();
+langSel.onchange = () => { setLang(langSel.value); dirty = true; };
+attachI18n(document.body);
 document.getElementById('stage-hint').title = KEYS_HELP;
 
 // ---------- 세션 이어가기 명령 복사 ----------
