@@ -15,12 +15,68 @@ fn port_open(port: u16) -> bool {
     TcpStream::connect_timeout(&addr, Duration::from_millis(300)).is_ok()
 }
 
-/// ~/.ai-office/app/server.js (npx 설치본) 또는 레포 루트의 server.js 를 찾는다
-fn server_script() -> Option<std::path::PathBuf> {
-    let home = std::env::var("HOME").ok().map(std::path::PathBuf::from)?;
-    let installed = home.join(".ai-office/app/server.js");
-    if installed.exists() { return Some(installed); }
-    // 개발 중: app/src-tauri 에서 두 단계 위가 레포 루트
+use std::path::{Path, PathBuf};
+
+fn home_dir() -> Option<PathBuf> { std::env::var("HOME").ok().map(PathBuf::from) }
+fn install_dir() -> Option<PathBuf> { Some(home_dir()?.join(".ai-office").join("app")) }
+
+/// 번들된 Node 사이드카 (Contents/MacOS/node). 없으면 시스템 node
+fn node_path() -> String {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            let side = dir.join("node");
+            if side.exists() { return side.to_string_lossy().to_string(); }
+        }
+    }
+    for p in ["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"] {
+        if Path::new(p).exists() { return p.to_string(); }
+    }
+    "node".to_string()
+}
+
+/// 앱 리소스의 server/ 폴더 (Contents/Resources/server)
+fn bundled_server_dir(app: &AppHandle) -> Option<PathBuf> {
+    let dir = app.path().resource_dir().ok()?.join("server");
+    if dir.join("server.js").exists() { Some(dir) } else { None }
+}
+
+fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for e in std::fs::read_dir(from)? {
+        let e = e?;
+        let target = to.join(e.file_name());
+        if e.file_type()?.is_dir() { copy_dir(&e.path(), &target)?; } else { std::fs::copy(e.path(), &target)?; }
+    }
+    Ok(())
+}
+
+/// 리소스를 ~/.ai-office/app 에 설치(버전이 다를 때만) 하고 훅을 등록한다. 성공하면 설치 경로
+fn ensure_installed(app: &AppHandle) -> Option<PathBuf> {
+    let src = bundled_server_dir(app)?;
+    let dest = install_dir()?;
+    let version = app.package_info().version.to_string();
+    let stamp = dest.join(".app-version");
+    let current = std::fs::read_to_string(&stamp).ok().map(|s| s.trim().to_string());
+    if current.as_deref() != Some(version.as_str()) || !dest.join("server.js").exists() {
+        let _ = std::fs::remove_dir_all(&dest);
+        copy_dir(&src, &dest).ok()?;
+        let _ = std::fs::write(&stamp, format!("{version}\n"));
+    }
+    // 훅 등록 (멱등). 명령은 내장 node 절대경로를 쓴다
+    let _ = Command::new(node_path())
+        .arg(dest.join("scripts").join("install-hooks.js"))
+        .arg("--app-dir").arg(&dest)
+        .arg("--node").arg(node_path())
+        .arg("--port").arg(PORT.to_string())
+        .stdout(Stdio::null()).stderr(Stdio::null())
+        .status();
+    Some(dest)
+}
+
+/// 서버 스크립트: 설치본 > 개발용 레포(app/src-tauri 기준 두 단계 위)
+fn server_script(app: &AppHandle) -> Option<PathBuf> {
+    if let Some(dir) = ensure_installed(app) { return Some(dir.join("server.js")); }
+    if let Some(home) = home_dir() { let p = home.join(".ai-office/app/server.js"); if p.exists() { return Some(p); } }
     let here = std::env::current_dir().ok()?;
     for up in [here.clone(), here.join(".."), here.join("../..")] {
         let p = up.join("server.js");
@@ -29,17 +85,9 @@ fn server_script() -> Option<std::path::PathBuf> {
     None
 }
 
-fn node_path() -> String {
-    // PATH 에 node 가 없을 수 있어(GUI 앱) 흔한 위치를 함께 본다
-    for p in ["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"] {
-        if std::path::Path::new(p).exists() { return p.to_string(); }
-    }
-    "node".to_string()
-}
-
-fn spawn_server() -> Option<Child> {
+fn spawn_server(app: &AppHandle) -> Option<Child> {
     if port_open(PORT) { return None; } // 이미 떠 있음 → 재사용
-    let script = server_script()?;
+    let script = server_script(app)?;
     Command::new(node_path())
         .arg(script)
         .env("AI_OFFICE_PORT", PORT.to_string())
@@ -72,14 +120,15 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(move |app| {
             // 1) 서버 기동 (이미 떠 있으면 재사용)
-            *child.lock().unwrap() = spawn_server();
+            *child.lock().unwrap() = spawn_server(&app.handle().clone());
 
             // 2) 메뉴바
             let open = MenuItem::with_id(app, "open", "AI Office 열기", true, None::<&str>)?;
             let hide = MenuItem::with_id(app, "hide", "창 숨기기", true, None::<&str>)?;
             let top = CheckMenuItem::with_id(app, "top", "항상 위에", true, false, None::<&str>)?;
+            let reinstall = MenuItem::with_id(app, "reinstall", "훅 다시 설치", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "종료 (서버도 함께)", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &hide, &top, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &hide, &top, &reinstall, &quit])?;
             let top_item = top.clone();
             let tray = TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().expect("icon"))
@@ -96,6 +145,7 @@ pub fn run() {
                             let _ = w.set_always_on_top(on);
                         }
                     }
+                    "reinstall" => { let _ = ensure_installed(app); }
                     "quit" => app.exit(0),
                     _ => {}
                 })

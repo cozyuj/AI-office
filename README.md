@@ -72,7 +72,7 @@ DEMO_SPEED=3 npm run demo
 
 ## 다운로드 (맥)
 
-[Releases](https://github.com/cozyuj/AI-office/releases) 에서 최신 `.dmg` 를 받아 `AI Office.app` 을 응용 프로그램에 끌어다 놓습니다. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니, 앱을 **우클릭 → 열기** 로 한 번 허용하면 됩니다. 앱은 Node(18+)가 설치되어 있어야 서버를 띄울 수 있습니다.
+[Releases](https://github.com/cozyuj/AI-office/releases) 에서 최신 `.dmg` 를 받아 `AI Office.app` 을 응용 프로그램에 끌어다 놓습니다. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니, 앱을 **우클릭 → 열기** 로 한 번 허용하면 됩니다. 앱에는 Node 가 내장되어 있어 따로 설치할 것이 없습니다. 첫 실행 때 서버 파일을 `~/.ai-office/app` 에 복사하고 `~/.claude/settings.json` 에 훅을 등록한 뒤 서버를 띄웁니다. 앱을 다른 위치로 옮겼다면 메뉴바 → "훅 다시 설치".
 
 ## 맥 메뉴바 앱 (Tauri)
 
@@ -83,7 +83,7 @@ npm run app:dev      # 개발 실행 (Rust 툴체인 + Xcode CLT 필요, 첫 빌
 npm run app:build    # app/src-tauri/target/release/bundle/ 에 .app / .dmg
 ```
 
-앱은 `~/.ai-office/app/server.js`(npx 설치본)를 우선 쓰고, 없으면 레포의 `server.js` 를 씁니다. `node` 는 PATH 또는 `/opt/homebrew/bin`, `/usr/local/bin` 에서 찾습니다.
+빌드 시 `scripts/fetch-node.sh` 가 Node LTS 바이너리를 내려받아 사이드카로 번들하고, 서버 파일은 앱 리소스로 포함됩니다. 개발 실행(레포에서)은 번들이 없으면 시스템 `node` 와 레포의 `server.js` 를 씁니다.
 
 ## 구조
 

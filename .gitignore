@@ -4,3 +4,4 @@ node_modules/
 .claude/
 app/node_modules/
 app/src-tauri/target/
+app/src-tauri/binaries/
