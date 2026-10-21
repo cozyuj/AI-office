@@ -65,15 +65,16 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <a href="#state">5. 상태 전이</a>
   <a href="#frontend">6. 프런트엔드·렌더링</a>
   <a href="#features">7. 주요 기능</a>
-  <a href="#app">8. 맥 앱과 설치</a>
-  <a href="#quality">9. 테스트·성능</a>
-  <a href="#roadmap">10. 설계 결정·로드맵</a>
+  <a href="#app">8. 데스크톱 앱</a>
+  <a href="#distribution">9. 배포 채널·릴리스</a>
+  <a href="#quality">10. 테스트·성능</a>
+  <a href="#roadmap">11. 설계 결정·로드맵</a>
 </nav>
 
 <main>
-<div class="eyebrow">AI Office · v0.23 · 2026-10-21</div>
+<div class="eyebrow">AI Office · v0.25 · 2026-10-21</div>
 <h1>Claude Code 세션을 아이소메트릭 사무실로 보여주는 로컬 뷰어</h1>
-<p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생깁니다.</p>
+<p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생깁니다. 웹 버전은 npm 과 Homebrew 로, 맥·Windows 앱은 GitHub Release 와 Homebrew 로 배포되고 앱은 스스로 업데이트합니다.</p>
 
 <section id="overview">
 <h2>1. 한눈에</h2>
@@ -82,24 +83,28 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <div class="fact"><b>0</b><span>런타임 의존성 (Node 18+ 표준 모듈만)</span></div>
   <div class="fact"><b>12</b><span>처리하는 훅 이벤트 종류</span></div>
   <div class="fact"><b>11 + α</b><span>방 (업무 9 + 휴식 편의시설, 프리셋마다 교체)</span></div>
-  <div class="fact"><b>96</b><span>node --test 테스트 (서버·경로·렌더·스모크)</span></div>
-  <div class="fact"><b>456 KB</b><span>npm 패키지 (48 파일)</span></div>
-  <div class="fact"><b>39 MB</b><span>맥 앱 DMG (Node 22 사이드카 포함)</span></div>
+  <div class="fact"><b>100</b><span>node --test 테스트 · CI 3 OS</span></div>
+  <div class="fact"><b>503 KB</b><span>npm 패키지 claude-ai-office (53 파일)</span></div>
+  <div class="fact"><b>40 / 25 MB</b><span>맥 DMG / Windows 설치 파일 (Node 22 내장)</span></div>
+  <div class="fact"><b>5</b><span>설치 경로: npm · Homebrew 2종 · Release · 자동 업데이트</span></div>
+  <div class="fact"><b>2</b><span>화면 언어: 한국어 · English</span></div>
 </div>
 <h3>기술 스택</h3>
 <dl class="kv">
   <dt>서버</dt><dd>Node.js 18+ · <code>http</code> 표준 모듈만 · 상태 머신 + JSONL 저널 · SSE 푸시</dd>
   <dt>프런트</dt><dd>바닐라 ES 모듈 · Canvas 2D 아이소메트릭 렌더러(빌드 없음, 번들러 없음) · 폰트 D2Coding + NanumSquare</dd>
-  <dt>데스크톱 앱</dt><dd>Tauri 2 (Rust) 메뉴바 앱 · Node 22.12 바이너리를 사이드카로 번들 · 서버 파일은 앱 리소스</dd>
+  <dt>데스크톱 앱</dt><dd>Tauri 2 (Rust) 메뉴바·트레이 앱 · macOS(Apple Silicon)·Windows(x64) · Node 22.12 사이드카 번들 · tauri-plugin-updater 자동 업데이트(서명 검증)</dd>
   <dt>입력</dt><dd>Claude Code 훅 12종 (<code>~/.claude/settings.json</code> 에 등록, <code>hooks/emit.js</code> 가 POST)</dd>
-  <dt>배포</dt><dd><code>npx claude-ai-office</code> (npm) · <code>npx github:cozyuj/AI-office</code> · GitHub Release DMG</dd>
-  <dt>테스트</dt><dd><code>node --test</code> 96개: 상태 머신, 경로 탐색, 깊이 정렬, 저널, CLI, 서버 통합, 프런트 스모크(가짜 캔버스·DOM)</dd>
+  <dt>배포</dt><dd>npm <code>claude-ai-office</code> · Homebrew tap <code>cozyuj/tap</code>(cask <code>ai-office</code>, formula <code>claude-ai-office</code>) · GitHub Release(DMG·NSIS·<code>latest.json</code>, 고정 이름 링크)</dd>
+  <dt>CI</dt><dd>GitHub Actions: push·PR 마다 Ubuntu·Windows·macOS 테스트, 태그 <code>v*</code> 마다 맥·Windows 앱 빌드·서명·릴리스 + Windows 설치 스모크</dd>
+  <dt>화면 언어</dt><dd><code>public/js/i18n.js</code>: 한국어 원문 + 영어 사전·패턴 규칙, DOM 은 MutationObserver, 캔버스는 <code>tr()</code></dd>
+  <dt>테스트</dt><dd><code>node --test</code> 100개: 상태 머신, 경로 탐색, 깊이 정렬, 저널, CLI, 서버 통합, 번역, 프런트 스모크(가짜 캔버스·DOM)</dd>
 </dl>
 </section>
 
 <section id="system">
 <h2>2. 시스템 구성도</h2>
-<p>세 프로세스가 있습니다. Claude Code(여러 터미널)가 훅마다 짧은 Node 프로세스(<code>emit.js</code>)를 띄워 이벤트를 서버에 POST 하고, 서버 한 개가 상태를 들고 브라우저(또는 Tauri 창)에 SSE 로 밀어 줍니다. 맥 앱은 서버를 자식으로 띄우고 메뉴바에 상태를 보여 주는 껍데기입니다.</p>
+<p>세 프로세스가 있습니다. Claude Code(여러 터미널)가 훅마다 짧은 Node 프로세스(<code>emit.js</code>)를 띄워 이벤트를 서버에 POST 하고, 서버 한 개가 상태를 들고 브라우저(또는 Tauri 창)에 SSE 로 밀어 줍니다. 데스크톱 앱(맥·Windows)은 서버를 자식으로 띄우고 메뉴바·트레이에 상태를 보여 주는 껍데기이며, GitHub Release 의 <code>latest.json</code> 을 보고 스스로 업데이트합니다.</p>
 <div class="diagram">
 <svg viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="시스템 구성도">
   <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b717c"/></marker></defs>
@@ -132,7 +137,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <!-- 클라이언트 -->
   <rect class="grp" x="690" y="30" width="274" height="366"/><text class="gt" x="702" y="22">CLIENTS</text>
   <rect class="box" x="708" y="52" width="238" height="112"/><text class="t" x="720" y="74">브라우저 · public/</text><text class="s" x="720" y="94">store.js (상태 미러)</text><text class="s" x="720" y="112">panels.js (DOM 패널)</text><text class="s" x="720" y="130">scene/* (Canvas 아이소메트릭)</text><text class="s" x="720" y="148">overview.js · customize.js</text>
-  <rect class="box" x="708" y="184" width="238" height="92"/><text class="t" x="720" y="206">AI Office.app (Tauri 2 · Rust)</text><text class="s" x="720" y="226">메뉴바 트레이 · WebView 창</text><text class="s" x="720" y="244">Node 사이드카로 서버 spawn</text><text class="s" x="720" y="262">리소스 → ~/.ai-office/app 복사</text>
+  <rect class="box" x="708" y="184" width="238" height="92"/><text class="t" x="720" y="206">AI Office 앱 (Tauri 2 · Rust)</text><text class="s" x="720" y="226">macOS 메뉴바 · Windows 트레이</text><text class="s" x="720" y="244">Node 사이드카로 서버 spawn</text><text class="s" x="720" y="262">updater ← Release latest.json</text>
   <rect class="box" x="708" y="296" width="238" height="86"/><text class="t" x="720" y="318">CLI · bin/ai-office.js</text><text class="s" x="720" y="338">up · install · install-hooks</text><text class="s" x="720" y="356">start · demo · doctor · compact</text><text class="s" x="720" y="374">npx claude-ai-office</text>
   <!-- 화살표 -->
   <path class="l" d="M228 79 L318 79"/><path class="l" d="M228 149 L318 100"/><path class="l" d="M228 219 L318 108"/>
@@ -226,7 +231,8 @@ LogEntry{ t, floorId, sessionId, agentId, agentName, icon, text }   // 최근 50
 <tr><th>모듈</th><th>역할</th></tr>
 <tr><td><code>store.js</code></td><td>서버 상태 미러 + UI 옵션(선택 층·세션, 따라가기, 말풍선 범위, 소리, 생동감, 테마, 시간대 조명, 로그 필터). 비대기 → 대기 전이를 <code>waiting</code> 이벤트로 알림. 세션별 캐릭터 이름 장부(localStorage)</td></tr>
 <tr><td><code>panels.js</code></td><td>층별 안내·세션 카드·사람·활동 로그·범례를 innerHTML 템플릿으로 렌더. 저장소 이벤트마다 다시 그리고 경과 시간은 1초마다</td></tr>
-<tr><td><code>main.js</code></td><td>SSE 연결, 프레임 루프, ⚙️ 설정 팝오버, 단축키, 알림·차임, 테마, 시간대 조명, 층 인테리어 적용</td></tr>
+<tr><td><code>main.js</code></td><td>SSE 연결, 프레임 루프, ⚙️ 설정 팝오버, 단축키, 알림·차임, 테마, 시간대 조명, 층 인테리어, 언어 적용</td></tr>
+<tr><td><code>i18n.js</code></td><td>화면 언어. 사전(정확히 일치) → 패턴 규칙(<code>"(.+) 읽는 중" → "reading $1"</code> 등) → <code> · </code>·<code> → </code> 조각별 번역. 모르는 조각(사용자 프롬프트·세션 제목·Claude 메시지)은 그대로. DOM 은 MutationObserver 가 텍스트·title·placeholder 를 바꾸고 원문을 기억해 되돌림</td></tr>
 <tr><td><code>scene/map.js</code> · <code>layouts.js</code></td><td>타일 격자(x 1~35, y 1~21), 방·가구·벽·문·슬롯. 레이아웃 5종이 업무 방 9개의 위치와 편의시설 2곳을 정함</td></tr>
 <tr><td><code>scene/sprites.js</code></td><td>가구·벽·유리창·난간·파라솔 등을 코드로 그리는 플랫 벡터 스프라이트(외부 이미지 없음)</td></tr>
 <tr><td><code>scene/render.js</code></td><td>바닥 캐시, 종류별 공유 스프라이트 캐시, AABB 위상 정렬, 방 이름표, 시간대 틴트·조명</td></tr>
@@ -287,7 +293,7 @@ y = (tx + ty) * TH/2 - z * ZH
 <figure><img src="screenshots/fe-30-building.jpg" alt="전체 보기: 층을 건물처럼 쌓은 단면"><figcaption>전체 보기.</figcaption></figure>
 
 <h3>설정, 단축키, 알림</h3>
-<p>헤더에는 🏢 전체 보기 · 📍 따라가기 · ⚙️ 설정만 두고, 설정 팝오버에 말풍선 범위, 브라우저 알림, 대기 알림 소리(답 기다림만 / 실패·종료도), 생동감, 테마, 데모, 캐릭터 외형, 시간대 조명, 층 인테리어, 단축키 표를 모았습니다. 알림은 세션이 새로 "답 기다림"이 될 때 한 번 오고, 소리는 Web Audio 로 생성한 2음 차임입니다(파일 없음).</p>
+<p>헤더에는 🏢 전체 보기 · 📍 따라가기 · ⚙️ 설정만 두고, 설정 팝오버에 말풍선 범위, 브라우저 알림, 대기 알림 소리(답 기다림만 / 실패·종료도), 생동감, 테마, 데모, 캐릭터 외형, 시간대 조명, 층 인테리어, 언어, 단축키 표를 모았습니다. 알림은 세션이 새로 "답 기다림"이 될 때 한 번 오고, 소리는 Web Audio 로 생성한 2음 차임입니다(파일 없음).</p>
 <div class="tbl"><table>
 <tr><th>키</th><th>동작</th><th>키</th><th>동작</th></tr>
 <tr><td><kbd>0</kbd>~<kbd>9</kbd></td><td>층 번호로 이동</td><td><kbd>O</kbd></td><td>전체 보기</td></tr>
@@ -298,6 +304,10 @@ y = (tx + ty) * TH/2 - z * ZH
 <tr><td><kbd>Esc</kbd></td><td>패널·모달·메뉴·전체 보기 닫기 → 검색 비우기 → 따라가기 해제</td><td><kbd>?</kbd></td><td>단축키 표</td></tr>
 </table></div>
 
+<h3>영어 화면</h3>
+<p>⚙️ 설정 → 언어에서 한국어와 English 를 고릅니다(기본값은 브라우저 언어). 헤더·패널·설정·단축키 표, 캔버스의 방 이름표·말풍선·경과 시간, 전체 보기 라벨, 브라우저 알림이 모두 바뀌고, 서버가 한국어로 보내는 로그·말풍선도 패턴 규칙으로 번역합니다. 사용자가 쓴 세션 제목과 프롬프트, Claude 가 쓴 메시지는 쓴 그대로 둡니다. 언어를 바꿔도 새로고침이 필요 없습니다.</p>
+<figure><img src="screenshots/fe-45-english.jpg" alt="영어 화면: Settings 메뉴와 영어 방 이름표"><figcaption>English 모드. 설정 메뉴, 방 이름표(Library·Server Room·Café…), 말풍선과 로그가 영어로 보이고 세션 제목은 원문 그대로.</figcaption></figure>
+
 <h3>생동감, 데모, 작은 창</h3>
 <p>쉬는 캐릭터는 휴식 방 안의 명소(카운터·창가·벤치·난간)를 10~30초마다 옮겨 다니고 가끔 산책을 나갑니다. 새 이벤트가 오면 즉시 멈추고 해당 방으로 갑니다. 데모(<code>scripts/demo.js</code>)는 실제 훅 흐름을 <code>/demo/</code> 층에 재현해 세션이 없어도 사무실을 볼 수 있게 합니다. 창이 좁아지면(1100px 이하) 좌·우 패널이 숨고 사무실만 남으며, 터치 기기에서는 두 손가락 핀치로 확대합니다.</p>
 <div class="grid2">
@@ -307,22 +317,50 @@ y = (tx + ty) * TH/2 - z * ZH
 </section>
 
 <section id="app">
-<h2>8. 맥 앱과 설치</h2>
-<p>Tauri 2 메뉴바 앱(<code>app/src-tauri/src/lib.rs</code>)은 창 하나와 트레이 메뉴(열기·숨기기·항상 위·훅 다시 설치·종료)를 가집니다. 첫 실행 때 앱 리소스의 서버 파일을 <code>~/.ai-office/app</code> 에, 번들 Node 바이너리를 <code>~/.ai-office/node</code> 에 복사하고(버전이 바뀔 때만, <code>.app-version</code> 스탬프) 그 경로로 훅을 등록합니다. 그래서 앱을 옮기거나 지워도 훅이 깨지지 않습니다. 서버는 내장 Node 로 자식 프로세스로 띄우고, 포트가 이미 열려 있으면 재사용합니다. 답을 기다리는 세션이 있으면 트레이 제목이 <code>🙋 n</code> 이 됩니다.</p>
-<figure><img src="screenshots/app-01-window.png" alt="맥 메뉴바 앱 창"><figcaption>맥 앱 창. 로더가 <code>/api/state</code> 를 폴링해 서버가 뜨면 웹 UI 를 엽니다.</figcaption></figure>
+<h2>8. 데스크톱 앱 (macOS · Windows)</h2>
+<p>Tauri 2 앱(<code>app/src-tauri/src/lib.rs</code>)은 창 하나와 메뉴바(Windows 는 트레이) 메뉴를 가집니다. 메뉴는 열기 · 숨기기 · 항상 위 · 훅 다시 설치 · 업데이트 확인 · 업데이트 적용(다시 시작) · 종료입니다. 창을 닫으면 숨기기만 하고, 종료하면 서버도 함께 내려갑니다.</p>
+<ul>
+  <li><strong>설치본과 훅.</strong> 첫 실행 때 앱 리소스의 서버 파일을 <code>~/.ai-office/app</code> 에, 번들 Node(맥 <code>node</code>, Windows <code>node.exe</code>)를 <code>~/.ai-office/node</code> 에 복사하고(버전이 바뀔 때만, <code>.app-version</code> 스탬프) 그 경로로 훅을 등록합니다. 앱을 옮기거나 지워도 훅이 깨지지 않습니다.</li>
+  <li><strong>서버 수명.</strong> 내장 Node 로 서버를 자식 프로세스로 띄우고(<code>AI_OFFICE_WATCH_PARENT=1</code>), 포트가 이미 열려 있으면 재사용합니다. 앱이 강제 종료돼도 서버가 2초 안에 스스로 끝납니다. Windows 에서는 <code>CREATE_NO_WINDOW</code> 로 콘솔 창을 띄우지 않습니다.</li>
+  <li><strong>자동 업데이트.</strong> <code>tauri-plugin-updater</code> 가 시작 10초 뒤와 6시간마다 <code>releases/latest/download/latest.json</code> 을 확인합니다. 새 버전이 있으면 백그라운드로 받아 서명을 검증해 설치해 두고, 메뉴바 제목에 <code>⬆</code> 를 붙이며 "업데이트 적용 (다시 시작)" 을 켭니다. 서명 공개키는 <code>tauri.conf.json</code> 에, 개인키는 GitHub Secrets 에 있습니다.</li>
+  <li><strong>메뉴바 표시.</strong> 아이콘은 창문·문이 뚫린 단색 건물 템플릿(<code>scripts/make-tray-icon.js</code> 가 의존성 없이 PNG 를 직접 인코딩)이라 라이트·다크 메뉴바에 맞춰 칠해집니다. 답을 기다리는 세션이 있으면 제목이 <code>🙋 n</code> 이 됩니다.</li>
+</ul>
+<div class="grid2">
+<figure><img src="screenshots/app-01-window.png" alt="데스크톱 앱 창"><figcaption>앱 창. 로더가 <code>/api/state</code> 를 폴링해 서버가 뜨면 웹 UI 를 엽니다.</figcaption></figure>
+<figure><img src="screenshots/app-08-tray.png" alt="맥 메뉴바의 AI Office 건물 아이콘"><figcaption>메뉴바 아이콘(맨 왼쪽 건물). 단색 템플릿이라 메뉴바 색을 따릅니다.</figcaption></figure>
+</div>
+<p>CLI(<code>bin/ai-office.js</code>)는 소스 파일 지문(경로·크기·mtime 해시)을 비교해 설치본을 갱신하고, git clone 에서 실행하면 소스를 그대로 씁니다. <code>doctor</code> 는 Node 버전, 훅 등록 수와 node·emit.js 경로 존재, 설치본 버전, 포트 사용 여부, 저널 크기(5MB 이상 경고), 훅 포트 일치를 점검합니다.</p>
+</section>
+
+<section id="distribution">
+<h2>9. 배포 채널과 릴리스 파이프라인</h2>
 <div class="tbl"><table>
-<tr><th>방법</th><th>대상</th><th>명령·파일</th></tr>
-<tr><td>npm</td><td>Node 18+ 모든 OS</td><td><code>npx claude-ai-office</code> → 설치 + 훅 등록 + 서버 + 브라우저. 하위 명령 <code>install · install-hooks · uninstall-hooks · start · demo · doctor · compact</code></td></tr>
-<tr><td>GitHub</td><td>동일</td><td><code>npx github:cozyuj/AI-office</code></td></tr>
-<tr><td>DMG</td><td>맥 Apple Silicon</td><td>Releases 의 <code>AI Office_&lt;버전&gt;_aarch64.dmg</code>. 서명이 없어 처음엔 우클릭 → 열기</td></tr>
+<tr><th>채널</th><th>대상</th><th>설치</th><th>비고</th></tr>
+<tr><td>npm</td><td>Node 18+ 모든 OS (웹 버전)</td><td><code>npx claude-ai-office</code></td><td>패키지 <code>claude-ai-office</code>. 실행 명령은 <code>ai-office</code>. 처음 이름 <code>ai-office</code> 는 기존 <code>aioffice</code> 와 비슷하다고 npm 이 거부해 바꿨습니다. 배포에는 계정 2FA 가 필수이고 <code>prepublishOnly</code> 가 테스트 100개를 먼저 돌립니다</td></tr>
+<tr><td>Homebrew cask</td><td>macOS Apple Silicon (앱)</td><td><code>brew install --cask cozyuj/tap/ai-office</code></td><td>tap <a href="https://github.com/cozyuj/homebrew-tap">cozyuj/homebrew-tap</a>. <code>auto_updates true</code>(앱이 스스로 갱신), 서명 전이라 <code>postflight_steps</code> 의 <code>run "/usr/bin/xattr", args: [..., "{{appdir}}/AI Office.app"]</code> 로 격리 속성을 지웁니다(Homebrew 7 규칙)</td></tr>
+<tr><td>Homebrew formula</td><td>macOS (웹 버전 CLI)</td><td><code>brew install cozyuj/tap/claude-ai-office</code></td><td>npm tarball 을 <code>std_npm_args</code> 로 설치, <code>node</code> 의존. <code>brew test</code> 는 <code>ai-office doctor</code></td></tr>
+<tr><td>GitHub Release</td><td>macOS · Windows (앱)</td><td><a href="https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-mac-arm64.dmg">AI-Office-mac-arm64.dmg</a> · <a href="https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-windows-x64-setup.exe">AI-Office-windows-x64-setup.exe</a></td><td>버전 없는 고정 이름 사본을 함께 올려 <code>releases/latest/download/</code> 링크가 항상 최신을 받습니다. 버전 이름 파일·updater 아티팩트(<code>.app.tar.gz</code>·<code>.sig</code>)·<code>latest.json</code> 도 같은 릴리스에</td></tr>
+<tr><td>자동 업데이트</td><td>설치된 앱</td><td>앱 메뉴 "업데이트 적용"</td><td><code>latest.json</code> 의 플랫폼별 URL·서명으로 받아 검증 후 설치</td></tr>
+<tr><td>GitHub 소스</td><td>Node 18+</td><td><code>npx github:cozyuj/AI-office</code></td><td>레포 공개 후 가능. npm 과 같은 동작</td></tr>
 </table></div>
-<p>CLI 는 소스 파일 지문(경로·크기·mtime 해시)을 비교해 설치본을 갱신하고, git clone 에서 실행하면 소스를 그대로 씁니다. <code>doctor</code> 는 Node 버전, 훅 등록 수와 node·emit.js 경로 존재, 설치본 버전, 포트 사용 여부, 저널 크기(5MB 이상 경고), 훅 포트 일치를 점검합니다.</p>
-<h3>버전과 릴리스 규칙</h3>
-<p>작업마다 GitHub 이슈(<code>[FE-nn]</code> / <code>[BE-nn]</code> / <code>[APP-nn]</code>) → <code>main</code> 에서 <code>feature|fix|test|docs/&lt;ID&gt;</code> 브랜치 → PR → 머지 → 이슈 댓글 보고. 변경마다 버전을 올리며(<code>npm run bump:minor|patch</code> 가 package.json·app·tauri.conf·Cargo.toml 을 함께 갱신) DMG 는 <code>npm run app:build</code>(Node 사이드카 fetch → tauri build) 로 만들어 Release 에 올립니다.</p>
+<h3>릴리스 한 번의 흐름</h3>
+<pre><code>npm run bump:minor            # package.json · app/package.json · tauri.conf.json · Cargo.toml 동시에
+git tag vX.Y.Z && git push origin vX.Y.Z
+  └─ .github/workflows/release.yml
+       ├─ build (macos-14, aarch64)   fetch-node.js → npm test → tauri-action → DMG + .app.tar.gz(.sig)
+       ├─ build (windows-latest, x64) fetch-node.js → npm test → tauri-action → NSIS setup.exe(.sig)
+       │    └─ 두 잡이 Release 생성·업로드 + latest.json, 고정 이름 사본 업로드
+       └─ smoke-windows               setup.exe /S 설치 → 앱 실행 → /api/state 버전 = 태그
+                                      → settings.json 훅(node.exe · emit.js) → 훅으로 SessionStart → 세션 도착
+                                      → 앱 강제 종료 → 서버도 종료
+npm publish                   # 2FA 브라우저 승인 (또는 --otp)
+node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → tap 의 cask·formula 갱신 → push</code></pre>
+<div class="note">Windows 는 실제 PC 대신 GitHub Actions 의 Windows 러너에서 설치 파일로 설치·실행·훅까지 확인합니다(v0.25.0: 설치 폴더 <code>%LOCALAPPDATA%\AI Office</code>, 서버 0.25.0 응답, 훅 → 서버 경로 OK, 앱 종료 후 서버 종료 OK). 화면이 실제로 어떻게 보이는지는 Windows 기기에서 확인할 일로 남아 있습니다.</div>
+<p>테스트 워크플로(<code>test.yml</code>)는 push 와 PR 마다 Ubuntu·Windows·macOS 에서 <code>npm test</code> 를 돌립니다. 워크플로 파일은 GitHub 토큰의 <code>workflow</code> 권한이 필요해 SSH 원격으로 푸시합니다.</p>
 </section>
 
 <section id="quality">
-<h2>9. 테스트와 성능</h2>
+<h2>10. 테스트와 성능</h2>
 <div class="tbl"><table>
 <tr><th>테스트 파일</th><th>다루는 것</th></tr>
 <tr><td><code>state.test.js</code></td><td>훅 12종 전이, 서브에이전트 매칭, 휴식 방 배정, 자리 비움·퇴근 감지, TTL, 층 이름 충돌</td></tr>
@@ -332,6 +370,8 @@ y = (tx + ty) * TH/2 - z * ZH
 <tr><td><code>server.test.js</code> · <code>api.test.js</code></td><td>실제 server.js 프로세스: 데모 훅 무시·저널 제외, 부모 SIGKILL 후 8초 안 종료, 세션 치우기 API</td></tr>
 <tr><td><code>smoke.test.js</code></td><td>가짜 2D 컨텍스트(NaN 인자 감지)·최소 DOM 으로 프리셋×테마×시간대 60여 조합 그리기, 아바타 전 파츠, 캐릭터 400프레임, 패널 템플릿, 전체 보기, store</td></tr>
 <tr><td><code>avatar.test.js</code> · <code>names.test.js</code> · <code>floorStyle*.test.js</code> · <code>daylight.test.js</code></td><td>외형 정규화, 별명 배정, 프리셋 배정 결정성, 시간대 판정</td></tr>
+<tr><td><code>i18n.test.js</code></td><td>번역 규칙, 사용자 글 보존, 언어 전환, <code>index.html</code> 의 모든 한글 문구가 사전에 있는지</td></tr>
+<tr><td>CI <code>test.yml</code> · <code>release.yml</code></td><td>3 OS 테스트, 태그마다 맥·Windows 빌드 + Windows 설치 스모크</td></tr>
 </table></div>
 <h3>실측 (1600×900, zoom 0.83, 캐릭터 4)</h3>
 <div class="tbl"><table>
@@ -341,28 +381,33 @@ y = (tx + ty) * TH/2 - z * ZH
 <tr><td>정적 레이어 프레임</td><td>1.7 ms</td><td>0.3 ms</td></tr>
 <tr><td>전체 프레임 (캐릭터 포함)</td><td colspan="2">약 1.4 ms, 전체 보기 1 ms, 층 전환 첫 프레임 6 ms 이하</td></tr>
 <tr><td>유휴 프레임</td><td>항상 60fps</td><td>움직임 없으면 20fps</td></tr>
-<tr><td>npm 패키지</td><td colspan="2">188 KB (압축) / 456 KB, 48 파일</td></tr>
+<tr><td>npm 패키지 (0.25.1)</td><td colspan="2">207 KB (압축) / 503 KB, 53 파일</td></tr>
+<tr><td>앱 배포 파일 (0.25.0)</td><td colspan="2">맥 DMG 41.6 MB · updater .app.tar.gz 42.8 MB · Windows 설치 파일 24.8 MB</td></tr>
 </table></div>
 </section>
 
 <section id="roadmap">
-<h2>10. 설계 결정과 로드맵</h2>
+<h2>11. 설계 결정과 로드맵</h2>
 <ul>
   <li><strong>의존성 0.</strong> 훅마다 프로세스가 뜨므로 <code>emit.js</code> 는 표준 모듈만 쓰고 1초 안에 끝나야 합니다. 서버도 같은 이유로 가볍게 유지했습니다.</li>
   <li><strong>서버가 진실.</strong> 휴식 방, 인테리어 프리셋, 세션 제거처럼 "모든 브라우저가 같은 것을 봐야 하는" 결정은 서버에서 하고, 외형·이름·테마처럼 보는 사람의 취향은 브라우저에 둡니다.</li>
   <li><strong>이미지 없이 코드로 그리기.</strong> 플랫 벡터 스프라이트와 치비 아바타는 전부 Canvas 코드라 팔레트·레이아웃을 바꾸기 쉽고 패키지가 작습니다. 대신 캐시 전략이 중요해 종류별 공유 캐시를 넣었습니다.</li>
   <li><strong>층 = git 루트.</strong> cwd 가 바뀔 때마다 층이 늘어나는 문제를 피하고 worktree 를 한 층에 모읍니다.</li>
   <li><strong>잔류 방지.</strong> 앱·CLI 가 띄운 서버는 부모를 감시해 스스로 끝나고, 데모 이벤트는 저널에 남기지 않습니다.</li>
+  <li><strong>번역은 틀만.</strong> 사전과 패턴 규칙으로 알려진 문구만 바꾸고, 그 안의 사용자 글은 건드리지 않습니다. 구절 치환을 쓰지 않는 이유는 세션 제목 같은 사용자 글을 망가뜨리기 때문입니다.</li>
+  <li><strong>항상 최신 링크.</strong> 릴리스마다 버전 없는 이름의 사본을 올려 README·문서의 다운로드 링크를 고칠 필요가 없게 했습니다.</li>
 </ul>
 <h3>보류·다음</h3>
+<p>v0.25 에서 끝낸 것: 자동 업데이트, 맥·Windows CI 릴리스, Windows 설치 스모크, 영어 UI·README, npm 배포, Homebrew cask·formula.</p>
 <ul>
-  <li>Windows 실기 테스트와 Tauri 자동 업데이트(코드 서명 필요)</li>
-  <li>맥 앱 서명·공증(지금은 우클릭 → 열기 필요)</li>
-  <li>영어 UI·README, Homebrew cask</li>
+  <li>맥 앱 서명·공증(Apple Developer 계정 필요). 지금은 우클릭 → 열기, Homebrew 는 격리 해제로 우회</li>
+  <li>Windows 코드 서명(SmartScreen 경고 제거)과 실제 Windows 기기에서 화면 확인</li>
+  <li>Intel 맥·Linux 앱 빌드 (지금은 웹 버전)</li>
+  <li>Homebrew·npm 배포 자동화 (지금은 릴리스 뒤 스크립트·브라우저 승인)</li>
   <li>아이패드 등 터치 기기 실기 확인</li>
 </ul>
 </section>
 
-<footer>AI Office · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · MIT</footer>
+<footer>AI Office v0.25 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
 </main>
 </div>
