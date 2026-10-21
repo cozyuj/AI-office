@@ -105,6 +105,12 @@ function renderFavicon(badge) {
 setInterval(renderTitle, 1000);
 store.subscribe((kind) => { if (kind === 'snapshot' || kind === 'select' || kind === 'update' || kind === 'remove' || kind === 'waiting-count') renderTitle(); });
 
+const ambientBtn = document.getElementById('ambient-btn');
+function renderAmbientBtn() { ambientBtn.classList.toggle('on', store.ambient); }
+ambientBtn.onclick = () => store.setAmbient(!store.ambient);
+store.subscribe((kind) => { if (kind === 'option') renderAmbientBtn(); });
+renderAmbientBtn();
+
 const notifyBtn = document.getElementById('notify-btn');
 const canNotify = () => typeof Notification !== 'undefined';
 function renderNotifyBtn() {
