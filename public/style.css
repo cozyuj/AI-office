@@ -45,6 +45,18 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .floor-name { font-weight: 600; font-size: 13px; }
 .floor-meta { font-size: 11px; color: var(--muted); }
 .floor-text { flex: 1; min-width: 0; }
+.floor-style { border: 0; background: transparent; cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 4px; border-radius: 6px; opacity: .6; }
+.floor-style:hover { opacity: 1; background: rgba(0, 0, 0, .06); }
+/* 🎨 층 인테리어 팝오버 (FE-34) */
+.style-pop { position: fixed; z-index: 40; width: 196px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(20,24,30,.16); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.style-pop.hidden { display: none; }
+.style-pop-head { font-size: 11px; font-weight: 700; color: var(--muted); padding: 4px 8px 6px; }
+.style-opt { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; background: transparent; color: var(--text); border-radius: 8px; padding: 5px 8px; font-size: 12px; cursor: pointer; text-align: left; }
+.style-opt:hover { background: var(--accent-soft, #fdf1ea); }
+.style-opt.on { border-color: var(--accent); background: var(--accent-soft, #fdf1ea); font-weight: 600; }
+.style-chips { display: inline-flex; gap: 2px; flex: none; }
+.style-chips i { width: 10px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.08); }
+.style-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); flex: none; }
 .dot.working { background: var(--green); box-shadow: 0 0 0 3px rgba(53, 179, 107, .18); }
 .dot.thinking { background: var(--amber); }
@@ -244,6 +256,8 @@ b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { fon
 :root[data-theme="dark"] .floor.selected, :root:not([data-theme="light"]).auto-dark .floor.selected { background: var(--accent-soft); }
 :root[data-theme="dark"] .floor-sessions, :root:not([data-theme="light"]).auto-dark .floor-sessions { background: var(--panel); }
 :root[data-theme="dark"] .floor-badge, :root:not([data-theme="light"]).auto-dark .floor-badge { background: #2c3139; color: #c9cfd8; }
+:root[data-theme="dark"] .floor-style:hover, :root:not([data-theme="light"]).auto-dark .floor-style:hover { background: rgba(255, 255, 255, .08); }
+:root[data-theme="dark"] .style-chips i, :root:not([data-theme="light"]).auto-dark .style-chips i { border-color: rgba(255,255,255,.12); }
 :root[data-theme="dark"] .session:hover, :root[data-theme="dark"] .person:hover, :root[data-theme="dark"] .tool:hover,
 :root:not([data-theme="light"]).auto-dark .session:hover, :root:not([data-theme="light"]).auto-dark .person:hover, :root:not([data-theme="light"]).auto-dark .tool:hover { background: #262b33; }
 :root[data-theme="dark"] .tool, :root:not([data-theme="light"]).auto-dark .tool { background: var(--panel); color: var(--text); border-color: var(--line); }
@@ -307,3 +321,25 @@ body.has-banner #app { padding-top: 44px; }
 .name-input.auto { font-weight: 400; color: var(--muted); font-style: italic; }
 .name-input:focus { outline: none; border-color: var(--accent); color: var(--text); font-style: normal; }
 #resume-copy { padding: 2px 8px; font-size: 10px; }
+
+/* ---------- FE-32: 단축키 모달 · 소리 범위 · 끝난 세션 치우기 ---------- */
+.keys-card { width: min(420px, calc(100vw - 40px)); }
+.keys-table { border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.keys-table td { padding: 5px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.keys-table tr:last-child td { border-bottom: 0; }
+.keys-table td:first-child { white-space: nowrap; width: 130px; }
+.keys-table kbd { font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; font-family: inherit; background: #f6f7f9; }
+:root[data-theme="dark"] .keys-table kbd, :root:not([data-theme="light"]).auto-dark .keys-table kbd { background: #262b33; }
+.settings-row.sub { padding-top: 0; margin-top: -4px; }
+.settings-row.sub .settings-label { color: var(--muted); padding-left: 10px; }
+.seg-mini { display: inline-flex; gap: 0; }
+.head-tools.seg .settings-menu .seg-mini .tool { min-width: 0; padding: 2px 8px; font-size: 10px; border-radius: 0; margin-left: -1px; }
+.head-tools.seg .settings-menu .seg-mini .tool:first-child { border-radius: 999px 0 0 999px; margin-left: 0; }
+.head-tools.seg .settings-menu .seg-mini .tool:last-child { border-radius: 0 999px 999px 0; }
+.settings-row.sub.disabled { opacity: .5; }
+.session-dismiss { flex: none; border: 0; background: transparent; color: var(--muted); font-size: 12px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.session:hover .session-dismiss, .session.selected .session-dismiss, .session.away .session-dismiss { opacity: 1; }
+.session-dismiss:hover { background: #fde8e8; color: #c0392b; }
+:root[data-theme="dark"] .session-dismiss:hover, :root:not([data-theme="light"]).auto-dark .session-dismiss:hover { background: #3a2626; color: #ff8a80; }
+#session-dismiss { padding: 1px 8px; font-size: 10px; }
+#session-dismiss:hover { background: #fde8e8; color: #c0392b; border-color: #f2b0b0; }

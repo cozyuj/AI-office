@@ -10,17 +10,21 @@ import { initTextTips } from './texttip.js';
 import { createAvatarStore } from './avatarStore.js';
 import { createCustomizer } from './customize.js';
 import { createOverview } from './overview.js';
+import { createFloorStyleBook } from './scene/floorStyle.js';
+import { createFloorStylePicker } from './floorStylePicker.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
 const avatars = createAvatarStore();
 const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
+const floorStyles = createFloorStyleBook(); // 층별 인테리어 프리셋 (FE-34): 직접 고른 것 > id 해시 자동 배정
+const styleOfFloor = (f) => floorStyles.resolve(f, store.floorsByNo());
 
 // ---------- 전체 보기 (건물 단면) ----------
 const stage = document.getElementById('stage');
 const overviewBtn = document.getElementById('overview-btn');
-const overview = createOverview(document.getElementById('overview'), store, { onPick: () => setOverview(false) });
+const overview = createOverview(document.getElementById('overview'), store, { onPick: () => setOverview(false), styleOf: styleOfFloor });
 function setOverview(v) {
   if (v) overview.show(); else overview.hide();
   stage.classList.toggle('overview', overview.visible);
@@ -35,6 +39,12 @@ function syncOverviewBtn() {
 overviewBtn.onclick = () => setOverview(!overview.visible);
 store.subscribe(syncOverviewBtn);
 syncOverviewBtn();
+
+// ---------- 🎨 층 인테리어 ----------
+function applyFloorStyle() { scene.setFloorStyle(styleOfFloor(store.selectedFloor())); }
+store.subscribe((kind) => { if (kind === 'select' || kind === 'snapshot' || kind === 'update' || kind === 'remove') applyFloorStyle(); });
+const floorStylePicker = createFloorStylePicker(store, floorStyles, { onChange: () => { applyFloorStyle(); dirty = true; } });
+applyFloorStyle();
 
 // ---------- ⚙️ 설정 팝오버 ----------
 const settingsBtn = document.getElementById('settings-btn');
@@ -166,9 +176,40 @@ function chime() {
     }
   } catch {}
 }
-function renderSoundBtn() { soundBtn.classList.toggle('on', store.sound); soundBtn.textContent = store.sound ? '🔔 켜짐' : '🔈 꺼짐'; }
+/** 실패·종료용 낮은 2음 (대기 차임과 구분되게 내려가는 음) */
+function chimeLow() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    for (const [i, freq] of [[0, 392], [0.16, 293.7]]) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'triangle'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0 + i); g.gain.exponentialRampToValueAtTime(0.16, t0 + i + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + i + 0.4);
+      o.connect(g).connect(audioCtx.destination); o.start(t0 + i); o.stop(t0 + i + 0.45);
+    }
+  } catch {}
+}
+const soundScope = document.getElementById('sound-scope');
+function renderSoundBtn() {
+  soundBtn.classList.toggle('on', store.sound); soundBtn.textContent = store.sound ? '🔔 켜짐' : '🔈 꺼짐';
+  document.getElementById('sound-scope-row').classList.toggle('disabled', !store.sound);
+  for (const b of soundScope.querySelectorAll('[data-scope]')) b.classList.toggle('on', b.dataset.scope === store.soundScope);
+}
 soundBtn.onclick = () => { store.setSound(!store.sound); if (store.sound) chime(); };
-store.subscribe((kind, detail) => { if (kind === 'option') renderSoundBtn(); if (kind === 'waiting' && store.sound) chime(); });
+soundScope.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-scope]');
+  if (!b) return;
+  store.setSoundScope(b.dataset.scope);
+  if (!store.sound) store.setSound(true); // 범위를 고르면 소리도 켠다 (그래야 의미가 있고, 클릭이 오디오 허용도 된다)
+  if (b.dataset.scope === 'all') chimeLow(); else chime();
+});
+store.subscribe((kind) => {
+  if (kind === 'option') renderSoundBtn();
+  if (!store.sound) return;
+  if (kind === 'waiting') chime();
+  if ((kind === 'failure' || kind === 'ended') && store.soundScope === 'all') chimeLow();
+});
 renderSoundBtn();
 
 const notifyBtn = document.getElementById('notify-btn');
@@ -250,13 +291,21 @@ people.addEventListener('mouseleave', () => { people._hoverRow = null; tooltip.h
 const customizer = createCustomizer(store, avatars);
 document.getElementById('customize-btn').onclick = () => { setSettings(false); customizer.open(); };
 
+// ---------- 단축키 도움말 모달 (alert 대신) ----------
+const keysModal = document.getElementById('keys');
+const keysOpen = () => !keysModal.classList.contains('hidden');
+function setKeys(open) { keysModal.classList.toggle('hidden', !open); }
+document.getElementById('keys-btn').onclick = () => { setSettings(false); setKeys(true); };
+keysModal.addEventListener('click', (e) => { if (e.target === keysModal || e.target.closest('[data-action="close"]')) setKeys(false); }); // 바깥 클릭 · 닫기 버튼
+
 // ---------- 키보드 단축키 ----------
-const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기';
+const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기 · ? 이 도움말';
 document.addEventListener('keydown', (e) => {
   const t = e.target;
   const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
   const modalOpen = !document.getElementById('customize').classList.contains('hidden');
   if (e.key === 'Escape') {
+    if (keysOpen()) { setKeys(false); return; }
     if (modalOpen) { customizer.close(); return; }
     if (settingsOpen()) { setSettings(false); return; }
     if (overview.visible) { setOverview(false); return; }
@@ -265,6 +314,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (typing || modalOpen || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (keysOpen()) { if (e.key === '?') { setKeys(false); e.preventDefault(); } return; } // 도움말이 열려 있으면 다른 단축키는 쉰다
   const floors = store.floorsByNo();
   const idx = floors.findIndex((f) => f.id === store.selectedFloorId);
   if (/^[1-9]$/.test(e.key)) { const f = floors[Number(e.key) - 1]; if (f) store.selectFloor(f.id); return; }
@@ -279,7 +329,7 @@ document.addEventListener('keydown', (e) => {
     case 's': case 'S': soundBtn.click(); break;
     case 't': case 'T': themeBtn.click(); break;
     case '/': e.preventDefault(); document.getElementById('log-search').focus(); break;
-    case '?': alert(KEYS_HELP); break;
+    case '?': setKeys(true); break;
     default: return;
   }
   e.preventDefault();
@@ -336,4 +386,4 @@ store.subscribe((kind) => { if (kind === 'option') applyDaylight(); });
 setInterval(applyDaylight, 60 * 1000); // 자동 모드: 1분마다 실제 시각으로 다시 판단 (시간대가 바뀔 때만 창문을 다시 그린다)
 applyDaylight();
 
-window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, stats, applyTheme }; // 디버그용
+window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, stats, applyTheme, chime, chimeLow, floorStyles, floorStylePicker, applyFloorStyle }; // 디버그용
