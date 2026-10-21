@@ -1,5 +1,5 @@
 @import url('https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@master/nanumsquare.css');
-@font-face { font-family: 'D2Coding'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff') format('woff'); font-weight: normal; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21FF; }
+@font-face { font-family: 'D2Coding'; src: url('/assets/fonts/D2Coding-latin.woff2') format('woff2'), url('/assets/fonts/D2Coding-latin.woff') format('woff'); font-weight: normal; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21FF, U+2500-257F, U+25A0-25FF; }
 :root {
   --bg: #eef0f3;
   --panel: #ffffff;
