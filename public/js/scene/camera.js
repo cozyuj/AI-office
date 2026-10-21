@@ -22,6 +22,7 @@ export function createCamera(canvas, { onClick, onHover } = {}) {
   }
 
   function zoomAt(factor, sx = cam.w / 2, sy = cam.h / 2) {
+    touch();
     const before = screenToWorld(sx, sy);
     cam.zoom = Math.max(0.3, Math.min(3, cam.zoom * factor));
     const after = screenToWorld(sx, sy);
@@ -41,6 +42,8 @@ export function createCamera(canvas, { onClick, onHover } = {}) {
   }
 
   // 터치: 손가락(포인터)들을 추적해 두 개면 핀치 줌 + 두 손가락 이동
+  let activeUntil = 0;         // 최근 입력(휠·포인터) 뒤 잠깐은 60fps 로 그린다 (FE-39 적응형 프레임)
+  const touch = () => { activeUntil = performance.now() + 400; };
   const touches = new Map();   // pointerId → {x, y}
   let pinch = null;            // { d0, zoom0, cx, cy, wx, wy }  cx,cy: 화면 중심, wx,wy: 그 아래 월드 좌표
   function startPinch() {
@@ -61,6 +64,7 @@ export function createCamera(canvas, { onClick, onHover } = {}) {
   }
 
   canvas.addEventListener('pointerdown', (e) => {
+    touch();
     const p = pointer(e);
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     if (e.pointerType === 'touch') {
@@ -72,6 +76,7 @@ export function createCamera(canvas, { onClick, onHover } = {}) {
     canvas.classList.add('dragging');
   });
   canvas.addEventListener('pointermove', (e) => {
+    touch();
     const p = pointer(e);
     if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
       touches.set(e.pointerId, p);
@@ -109,9 +114,10 @@ export function createCamera(canvas, { onClick, onHover } = {}) {
   canvas.addEventListener('pointerleave', () => { if (onHover) onHover(null, null); });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
+    touch();
     const p = pointer(e);
     zoomAt(Math.exp(-e.deltaY * 0.0015), p.x, p.y);
   }, { passive: false });
 
-  return { cam, setSize, fit, zoomAt, applyTransform, worldToScreen, screenToWorld };
+  return { cam, setSize, fit, zoomAt, applyTransform, worldToScreen, screenToWorld, get active() { return !!drag || !!pinch || performance.now() < activeUntil; } };
 }

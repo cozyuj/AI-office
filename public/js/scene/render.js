@@ -70,7 +70,7 @@ export function drawFloorRaw(ctx) {
 let cacheEnabled = true;
 export function setCacheEnabled(v) { cacheEnabled = v; }
 const FLOOR_MAX_SCALE = 2;      // 바닥 캐시 해상도 상한 (메모리)
-const SPRITE_MAX_SCALE = 4;
+const SPRITE_MAX_SCALE = 3;     // 레티나(dpr 2)에서 zoom 1.5 까지 선명. 4 는 메모리가 너무 큼
 let floorCache = null;           // { scale, canvas, x0, y0, w, h }
 
 function makeLayer(wpx, hpx) {
@@ -96,10 +96,31 @@ export function drawFloor(ctx, scale = 1) {
   ctx.drawImage(floorCache.canvas, floorCache.x0, floorCache.y0, floorCache.w, floorCache.h);
 }
 
-/** 정적 엔티티 하나를 스프라이트로 캐시해 찍는다. dynamic(깜빡임) 은 매 프레임 직접 그린다 */
+/**
+ * 정적 엔티티를 스프라이트로 캐시해 찍는다. dynamic(깜빡임) 은 매 프레임 직접 그린다.
+ * key 가 있는 엔티티(가구·벽·문설주)는 같은 종류끼리 스프라이트 한 장을 공유한다(FE-39):
+ * 그리기는 타일 좌표의 평행이동에 불변이므로 기준점(anchor = project(x, y)) 기준 오프셋으로 찍으면 픽셀이 같다.
+ */
+const SHARED = new Map(); // key → { scale, canvas, dx, dy, w, h }
+export function sharedSpriteCount() { return SHARED.size; }
 function drawCached(ctx, e, now, scale) {
   if (!cacheEnabled || e.dynamic || typeof document === 'undefined') { e.draw(ctx, now); return; }
   const sc = Math.min(SPRITE_MAX_SCALE, Math.max(0.25, scale));
+  if (e.key) {
+    let sp = SHARED.get(e.key);
+    if (!sp || Math.abs(sp.scale - sc) > sc * 0.02) {
+      const pad = e.pad || 24;
+      const x0 = e.sb.x0 - pad, y0 = e.sb.y0 - pad, w = e.sb.x1 - e.sb.x0 + pad * 2, h = e.sb.y1 - e.sb.y0 + pad * 2;
+      const canvas = makeLayer(w * sc, h * sc);
+      const c = canvas.getContext('2d');
+      c.scale(sc, sc); c.translate(-x0, -y0);
+      e.draw(c, 0);
+      sp = { scale: sc, canvas, dx: x0 - e.anchor.x, dy: y0 - e.anchor.y, w, h };
+      SHARED.set(e.key, sp);
+    }
+    ctx.drawImage(sp.canvas, e.anchor.x + sp.dx, e.anchor.y + sp.dy, sp.w, sp.h);
+    return;
+  }
   let sp = e._sprite;
   if (!sp || Math.abs(sp.scale - sc) > sc * 0.02) {
     const pad = e.pad || 24;
@@ -114,7 +135,7 @@ function drawCached(ctx, e, now, scale) {
 }
 
 /** 바닥 캐시 + 모든 레이아웃의 스프라이트 캐시를 비운다 (팔레트가 바뀌면 다른 레이아웃의 스프라이트도 낡은 색이다) */
-function invalidateCaches() { floorCache = null; for (const c of staticCache.values()) for (const e of c.entities) e._sprite = null; }
+function invalidateCaches() { floorCache = null; SHARED.clear(); for (const c of staticCache.values()) for (const e of c.entities) e._sprite = null; }
 /** 테마 전환: 맵 팔레트 교체 + 캐시 무효화 */
 export function setTheme(theme) { setMapTheme(theme); invalidateCaches(); }
 /** 층 인테리어 프리셋 전환 (FE-34/35): 색·레이아웃이 실제로 바뀐 경우에만 정적 엔티티를 바꿔 끼우고 캐시를 비운다 */
@@ -132,7 +153,7 @@ export function withFloorStyle(presetId, fn) {
 /** mode: 'auto' | 'off' | 'morning' | 'day' | 'evening' | 'night'. 적용된 시간대를 돌려준다 */
 export function setDaylight(mode, date = new Date()) {
   const p = resolveDaylight(mode, date);
-  if (setDaylightPeriod(p)) for (const e of STATIC) if (e.win) e._sprite = null;
+  if (setDaylightPeriod(p)) { for (const e of STATIC) if (e.win) e._sprite = null; for (const k of [...SHARED.keys()]) if (k.startsWith('w:') && k.includes('|win1')) SHARED.delete(k); }
   return p;
 }
 
@@ -240,20 +261,29 @@ function buildStatic() {
     S.push(makeEntity(
       { x0: f.x + inset, y0: f.y + inset, x1: f.x + w - inset, y1: f.y + d - inset, z0: 0, z1: HEIGHT[f.type] || 1 },
       (ctx) => drawFurniture(ctx, f),
-      { label: f.type, dynamic: f.type === 'rack' || f.type === 'elevator', pad: PAD[f.type] || 28 },
+      {
+        label: f.type, dynamic: f.type === 'rack' || f.type === 'elevator', pad: PAD[f.type] || 28,
+        // 위치를 뺀 모든 속성 + 위치로 정해지는 변형((x+y)%3: 야자수 크기, 아케이드 화면 색)
+        key: `f:${f.type}|${w}|${d}|${f.face || ''}|${f.seed ?? ''}|${f.solid === false ? 0 : 1}|v${(f.x + f.y) % 3}`,
+        anchor: project(f.x, f.y, 0),
+      },
     ));
   }
   for (const w of WALLS) {
     for (const p of wallPieces(w)) {
-      S.push(makeEntity({ x0: p.x, y0: p.y, x1: p.x + p.w, y1: p.y + p.d, z0: 0, z1: p.h }, (ctx) => drawWallPiece(ctx, p), { label: 'wall', win: p.win }));
+      S.push(makeEntity({ x0: p.x, y0: p.y, x1: p.x + p.w, y1: p.y + p.d, z0: 0, z1: p.h }, (ctx) => drawWallPiece(ctx, p), {
+        label: 'wall', win: p.win,
+        key: `w:${p.dir}|${p.w}|${p.d}|${p.h}|${p.first ? 1 : 0}|${p.last ? 1 : 0}|win${p.win ? 1 : 0}|rail${p.rail ? 1 : 0}`,
+        anchor: project(p.x, p.y, 0),
+      }));
     }
   }
   // 문설주: 문 구멍의 양 끝
   for (const d of DOORS) {
     const wall = WALLS.find((w) => w.dir === 'h' && w.y === d.y && d.x >= w.x && d.x < w.x + w.len);
     const h = wall ? wall.h : 0.9;
-    if (d.first) S.push(makeEntity({ x0: d.x - 0.09, y0: d.y - 0.09, x1: d.x + 0.09, y1: d.y + 0.09, z0: 0, z1: h + 0.15 }, (ctx) => drawDoorPost(ctx, d.x, d.y, h), { label: 'doorpost' }));
-    if (d.last) S.push(makeEntity({ x0: d.x + 0.91, y0: d.y - 0.09, x1: d.x + 1.09, y1: d.y + 0.09, z0: 0, z1: h + 0.15 }, (ctx) => drawDoorPost(ctx, d.x + 1, d.y, h), { label: 'doorpost' }));
+    if (d.first) S.push(makeEntity({ x0: d.x - 0.09, y0: d.y - 0.09, x1: d.x + 0.09, y1: d.y + 0.09, z0: 0, z1: h + 0.15 }, (ctx) => drawDoorPost(ctx, d.x, d.y, h), { label: 'doorpost', key: `p:${h}`, anchor: project(d.x, d.y, 0) }));
+    if (d.last) S.push(makeEntity({ x0: d.x + 0.91, y0: d.y - 0.09, x1: d.x + 1.09, y1: d.y + 0.09, z0: 0, z1: h + 0.15 }, (ctx) => drawDoorPost(ctx, d.x + 1, d.y, h), { label: 'doorpost', key: `p:${h}`, anchor: project(d.x + 1, d.y, 0) }));
   }
   const edges = []; // [behindIdx, frontIdx]
   for (let i = 0; i < S.length; i++) {

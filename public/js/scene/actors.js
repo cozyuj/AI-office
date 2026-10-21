@@ -363,5 +363,7 @@ export function createActors(store, scene, avatars) {
     return actors.get(`${sid}/main`) || [...actors.values()].find((a) => a.sessionId === sid) || null;
   }
 
-  return { sync, tick, pick, hoverAt, screenPosOf, selectedActor, get actors() { return actors; }, user };
+  /** 걷거나 퇴근 중인 캐릭터가 있으면 true (적응형 프레임: 없으면 20fps 로 충분) */
+  function anyMoving() { for (const a of actors.values()) if (a.walking || a.dead) return true; return false; }
+  return { sync, tick, pick, hoverAt, screenPosOf, selectedActor, anyMoving, get actors() { return actors; }, user };
 }
