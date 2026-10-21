@@ -60,3 +60,64 @@ jobs:
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+      # README 의 "항상 최신" 링크용: 버전 없는 고정 이름으로 한 벌 더 올린다 (releases/latest/download/<이름>)
+      - name: 고정 이름 자산 올리기
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          B=app/src-tauri/target
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            f=$(ls $B/${{ matrix.triple }}/release/bundle/dmg/*.dmg | head -1); cp "$f" AI-Office-mac-arm64.dmg
+            gh release upload "${{ github.ref_name }}" AI-Office-mac-arm64.dmg --clobber -R "${{ github.repository }}"
+          else
+            f=$(ls $B/release/bundle/nsis/*-setup.exe | head -1); cp "$f" AI-Office-windows-x64-setup.exe
+            gh release upload "${{ github.ref_name }}" AI-Office-windows-x64-setup.exe --clobber -R "${{ github.repository }}"
+          fi
+
+  # Windows 실기 대용: 올라간 설치 파일을 조용히 설치 → 앱 실행 → 서버 응답 · 훅 등록 · 훅 → 서버 경로 확인
+  smoke-windows:
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: 설치 파일 받기
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download "${{ github.ref_name }}" -R "${{ github.repository }}" -p 'AI-Office-windows-x64-setup.exe' -D dl
+      - name: 설치 → 실행 → 확인
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Start-Process (Resolve-Path dl\AI-Office-windows-x64-setup.exe) -ArgumentList '/S' -Wait
+          $dir = Get-ChildItem $env:LOCALAPPDATA -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'node.exe') } | Select-Object -First 1
+          if (-not $dir) { throw '설치 폴더(node.exe 포함)를 찾지 못함' }
+          "설치 폴더: $($dir.FullName)"; Get-ChildItem $dir.FullName | Format-Table Name, Length
+          $exe = Get-ChildItem $dir.FullName -Filter *.exe | Where-Object { $_.Name -notmatch '(?i)uninstall|^node\.exe$' } | Select-Object -First 1
+          "실행: $($exe.Name)"
+          Start-Process $exe.FullName
+          $state = $null
+          for ($i = 0; $i -lt 90; $i++) { try { $state = Invoke-RestMethod http://127.0.0.1:4777/api/state -TimeoutSec 2; break } catch { Start-Sleep 1 } }
+          if (-not $state) { throw '서버가 90초 안에 응답하지 않음' }
+          "서버 버전: $($state.version)"
+          if ("v$($state.version)" -ne '${{ github.ref_name }}') { throw "서버 버전 $($state.version) 이 태그 ${{ github.ref_name }} 와 다름" }
+          $settings = Join-Path $env:USERPROFILE '.claude\settings.json'
+          if (-not (Test-Path $settings)) { throw '훅이 등록되지 않음 (settings.json 없음)' }
+          $cfg = Get-Content $settings -Raw | ConvertFrom-Json
+          $cmd = $cfg.hooks.SessionStart[0].hooks[0].command
+          "훅 명령: $cmd"
+          $parts = [regex]::Matches($cmd, '"([^"]+)"') | ForEach-Object { $_.Groups[1].Value }
+          if (-not (Test-Path $parts[0])) { throw "훅 node 없음: $($parts[0])" }
+          if (-not (Test-Path $parts[1])) { throw "훅 emit.js 없음: $($parts[1])" }
+          $payload = '{"session_id":"ci-smoke","cwd":"C:\\ci-smoke","transcript_path":"","hook_event_name":"SessionStart","source":"startup"}'
+          $payload | & $parts[0] $parts[1]
+          Start-Sleep 2
+          $after = Invoke-RestMethod http://127.0.0.1:4777/api/state
+          if (-not ($after.sessions | Where-Object { $_.id -eq 'ci-smoke' })) { throw '훅 → 서버 경로 실패: ci-smoke 세션이 안 보임' }
+          '훅 → 서버 OK'
+          Stop-Process -Name $exe.BaseName -Force
+          Start-Sleep 5
+          try { Invoke-RestMethod http://127.0.0.1:4777/api/state -TimeoutSec 2 | Out-Null; throw '앱을 죽인 뒤에도 서버가 남아 있음' } catch { if ($_.Exception.Message -match '남아 있음') { throw } ; '앱 종료 후 서버도 종료 OK' }

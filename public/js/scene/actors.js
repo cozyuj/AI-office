@@ -6,6 +6,7 @@ import { findPath, nearestWalkable } from './pathfind.js';
 import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
+import { tr } from '../i18n.js';
 import { drawAvatar } from './avatar.js';
 
 const SPEED = 3.6;          // 타일/초
@@ -151,7 +152,7 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
   ctx.textBaseline = 'middle';
   // 이름표 (발 아래)
   ctx.font = `700 9.5px ${FONT}`;
-  const name = a.user ? `${a.name} (나)` : a.name;
+  const name = a.user ? tr(`${a.name} (나)`) : a.name;
   const nw = ctx.measureText(name).width + 18;
   const ny = s.y + 10;
   ctx.fillStyle = 'rgba(255,255,255,0.95)';
@@ -167,9 +168,9 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
   const amb = (a.ambient && a.ambient.phase !== 'back' ? a.ambient.spot : null) || roam;
   if ((amb || a.bubble) && !a.user && (bubbleMode !== 'selected' || a.selected)) {
     ctx.font = `8px ${FONT}`;
-    let text = amb ? `${amb.icon} ${amb.bubble}` : `${a.icon ? a.icon + ' ' : ''}${a.bubble}`;
+    let text = amb ? `${amb.icon} ${tr(amb.bubble)}` : `${a.icon ? a.icon + ' ' : ''}${tr(a.bubble)}`;
     if (text.length > 30) text = text.slice(0, 29) + '…';
-    const ago = elapsed(a.since, Date.now()); // now 는 rAF 시각(페이지 로드 기준)이라 epoch 인 since 와 빼면 안 된다
+    const ago = tr(elapsed(a.since, Date.now())); // now 는 rAF 시각(페이지 로드 기준)이라 epoch 인 since 와 빼면 안 된다
     const full = `${text} · ${ago}`;
     const bw = Math.min(240, ctx.measureText(full).width + 16), bh = 17, r = 8.5;
     const headTop = s.y - 62 * z;

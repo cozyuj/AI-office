@@ -1,14 +1,18 @@
 # AI Office
 
+한국어 · [English](README.en.md)
+
 Claude Code 가 터미널에서 뭘 하고 있는지 한눈에 보려고 차린 사무실. 내 터미널의 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 아이소메트릭 사무실에서 실시간으로 움직인다. 파일을 읽을 땐 **자료실** 가서 책을 펴고, 명령을 돌릴 땐 **서버실** 랙 앞에 서 있고, 막히면 그 자리에서 턱 괴고 **고민 중**, 일을 나눠 맡기면 서브에이전트가 **엘리베이터** 타고 출근한다. git 프로젝트마다 층이 하나씩 생기고, 한 층에 그 프로젝트의 세션 전부가 보인다. 답을 기다리는 세션은 **내 자리** 에서 손을 들고, 브라우저 알림·소리·탭 제목으로도 알려 준다.
 
 ![AI Office 전체 화면](docs/screenshots/fe-30-overview.jpg)
 
 ## 설치
 
-**맥(Apple Silicon)은 앱으로:** ⬇️ **[AI Office_0.23.7_aarch64.dmg 받기](https://github.com/cozyuj/AI-office/releases/download/v0.23.7/AI-Office_0.23.7_aarch64.dmg)** (39MB, Node 내장 · 다른 버전은 [Releases](https://github.com/cozyuj/AI-office/releases/latest)). 받은 뒤 `AI Office.app` 을 응용 프로그램 폴더에 넣고 처음 한 번 **우클릭 → 열기**. 자세한 건 아래 [맥 메뉴바 앱](#맥-메뉴바-앱-tauri).
+**맥(Apple Silicon)은 앱으로:** ⬇️ **[AI-Office-mac-arm64.dmg 받기](https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-mac-arm64.dmg)** (약 40MB, Node 내장, 항상 최신 버전). 받은 뒤 `AI Office.app` 을 응용 프로그램 폴더에 넣고 처음 한 번 **우클릭 → 열기**. Homebrew 로는 `brew install --cask cozyuj/tap/ai-office`. 자세한 건 아래 [메뉴바 앱](#메뉴바-앱-tauri).
 
-**그 외(Intel 맥 · Windows · Linux)는 웹 버전으로:** Node 18 이상만 있으면 공통 한 줄:
+**Windows(x64)도 앱으로:** ⬇️ **[AI-Office-windows-x64-setup.exe 받기](https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-windows-x64-setup.exe)**. SmartScreen 경고가 뜨면 "추가 정보 → 실행".
+
+**그 외(Intel 맥 · Linux 등)는 웹 버전으로:** Node 18 이상만 있으면 공통 한 줄:
 
 ```bash
 npx claude-ai-office
@@ -31,6 +35,7 @@ npx claude-ai-office
 | `… start [--port N] [--no-open]` | 서버만 기동. 이미 떠 있으면 그 주소를 연다 |
 | `… demo` | 가짜 세션으로 사무실을 북적이게 (화면의 ⚙️ 설정 → 데모와 같음) |
 | `… doctor` | Node 버전·훅 등록 수·설치본·포트·저널·훅 포트 점검 |
+| `… compact` | 이벤트 저널 즉시 압축 (서버도 매시간 자동) |
 
 ### 훅
 
@@ -111,6 +116,8 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 | 테마 | 라이트 / 다크 | `T` |
 | 데모 | 가짜 세션 4개를 띄워 사무실을 북적이게. 실제 세션과 별도 층이고 `(데모)` 가 붙는다 | `D` |
 | 캐릭터 외형 | 외형 모달 열기 (아래 참고) | |
+| 층 인테리어 | 지금 보는 층의 인테리어 프리셋 (층 행의 🎨 와 같음) | |
+| 언어 | 한국어 / English. 화면 문구·캔버스 글자·알림이 바뀐다. 세션 제목·프롬프트·Claude 메시지는 쓴 그대로 | |
 | 시간대 조명 | 실제 시각에 따라 창문·테라스·실내 빛이 아침(06~10)·낮(10~17)·저녁(17~20)·밤(20~06)으로 바뀐다. `자동` 외에 `끔` 이나 시간대 하나로 고정 가능 | |
 | 단축키 | 키보드 단축키 표 패널 | `?` |
 
@@ -150,18 +157,20 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 
 층이 둘 이상이면 헤더에 🏢 **전체 보기**(`O`)가 나타납니다. 층들을 건물처럼 세로로 쌓아, 층마다 미니 사무실 위에 캐릭터 점과 세션 수·상태(`답 기다림` / `작업 중` / `생각 중` / `조용함`)를 보여 줍니다. 층마다 고른 인테리어 스타일이 미니 사무실에도 반영됩니다. 층을 클릭하면 그 층 사무실로 들어갑니다. `Esc` 또는 같은 버튼으로 닫습니다.
 
-## 맥 메뉴바 앱 (Tauri)
+## 메뉴바 앱 (Tauri)
 
-웹 버전을 그대로 창에 담은 상주 앱입니다. 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 메뉴바 아이콘에서 열기/숨기기/항상 위/종료를 합니다. 답을 기다리는 세션이 있으면 메뉴바에 `🙋 n` 이 뜹니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다. 앱에는 Node 가 내장되어 있고, 첫 실행 때 서버 파일을 `~/.ai-office/app` 에 복사하고 훅을 등록합니다.
+웹 버전을 그대로 창에 담은 상주 앱입니다(맥 메뉴바 · Windows 트레이). 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 아이콘 메뉴에서 열기/숨기기/항상 위/훅 다시 설치/업데이트 확인/종료를 합니다. 답을 기다리는 세션이 있으면 메뉴바에 `🙋 n` 이 뜹니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다(앱이 강제 종료돼도 서버가 스스로 끝납니다). 앱에는 Node 가 내장되어 있고, 첫 실행 때 서버 파일을 `~/.ai-office/app` 에, Node 를 `~/.ai-office/node` 에 복사하고 그 경로로 훅을 등록하므로 앱을 옮기거나 지워도 훅이 깨지지 않습니다.
 
-> **다운로드**: ⬇️ **[AI Office_0.23.7_aarch64.dmg](https://github.com/cozyuj/AI-office/releases/download/v0.23.7/AI-Office_0.23.7_aarch64.dmg)** (Apple Silicon, 39MB) · 다른 버전은 [Releases](https://github.com/cozyuj/AI-office/releases/latest). DMG 를 열어 `AI Office.app` 을 응용 프로그램 폴더에 넣으세요. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니 앱을 **우클릭 → 열기** 로 한 번 허용하고, macOS 15 이상에서 안 열리면 시스템 설정 → 개인정보 보호 및 보안 → **그래도 열기**, 그래도 "손상됨" 이라고 나오면 터미널에서 `xattr -dr com.apple.quarantine "/Applications/AI Office.app"` 를 한 번 실행하세요. Intel 맥·Windows 는 아직 빌드하지 않으니 위의 `npx claude-ai-office` 한 줄로 웹 버전을 쓰세요. 직접 빌드하려면:
+**자동 업데이트**: 앱이 시작 10초 뒤와 6시간마다 새 버전을 확인해 백그라운드로 받아 두고, 메뉴바에 ⬆ 를 띄우며 메뉴의 "업데이트 적용 (다시 시작)" 이 켜집니다. 릴리스는 태그를 올리면 GitHub Actions 가 맥(Apple Silicon)·Windows(x64) 로 빌드하고 서명해 올립니다.
+
+> **다운로드**: ⬇️ **[맥 AI-Office-mac-arm64.dmg](https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-mac-arm64.dmg)** · **[Windows AI-Office-windows-x64-setup.exe](https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-windows-x64-setup.exe)** (항상 최신) · 이전 버전은 [Releases](https://github.com/cozyuj/AI-office/releases). DMG 를 열어 `AI Office.app` 을 응용 프로그램 폴더에 넣으세요. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니 앱을 **우클릭 → 열기** 로 한 번 허용하고, macOS 15 이상에서 안 열리면 시스템 설정 → 개인정보 보호 및 보안 → **그래도 열기**, 그래도 "손상됨" 이라고 나오면 터미널에서 `xattr -dr com.apple.quarantine "/Applications/AI Office.app"` 를 한 번 실행하세요. Intel 맥·Linux 는 위의 `npx claude-ai-office` 한 줄로 웹 버전을 쓰세요. 직접 빌드하려면:
 
 ```bash
 npm run app:dev      # 개발 실행 (Rust 툴체인 + Xcode CLT 필요, 첫 빌드 수 분)
 npm run app:build    # app/src-tauri/target/release/bundle/ 에 .app / .dmg
 ```
 
-빌드 시 `scripts/fetch-node.sh` 가 Node LTS 바이너리를 내려받아 사이드카로 번들하고, 서버 파일은 앱 리소스로 포함됩니다. 개발 실행(레포에서)은 번들이 없으면 시스템 `node` 와 레포의 `server.js` 를 씁니다.
+빌드 시 `scripts/fetch-node.js` 가 Node LTS 바이너리(맥·리눅스·Windows)를 내려받아 사이드카로 번들하고, 서버 파일은 앱 리소스로 포함됩니다. 개발 실행(레포에서)은 번들이 없으면 시스템 `node` 와 레포의 `server.js` 를 씁니다.
 
 ## 구조
 
@@ -193,5 +202,7 @@ npm run demo                  # 서버가 떠 있는 상태에서 가짜 세션 
 npm run bump:patch   # 0.19.0 → 0.19.1
 npm run bump:minor   # 0.19.0 → 0.20.0
 ```
+
+릴리스: `git tag vX.Y.Z && git push origin vX.Y.Z` 를 올리면 GitHub Actions 가 맥·Windows 앱을 빌드해 Release 에 올리고(updater 용 `latest.json` 포함), Windows 러너에서 설치 → 실행 → 훅까지 확인합니다. 테스트는 push·PR 마다 Ubuntu·Windows·macOS 에서 돕니다.
 
 작업 흐름: GitHub 이슈를 `[FE-30]`, `[BE-13]`, `[APP-03]` 처럼 FE/BE/APP 으로 나눠 만들고, `main` 에서 `feature/FE-30` 식 브랜치를 분리해 작업한 뒤 결과·테스트·캡처를 이슈 댓글로 남긴다.

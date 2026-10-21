@@ -3,6 +3,7 @@ import { GRID, project, worldBounds, layoutOfPreset } from './scene/map.js';
 import { buildLayout } from './scene/layouts.js';
 import { drawFloor, drawEntities, roundRect, withFloorStyle } from './scene/render.js';
 import { palette, DEFAULT_PRESET } from './scene/floorStyle.js';
+import { tr } from './i18n.js';
 
 const MINI_SCALE = 0.5;     // 미니 사무실 캐시 해상도 (월드 1px → 0.5px)
 const STRIDE = 0.8;         // 층 간격 (이미지 높이 대비) — 살짝 겹쳐 건물처럼
@@ -122,11 +123,12 @@ export function createOverview(canvas, store, { onPick, styleOf } = {}) {
       const sessions = store.sessionsOfFloor(f.id);
       const status = store.floorStatus(f.id);
       const waiting = store.waitingOfFloor(f.id).length;
-      const name = f.name.length > 22 ? f.name.slice(0, 21) + '…' : f.name;
+      const fname = tr(f.name);
+      const name = fname.length > 22 ? fname.slice(0, 21) + '…' : fname;
       ctx.font = '700 12px D2Coding, NanumSquare, system-ui, sans-serif';
       const nameW = ctx.measureText(name).width;
       ctx.font = '11px D2Coding, NanumSquare, system-ui, sans-serif';
-      const meta = `세션 ${sessions.length}개 · ${STATUS_LABEL[status]}${waiting ? ` · ${waiting}명 대기` : ''}`;
+      const meta = tr(`세션 ${sessions.length}개 · ${STATUS_LABEL[status]}${waiting ? ` · ${waiting}명 대기` : ''}`);
       const metaW = ctx.measureText(meta).width;
       const bw = Math.max(nameW, metaW) + 62, bh = 40;
       const lx = ox + 8, ly = oy + 6;
