@@ -6,6 +6,7 @@ import { createActors } from './scene/actors.js';
 import { project } from './scene/map.js';
 import { setLabels } from './scene/sprites.js';
 import { createTooltip } from './tooltip.js';
+import { initTextTips } from './texttip.js';
 import { createAvatarStore } from './avatarStore.js';
 import { createCustomizer } from './customize.js';
 
@@ -56,6 +57,7 @@ function connect() {
 }
 
 bindPanelEvents();
+initTextTips();
 connect();
 
 // 줌 버튼

@@ -17,7 +17,7 @@ export function createTooltip() {
     rows.push(['지금', `${a.icon || ''} ${esc(a.bubble)} <span class="muted">· ${elapsed(a.since, now)}</span>`]);
     if (tool && tool.detail) rows.push(['대상', `<span class="tt-v mono">${esc(tool.detail)}</span>`]);
     const prompt = s.lastPrompt || s.firstPrompt || s.title;
-    if (prompt) rows.push(['요청', `<span class="tt-prompt">"${esc(prompt.length > 160 ? prompt.slice(0, 159) + '…' : prompt)}"</span>`]);
+    if (prompt) rows.push(['요청', `<span class="tt-prompt tt-prompt-wrap">"${esc(prompt.length > 160 ? prompt.slice(0, 159) + '…' : prompt)}"</span>`]);
     if (a.kind === 'sub' && a.type) rows.push(['종류', esc(a.type)]);
     return `
       <div class="tt-name"><span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : esc((a.name || '?')[0])}</span>${esc(a.name)}${a.kind === 'sub' ? '<span class="sub">서브에이전트</span>' : ''}</div>
