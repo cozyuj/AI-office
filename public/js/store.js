@@ -1,4 +1,5 @@
 // 서버 상태 미러 + 선택 상태 + 구독. 서버가 단일 진실이고, 여기선 보기 좋게 정리만 한다.
+import { createNameBook } from './names.js';
 
 export const ROOM_LABEL = {
   library: '자료실', dev: '개발실', research: '정보검색실', server: '서버실',
@@ -38,6 +39,7 @@ class Store {
     this.prevWaiting = new Set(); // 대기 전이 감지용
     this.orderCache = new Map();  // floorId → { t, ids }  목록 순서를 5초마다만 바꾼다
     this.logFilter = { q: '', mine: false };
+    this.names = createNameBook(); // 세션별 캐릭터 이름 (브라우저 저장)
   }
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -186,7 +188,7 @@ class Store {
       if (e.floorId !== floorId) continue;
       total++;
       if (mine && e.sessionId !== this.selectedSessionId) continue;
-      if (q && !(`${e.text} ${e.agentName}`.toLowerCase().includes(q))) continue;
+      if (q && !(`${e.text} ${this.logWho(e)}`.toLowerCase().includes(q))) continue;
       if (out.length < limit) out.push(e);
     }
     out.total = total;
@@ -201,6 +203,20 @@ class Store {
     if (sessions.some((s) => s.status === 'thinking')) return 'thinking';
     return 'idle';
   }
+
+  /** 화면에 보일 캐릭터 이름: 세션의 main 은 세션별 이름(직접 지은 이름 > 자동 별명), 서브에이전트는 서버 이름 */
+  nameOf(session, agent) {
+    if (!session) return agent ? agent.name : 'Claude';
+    if (!agent || agent.kind === 'main' || agent.id === 'main') return this.names.nameOf(session.id);
+    return agent.name;
+  }
+  /** 로그 항목의 표시 이름 (main 은 세션별 이름으로 치환) */
+  logWho(e) {
+    const s = this.sessions.get(e.sessionId);
+    return s && e.agentId === 'main' ? this.names.nameOf(s.id) : e.agentName;
+  }
+  setName(sessionId, name) { this.names.set(sessionId, name); this.emit('option'); }
+  rerollName(sessionId) { this.names.reroll(sessionId); this.emit('option'); }
 
   colorOf(session, agent) {
     const key = agent && agent.kind === 'sub' ? `${session.id}:${agent.id}` : session.id;

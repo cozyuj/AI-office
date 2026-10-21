@@ -216,12 +216,12 @@ export function createActors(store, scene, avatars) {
       seen.add(key);
       let a = actors.get(key);
       if (!a) {
-        const info = { name: agent.name, color: store.colorOf(session, agent), kind: agent.kind, sessionId: session.id, agentId: agent.id };
+        const info = { name: store.nameOf(session, agent), color: store.colorOf(session, agent), kind: agent.kind, sessionId: session.id, agentId: agent.id };
         a = new Actor(key, info, [SPAWN.x, SPAWN.y]);
         actors.set(key, a);
         if (initial) { const t = slots.acquire(key, agent.room); a.x = t[0]; a.y = t[1]; a.room = agent.room; }
       }
-      a.name = agent.name;
+      a.name = store.nameOf(session, agent);
       a.dead = false;
       if (a.ambient && a.since !== agent.since) { // 새 이벤트 → 자율 행동 즉시 중단
         a.ambient = null;
