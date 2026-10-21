@@ -1,7 +1,8 @@
-// 외형 커스터마이즈 모달: 대상 선택 → 파츠/색(프리셋 + 직접 선택)/악세사리 → 걷는 미리보기 → 저장(localStorage)
-import { OPTIONS, randomAvatar, drawAvatar } from './scene/avatar.js';
+// 외형 커스터마이즈 모달: 대상 선택 → 프리셋 / 몸 종류 / 파츠·색(프리셋 + 직접 선택) / 악세사리 → 걷는 미리보기 → 저장(localStorage)
+import { OPTIONS, PRESETS, randomAvatar, drawAvatar } from './scene/avatar.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SKIN_LABEL = { human: '피부색', robot: '금속색', cat: '털색', bear: '털색' };
 
 export function createCustomizer(store, avatars) {
   const modal = document.getElementById('customize');
@@ -36,17 +37,35 @@ export function createCustomizer(store, avatars) {
   };
   const chips = (group, key, items, current) => `<div class="cz-chips">${items.map(([v, label]) => `<button class="cz-chip ${v === current ? 'on' : ''}" data-group="${group}" data-key="${key}" data-value="${esc(v)}">${esc(label)}</button>`).join('')}</div>`;
 
+  /** 프리셋 썸네일: 정지 자세로 한 번 그린다 */
+  function drawThumbs() {
+    const dpr = window.devicePixelRatio || 1, w = 44, h = 64;
+    for (const c of optsEl.querySelectorAll('canvas.cz-thumb')) {
+      const p = PRESETS.find((x) => x.id === c.dataset.preset);
+      if (!p) continue;
+      c.width = w * dpr; c.height = h * dpr; c.style.width = `${w}px`; c.style.height = `${h}px`;
+      const cx = c.getContext('2d');
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawAvatar(cx, w / 2, h - 3, p.spec, { sessionColor: '#e8683a', scale: 0.8, faceRight: true });
+    }
+  }
+
   function render() {
     targetsEl.innerHTML = targets().map(([k, label]) => `<button class="cz-target ${k === target ? 'on' : ''}" data-target="${esc(k)}">${esc(label)}${avatars.has(k) ? '' : '<span class="muted"> · 기본</span>'}</button>`).join('');
+    const body = draft.body || 'human';
+    const robot = body === 'robot';
     optsEl.innerHTML = `
-      <div class="cz-group"><div class="cz-label">피부색</div>${swatch('', 'skin', OPTIONS.skin, draft.skin)}</div>
-      <div class="cz-group"><div class="cz-label">머리</div>${chips('hair', 'style', OPTIONS.hair.styles, draft.hair.style)}${swatch('hair', 'color', OPTIONS.hair.colors, draft.hair.color)}</div>
+      <div class="cz-group"><div class="cz-label">프리셋 <span class="muted">— 고른 뒤 파츠를 더 바꿀 수 있어요</span></div><div class="cz-presets">${PRESETS.map((p) => `<button class="cz-preset" data-preset="${esc(p.id)}" title="${esc(p.label)} 프리셋 적용"><canvas class="cz-thumb" data-preset="${esc(p.id)}"></canvas><span>${esc(p.label)}</span></button>`).join('')}</div></div>
+      <div class="cz-group"><div class="cz-label">몸</div>${chips('', 'body', OPTIONS.body, body)}</div>
+      <div class="cz-group"><div class="cz-label">${SKIN_LABEL[body] || '피부색'}</div>${swatch('', 'skin', OPTIONS.bodySkins[body] || OPTIONS.skin, draft.skin)}</div>
+      ${robot ? '' : `<div class="cz-group"><div class="cz-label">머리</div>${chips('hair', 'style', OPTIONS.hair.styles, draft.hair.style)}${swatch('hair', 'color', OPTIONS.hair.colors, draft.hair.color)}</div>`}
       <div class="cz-group"><div class="cz-label">상의</div>${chips('top', 'style', OPTIONS.top.styles, draft.top.style)}${swatch('top', 'color', OPTIONS.top.colors, draft.top.color, true)}</div>
       <div class="cz-group"><div class="cz-label">하의</div>${chips('bottom', 'style', OPTIONS.bottom.styles, draft.bottom.style)}${swatch('bottom', 'color', OPTIONS.bottom.colors, draft.bottom.color)}</div>
       <div class="cz-group"><div class="cz-label">신발</div>${swatch('', 'shoes', OPTIONS.shoes.colors, draft.shoes)}</div>
       <div class="cz-group"><div class="cz-label">안경</div>${chips('', 'glasses', OPTIONS.glasses, draft.glasses)}</div>
-      <div class="cz-group"><div class="cz-label">모자</div>${chips('', 'hat', OPTIONS.hat, draft.hat)}${draft.hat !== 'none' ? swatch('', 'hatColor', OPTIONS.top.colors, draft.hatColor) : ''}</div>
+      <div class="cz-group"><div class="cz-label">모자</div>${chips('', 'hat', OPTIONS.hat, draft.hat)}${draft.hat !== 'none' && draft.hat !== 'crown' ? swatch('', 'hatColor', OPTIONS.top.colors, draft.hatColor) : ''}</div>
       <div class="cz-group"><div class="cz-label">소품</div>${chips('', 'extra', OPTIONS.extra, draft.extra)}</div>`;
+    drawThumbs();
   }
 
   function loop() {
@@ -61,18 +80,26 @@ export function createCustomizer(store, avatars) {
     raf = requestAnimationFrame(loop);
   }
 
-  function assign(group, key, value) { if (group) draft[group][key] = value; else draft[key] = value; }
+  function assign(group, key, value) {
+    if (group) draft[group][key] = value; else draft[key] = value;
+    // 몸 종류를 바꿨는데 피부색이 새 팔레트에 없으면 첫 색으로
+    if (!group && key === 'body') { const pal = OPTIONS.bodySkins[value] || OPTIONS.skin; if (!pal.includes(draft.skin)) draft.skin = pal[0]; }
+  }
+  /** Claude 계열 대상은 상의를 세션 색으로 */
+  const autoTop = () => { if (target !== 'me' && target !== 'sub') draft.top.color = 'auto'; };
 
   modal.addEventListener('click', (e) => {
     if (e.target.closest('label.custom')) return;
     const t = e.target.closest('[data-target]');
     if (t) { target = t.dataset.target; draft = structuredClone(avatars.get(target)); render(); return; }
+    const p = e.target.closest('button[data-preset]');
+    if (p) { const pre = PRESETS.find((x) => x.id === p.dataset.preset); if (pre) { draft = structuredClone(pre.spec); autoTop(); render(); } return; }
     const b = e.target.closest('button[data-key]');
     if (b) { assign(b.dataset.group, b.dataset.key, b.dataset.value); render(); return; }
     const act = e.target.closest('[data-action]');
     if (!act) { if (e.target === modal) close(); return; }
     switch (act.dataset.action) {
-      case 'random': draft = randomAvatar(); if (target !== 'me' && target !== 'sub') draft.top.color = 'auto'; render(); break;
+      case 'random': draft = randomAvatar(); autoTop(); render(); break;
       case 'reset': draft = structuredClone(avatars.baseFor(target)); render(); break;
       case 'save': avatars.set(target, draft); render(); close(); break;
       case 'close': close(); break;
