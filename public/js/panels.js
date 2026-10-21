@@ -12,8 +12,8 @@ export function renderHeader() {
   const s = store.selectedSession();
   $('head-badge').textContent = f ? `${f.no}F` : '–';
   $('head-title').textContent = f ? f.name : '사무실';
-  $('head-sub').textContent = s
-    ? `${s.title || '제목 없는 세션'} · ${STATUS_LABEL[s.status] || s.status}`
+  $('head-sub').innerHTML = s
+    ? `<span class="dot ${s.status}"></span> ${esc(s.title || '제목 없는 세션')} · ${STATUS_LABEL[s.status] || s.status}`
     : (store.sessions.size ? '세션을 선택하세요' : '훅 이벤트를 기다리는 중');
   const live = $('live');
   live.classList.toggle('off', !store.connected);
@@ -36,7 +36,7 @@ export function renderFloors() {
   }
   el.innerHTML = floors.map((f) => {
     const selected = f.id === store.selectedFloorId;
-    const sessions = store.sessionsOfFloor(f.id);
+    const sessions = store.sessionsOfFloorStable(f.id, now);
     const status = store.floorStatus(f.id);
     const head = `
       <div class="floor-row" data-floor="${esc(f.id)}">
@@ -67,26 +67,45 @@ export function renderFloors() {
 
 export function renderPeople() {
   const now = Date.now();
-  const items = store.agentsOfFloor(store.selectedFloorId);
-  $('people-count').textContent = items.length ? `${items.length}명 근무 중` : '';
-  $('people').innerHTML = items.length ? items.map(({ agent: a, session: s }) => `
-    <div class="person ${s.id === store.selectedSessionId ? 'selected' : 'dim'}" data-session="${esc(s.id)}" data-agent="${esc(a.id)}">
-      <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(a.name)}</span>
-      <div class="person-body">
-        <div class="person-name">${esc(a.name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${ROOM_LABEL[a.room] || a.room}</span></div>
-        <div class="person-act">${a.icon || ''} ${esc(a.bubble)} <span class="ago">· ${elapsed(a.since, now)}</span></div>
-      </div>
-    </div>`).join('') : '<div class="muted" style="padding:6px 8px">이 층에는 아무도 없습니다</div>';
+  const sessions = store.sessionsOfFloorStable(store.selectedFloorId, now);
+  let count = 0;
+  const html = sessions.map((s) => {
+    const agents = Object.values(s.agents || {}).sort((a, b) => (a.kind === 'main' ? -1 : 1) - (b.kind === 'main' ? -1 : 1));
+    count += agents.length;
+    const selected = s.id === store.selectedSessionId;
+    return `<div class="people-group ${selected ? 'selected' : ''}" data-session="${esc(s.id)}">
+      <div class="people-head"><span class="dot ${s.status}"></span><span class="people-title">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span><span class="muted">${STATUS_LABEL[s.status] || ''}</span></div>
+      ${agents.map((a) => `
+      <div class="person ${selected ? 'selected' : 'dim'}" data-session="${esc(s.id)}" data-agent="${esc(a.id)}">
+        <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(a.name)}</span>
+        <div class="person-body">
+          <div class="person-name">${esc(a.name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${ROOM_LABEL[a.room] || a.room}</span></div>
+          <div class="person-act">${a.icon || ''} ${esc(a.bubble)} <span class="ago">· ${elapsed(a.since, now)}</span></div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+  $('people-count').textContent = count ? `${count}명 근무 중` : '';
+  $('people').innerHTML = html || '<div class="muted" style="padding:6px 8px">이 층에는 아무도 없습니다</div>';
 }
 
 export function renderLog() {
   const items = store.logOfFloor(store.selectedFloorId);
   $('log-count').textContent = items.length ? `${items.length}건` : '';
-  $('log').innerHTML = items.length ? items.map((e) => `
-    <div class="log-item ${e.sessionId === store.selectedSessionId ? '' : 'dim'}" data-session="${esc(e.sessionId)}">
-      <span class="log-time">${clock(e.t)}</span>
-      <span><span class="log-who">${esc(e.agentName)}</span>${e.icon || ''} <span class="log-text">${esc(e.text)}</span></span>
-    </div>`).join('') : '<div class="muted" style="padding:6px 4px">아직 활동이 없습니다</div>';
+  let prevKey = null;
+  $('log').innerHTML = items.length ? items.map((e) => {
+    const s = store.sessions.get(e.sessionId);
+    const color = s ? store.colorOf(s, null) : '#b3b9c2';
+    const key = `${e.sessionId}/${e.agentId}`;
+    const same = key === prevKey;
+    prevKey = key;
+    const d = new Date(e.t);
+    return `
+    <div class="log-item ${e.sessionId === store.selectedSessionId ? '' : 'dim'} ${same ? 'cont' : ''}" data-session="${esc(e.sessionId)}" style="border-left-color:${color}">
+      <span class="log-time" title="${d.toLocaleString()}">${same ? '' : clock(e.t)}</span>
+      <span>${same ? '' : `<span class="log-who">${esc(e.agentName)}</span>`}${e.icon || ''} <span class="log-text">${esc(e.text)}</span></span>
+    </div>`;
+  }).join('') : '<div class="muted" style="padding:6px 4px">아직 활동이 없습니다</div>';
 }
 
 export function renderLegend() {

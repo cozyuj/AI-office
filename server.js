@@ -114,7 +114,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && pathname === '/events') return handleEvents(req, res);
   if (req.method === 'GET' && pathname === '/api/state') {
     res.writeHead(200, { 'Content-Type': MIME['.json'] });
-    return res.end(JSON.stringify(state.snapshot()));
+    return res.end(JSON.stringify({ ...state.snapshot(), installDir: __dirname }));
   }
   if (req.method === 'GET') return serveStatic(req, res);
   res.writeHead(405).end();

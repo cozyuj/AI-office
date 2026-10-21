@@ -160,4 +160,13 @@ people.addEventListener('mouseleave', () => { people._hoverRow = null; tooltip.h
 const customizer = createCustomizer(store, avatars);
 document.getElementById('customize-btn').onclick = () => customizer.open();
 
+// ---------- 빈 상태: 설치 명령 복사 ----------
+const copyBtn = document.getElementById('copy-cmd');
+if (copyBtn) copyBtn.onclick = async () => {
+  const text = document.getElementById('install-cmd').textContent;
+  try { await navigator.clipboard.writeText(text); copyBtn.textContent = '복사됨'; } catch { copyBtn.textContent = '복사 실패'; }
+  setTimeout(() => { copyBtn.textContent = '복사'; }, 1500);
+};
+fetch('/api/state').then((r) => r.json()).then((st) => { if (st.installDir) document.getElementById('install-dir').textContent = st.installDir; }).catch(() => {});
+
 window.aiOffice = { store, scene, actors, tooltip, avatars, customizer }; // 디버그용
