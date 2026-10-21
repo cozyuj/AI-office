@@ -84,6 +84,7 @@ async function handleHook(req, res) {
 
 function handleEvents(req, res) {
   res.writeHead(200, {
+    'Access-Control-Allow-Origin': '*',
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
@@ -113,7 +114,8 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && pathname === '/hook') return handleHook(req, res);
   if (req.method === 'GET' && pathname === '/events') return handleEvents(req, res);
   if (req.method === 'GET' && pathname === '/api/state') {
-    res.writeHead(200, { 'Content-Type': MIME['.json'] });
+    // 데스크탑 앱(tauri://) 로더가 서버 준비 여부를 묻는다 — 로컬 전용 서버라 전체 허용
+    res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
     return res.end(JSON.stringify({ ...state.snapshot(), installDir: __dirname }));
   }
   if (req.method === 'GET') return serveStatic(req, res);

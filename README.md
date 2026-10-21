@@ -70,6 +70,17 @@ DEMO_SPEED=3 npm run demo
 
 서브에이전트는 파란 안전모를 쓰고, Agent 도구에 적은 description 이 이름이 된다.
 
+## 맥 메뉴바 앱 (Tauri)
+
+웹 버전을 그대로 창에 담은 상주 앱입니다. 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 메뉴바 아이콘에서 열기/숨기기/항상 위/종료를 합니다. 답을 기다리는 세션이 있으면 메뉴바에 `🙋 n` 이 뜹니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다.
+
+```bash
+npm run app:dev      # 개발 실행 (Rust 툴체인 + Xcode CLT 필요, 첫 빌드 수 분)
+npm run app:build    # app/src-tauri/target/release/bundle/ 에 .app / .dmg
+```
+
+앱은 `~/.ai-office/app/server.js`(npx 설치본)를 우선 쓰고, 없으면 레포의 `server.js` 를 씁니다. `node` 는 PATH 또는 `/opt/homebrew/bin`, `/usr/local/bin` 에서 찾습니다.
+
 ## 구조
 
 ```
