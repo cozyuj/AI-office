@@ -10,17 +10,21 @@ import { initTextTips } from './texttip.js';
 import { createAvatarStore } from './avatarStore.js';
 import { createCustomizer } from './customize.js';
 import { createOverview } from './overview.js';
+import { createFloorStyleBook } from './scene/floorStyle.js';
+import { createFloorStylePicker } from './floorStylePicker.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
 const avatars = createAvatarStore();
 const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
+const floorStyles = createFloorStyleBook(); // 층별 인테리어 프리셋 (FE-34): 직접 고른 것 > id 해시 자동 배정
+const styleOfFloor = (f) => floorStyles.resolve(f, store.floorsByNo());
 
 // ---------- 전체 보기 (건물 단면) ----------
 const stage = document.getElementById('stage');
 const overviewBtn = document.getElementById('overview-btn');
-const overview = createOverview(document.getElementById('overview'), store, { onPick: () => setOverview(false) });
+const overview = createOverview(document.getElementById('overview'), store, { onPick: () => setOverview(false), styleOf: styleOfFloor });
 function setOverview(v) {
   if (v) overview.show(); else overview.hide();
   stage.classList.toggle('overview', overview.visible);
@@ -35,6 +39,12 @@ function syncOverviewBtn() {
 overviewBtn.onclick = () => setOverview(!overview.visible);
 store.subscribe(syncOverviewBtn);
 syncOverviewBtn();
+
+// ---------- 🎨 층 인테리어 ----------
+function applyFloorStyle() { scene.setFloorStyle(styleOfFloor(store.selectedFloor())); }
+store.subscribe((kind) => { if (kind === 'select' || kind === 'snapshot' || kind === 'update' || kind === 'remove') applyFloorStyle(); });
+const floorStylePicker = createFloorStylePicker(store, floorStyles, { onChange: () => { applyFloorStyle(); dirty = true; } });
+applyFloorStyle();
 
 // ---------- ⚙️ 설정 팝오버 ----------
 const settingsBtn = document.getElementById('settings-btn');
@@ -376,4 +386,4 @@ store.subscribe((kind) => { if (kind === 'option') applyDaylight(); });
 setInterval(applyDaylight, 60 * 1000); // 자동 모드: 1분마다 실제 시각으로 다시 판단 (시간대가 바뀔 때만 창문을 다시 그린다)
 applyDaylight();
 
-window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, stats, applyTheme, chime, chimeLow }; // 디버그용
+window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, stats, applyTheme, chime, chimeLow, floorStyles, floorStylePicker, applyFloorStyle }; // 디버그용

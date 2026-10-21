@@ -1,22 +1,24 @@
 // 전체 보기: 층들을 건물처럼 세로로 쌓아 한눈에. 층마다 미니 사무실(정적 레이어 캐시) + 캐릭터 점 + 세션 수·상태.
 import { GRID, SLOTS, project, worldBounds } from './scene/map.js';
-import { drawFloor, drawEntities, roundRect } from './scene/render.js';
+import { drawFloor, drawEntities, roundRect, withFloorStyle } from './scene/render.js';
+import { palette, DEFAULT_PRESET } from './scene/floorStyle.js';
 
 const MINI_SCALE = 0.5;     // 미니 사무실 캐시 해상도 (월드 1px → 0.5px)
 const STRIDE = 0.8;         // 층 간격 (이미지 높이 대비) — 살짝 겹쳐 건물처럼
 const STATUS_COLOR = { waiting: '#e5484d', working: '#35b36b', thinking: '#e2a21a', idle: '#b3b9c2' };
 const STATUS_LABEL = { waiting: '답 기다림', working: '작업 중', thinking: '생각 중', idle: '조용함' };
 
-export function createOverview(canvas, store, { onPick } = {}) {
+export function createOverview(canvas, store, { onPick, styleOf } = {}) {
   const ctx = canvas.getContext('2d');
   let visible = false;
-  let mini = null;            // { canvas, x0, y0, w, h } 월드 좌표계 기준
+  let mini = null;            // { canvas, x0, y0, w, h } 월드 좌표계 기준 — 가장 최근에 쓴 것 (크기 계산용)
+  const minis = new Map();    // presetId → mini. 층마다 인테리어 프리셋(FE-34)이 달라 프리셋별로 한 장씩 캐시한다
   let layout = [];            // [{ floor, ox, oy, w, h, s }] 그린 순서(아래층 → 위층)
   let hover = null;           // floor id
   let theme = 'light';
 
   /** 바닥 + 가구·벽을 한 장에 그려 둔다 (캐릭터 없음). 테마가 바뀌면 invalidate() */
-  function buildMini() {
+  function buildMini(presetId) {
     const b = worldBounds();
     const pad = 6;
     const x0 = b.x0 - pad, y0 = b.y0 - pad, w = b.x1 - b.x0 + pad * 2, h = b.y1 - b.y0 + pad * 2;
@@ -24,11 +26,15 @@ export function createOverview(canvas, store, { onPick } = {}) {
     c.width = Math.ceil(w * MINI_SCALE); c.height = Math.ceil(h * MINI_SCALE);
     const g = c.getContext('2d');
     g.scale(MINI_SCALE, MINI_SCALE); g.translate(-x0, -y0);
-    drawFloor(g, MINI_SCALE);
-    drawEntities(g, 0, [], MINI_SCALE);
-    mini = { canvas: c, x0, y0, w, h };
+    withFloorStyle(presetId, () => { drawFloor(g, MINI_SCALE); drawEntities(g, 0, [], MINI_SCALE); });
+    const m = { canvas: c, x0, y0, w, h, preset: presetId };
+    minis.set(presetId, m);
+    return m;
   }
-  function invalidate() { mini = null; }
+  const presetOf = (f) => (styleOf ? styleOf(f) : DEFAULT_PRESET) || DEFAULT_PRESET;
+  /** 프리셋별 미니 사무실. 없으면 그 자리에서 한 장 그린다 (프리셋 수만큼만 생긴다) */
+  function miniFor(presetId) { return minis.get(presetId) || buildMini(presetId); }
+  function invalidate() { mini = null; minis.clear(); }
 
   function resize() {
     const dpr = window.devicePixelRatio || 1;
@@ -51,7 +57,6 @@ export function createOverview(canvas, store, { onPick } = {}) {
 
   function frame(now) {
     if (!visible) return;
-    if (!mini) buildMini();
     const { width, height } = resize();
     const dark = theme === 'dark';
     ctx.fillStyle = dark ? '#1e2229' : '#ffffff';
@@ -61,6 +66,7 @@ export function createOverview(canvas, store, { onPick } = {}) {
     const n = floors.length;
     layout = [];
     if (!n) return;
+    mini = miniFor(presetOf(floors[0]));
     const margin = 28;
     const sW = (width - margin * 2) / mini.w;
     const sH = (height - margin * 2) / (mini.h * (1 + STRIDE * (n - 1)));
@@ -82,8 +88,10 @@ export function createOverview(canvas, store, { onPick } = {}) {
       ctx.fillStyle = dark ? '#343b47' : '#cfd4dc'; ctx.fill();
       tracePoly(poly, ox, oy, s, 0);
       ctx.fillStyle = dark ? '#2a3039' : '#e9ecf0'; ctx.fill();
-      // 미니 사무실
-      ctx.drawImage(mini.canvas, ox, oy, w, h);
+      // 미니 사무실 (층의 인테리어 프리셋으로)
+      const preset = presetOf(f);
+      ctx.drawImage(miniFor(preset).canvas, ox, oy, w, h);
+      const pal = palette(preset, theme);
       // 캐릭터 점
       const roomCount = {};
       for (const { agent, session } of store.agentsOfFloor(f.id)) {
@@ -124,8 +132,9 @@ export function createOverview(canvas, store, { onPick } = {}) {
       ctx.fillStyle = dark ? 'rgba(30,34,41,0.92)' : 'rgba(255,255,255,0.92)'; ctx.fill();
       ctx.lineWidth = 1; ctx.strokeStyle = selected ? '#e8683a' : (dark ? '#2c3139' : '#e3e6ea'); ctx.stroke();
       roundRect(ctx, lx + 8, ly + 9, 28, 22, 6);
-      ctx.fillStyle = selected ? '#e8683a' : (dark ? '#343b47' : '#eef0f3'); ctx.fill();
-      ctx.fillStyle = selected ? '#fff' : (dark ? '#e6e8ec' : '#1f2328');
+      ctx.fillStyle = selected ? '#e8683a' : (dark ? '#343b47' : pal.rooms.lounge.alt); ctx.fill();
+      if (!selected) { ctx.lineWidth = 1; ctx.strokeStyle = pal.accent.sofa; ctx.stroke(); } // 프리셋 강조색 테두리
+      ctx.fillStyle = selected ? '#fff' : (dark ? '#e6e8ec' : pal.accent.text);
       ctx.font = '700 11px D2Coding, NanumSquare, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${f.no}F`, lx + 22, ly + 20);
       ctx.textAlign = 'left';
