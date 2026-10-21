@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createState, SUBAGENT_LEAVE_MS, SESSION_LEAVE_MS, SESSION_TTL_MS } = require('../lib/state');
+const { createState, SUBAGENT_LEAVE_MS, SESSION_LEAVE_MS, SESSION_TTL_MS, AWAY_MS, GONE_CHECK_MS, GONE_MS, STAT_INTERVAL_MS } = require('../lib/state');
 const { describeTool } = require('../lib/normalize');
 
 const CWD = '/Users/me/proj/nccx';
@@ -10,7 +10,8 @@ const pre = (tool_name, tool_input, extra = {}) => base({ hook_event_name: 'PreT
 const post = (tool_name, extra = {}) => base({ hook_event_name: 'PostToolUse', tool_name, tool_input: {}, tool_response: 'x'.repeat(5000), ...extra });
 
 function fresh() {
-  const st = createState({ me: 'tester' });
+  // transcript 는 항상 살아 있는 것으로 본다 (퇴근 감지 테스트는 statFile 을 따로 준다)
+  const st = createState({ me: 'tester', statFile: () => ({ mtimeMs: Number.MAX_SAFE_INTEGER }) });
   const updates = [];
   const removes = [];
   st.on('update', (u) => updates.push(u));
@@ -170,10 +171,12 @@ test('SessionEnd: 모두 퇴근, 10초 뒤 세션 제거, 빈 층도 제거', ()
   assert.equal(st.snapshot().floors.length, 0);
 });
 
-test('2시간 무활동 세션은 sweep 에서 제거', () => {
+test('2시간 무활동 세션은 퇴근 처리 후 10초 뒤 제거', () => {
   const { st } = fresh();
   st.apply(base({ hook_event_name: 'SessionStart', source: 'startup' }), 1000);
   st.sweep(1000 + SESSION_TTL_MS);
+  assert.equal(st.get('s1').status, 'ended');
+  st.sweep(1000 + SESSION_TTL_MS + SESSION_LEAVE_MS);
   assert.equal(st.get('s1'), undefined);
 });
 
@@ -200,4 +203,44 @@ test('UserPromptSubmit: <task-notification> 같은 시스템 메시지는 제목
   assert.match(updates[0].log.text, /알림 수신 \(task-notification\)/);
   st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '진짜 요청' }), 1100);
   assert.equal(s().title, '진짜 요청');
+});
+
+test('30분 무활동이면 자리 비움(away), 새 이벤트가 오면 복귀', () => {
+  const { st, main, s } = fresh();
+  st.apply(base({ hook_event_name: 'Stop', last_assistant_message: 'done' }), 1000);
+  st.sweep(1000 + AWAY_MS);
+  assert.equal(s().status, 'away');
+  assert.equal(main().bubble, '자리 비움');
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '다시 시작' }), 1000 + AWAY_MS + 5);
+  assert.equal(s().status, 'thinking');
+});
+
+test('transcript 가 사라졌으면 10분 뒤 퇴근 처리, 갱신 중이면 유지', () => {
+  let exists = true;
+  let mtime = 0;
+  const st = createState({ statFile: () => (exists ? { mtimeMs: mtime } : null) });
+  st.apply(base({ hook_event_name: 'SessionStart', source: 'startup', transcript_path: '/t/s1.jsonl' }), 1000);
+  mtime = 1500; // 훅 이후에도 transcript 가 갱신됨 → 살아 있음
+  st.sweep(1000 + GONE_CHECK_MS);
+  assert.equal(st.get('s1').status, 'idle');
+  exists = false;
+  st.sweep(1000 + GONE_CHECK_MS + STAT_INTERVAL_MS);
+  assert.equal(st.get('s1').status, 'ended');
+  assert.equal(st.get('s1').agents.main.room, 'elevator');
+  st.sweep(1000 + GONE_CHECK_MS + STAT_INTERVAL_MS + SESSION_LEAVE_MS);
+  assert.equal(st.get('s1'), undefined);
+});
+
+test('transcript 가 마지막 훅 이후 갱신되지 않고 60분 지나면 퇴근, stat 은 1분에 한 번만', () => {
+  let calls = 0;
+  const st = createState({ statFile: () => { calls++; return { mtimeMs: 900 }; } });
+  st.apply(base({ hook_event_name: 'SessionStart', source: 'startup', transcript_path: '/t/s1.jsonl' }), 1000);
+  st.sweep(1000 + GONE_CHECK_MS);
+  st.sweep(1000 + GONE_CHECK_MS + 1000);
+  assert.equal(calls, 1, 'stat 은 1분 간격');
+  assert.equal(st.get('s1').status, 'idle');
+  st.sweep(1000 + AWAY_MS);
+  assert.equal(st.get('s1').status, 'away');
+  st.sweep(1000 + GONE_MS);
+  assert.equal(st.get('s1').status, 'ended');
 });

@@ -122,6 +122,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .tool:hover { background: #f6f7f9; }
 .tool.on { background: var(--accent-soft); border-color: #f2b79a; color: var(--accent); font-weight: 600; }
 
+/* ---------- 자리 비움 ---------- */
+.dot.away { background: transparent; border: 1.5px dashed var(--gray); }
+.session.away { opacity: .55; }
 /* ---------- 대기 배지 ---------- */
 .badge-wait { font-size: 10px; font-weight: 700; color: #fff; background: var(--red); padding: 1px 7px; border-radius: 999px; flex: none; animation: pulse 1.2s infinite; }
 .tool.off { color: var(--muted); text-decoration: line-through; }
