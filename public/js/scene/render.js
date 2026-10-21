@@ -13,7 +13,19 @@ export function drawFloor(ctx) {
   for (let y = GRID.y0; y <= GRID.y1; y++) {
     for (let x = GRID.x0; x <= GRID.x1; x++) {
       const r = roomAt(x, y) || CORRIDOR;
-      tile(ctx, x, y, r.floor, r.trim);
+      let fill = r.floor;
+      if (r.pattern === 'checker' && (x + y) % 2) fill = r.alt || r.floor;
+      tile(ctx, x, y, fill, r.trim);
+      if (r.pattern === 'wood') {
+        ctx.strokeStyle = 'rgba(120,85,40,0.16)'; ctx.lineWidth = 1;
+        for (const f of [0.33, 0.66]) {
+          const a = project(x + f, y), b = project(x + f, y + 1);
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+        const off = (x * 7 + y * 3) % 2 ? 0.5 : 0;
+        const c = project(x, y + off), d = project(x + 1, y + off);
+        ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+      }
     }
   }
   for (const d of DOORS) drawDoorMat(ctx, d);
@@ -57,7 +69,7 @@ export function compare(A, B) {
 
 // 가구 높이 (AABB z1)
 const HEIGHT = {
-  shelf: 2.05, desk: 1.2, desk2: 1.2, chair: 0.8, table: 0.75, coffeetable: 0.45, sofa: 0.95, armchair: 0.9,
+  shelf: 2.05, desk: 1.4, desk2: 1.4, chair: 1.0, table: 0.78, roundtable: 0.78, coffeetable: 0.45, sofa: 0.95, armchair: 0.9,
   counter: 1.55, vending: 1.85, rack: 2.25, ac: 1.95, wallscreen: 2.05, globe: 1.35, whiteboard: 2.05,
   plant: 1.35, cabinet: 1.05, reception: 1.15, sign: 1.45, bench: 0.5, elevator: 2.35,
 };
@@ -161,7 +173,7 @@ export function sortEntities(actors = []) {
 // ---------- 방 이름표 (화면 공간) ----------
 export function drawLabels(ctx, camera) {
   ctx.save();
-  ctx.font = '600 11px -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif';
+  ctx.font = "800 10px 'D2Coding','NanumSquare',-apple-system,sans-serif";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const r of ROOMS) {

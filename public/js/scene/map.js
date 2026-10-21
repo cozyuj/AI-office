@@ -8,17 +8,17 @@ export const ZH = 26;  // 높이 1 단위
 export const GRID = { x0: 1, y0: 1, x1: 26, y1: 21 }; // inclusive
 
 export const ROOMS = [
-  { id: 'library',  label: '자료실',     x0: 1,  y0: 1,  x1: 8,  y1: 7,  floor: '#ece6d6', trim: '#d8d0ba' },
-  { id: 'dev',      label: '개발실',     x0: 10, y0: 1,  x1: 17, y1: 7,  floor: '#e4e9f3', trim: '#c9d2e4' },
-  { id: 'research', label: '정보검색실', x0: 19, y0: 1,  x1: 26, y1: 7,  floor: '#e0eef0', trim: '#c3dbdf' },
-  { id: 'meeting',  label: '회의실',     x0: 1,  y0: 10, x1: 8,  y1: 15, floor: '#f0e6e0', trim: '#dcc9bf' },
-  { id: 'lounge',   label: '휴게실',     x0: 10, y0: 10, x1: 17, y1: 15, floor: '#e6f0e2', trim: '#c8dcc1' },
-  { id: 'server',   label: '서버실',     x0: 19, y0: 10, x1: 26, y1: 15, floor: '#dcdfe6', trim: '#bfc4cf' },
-  { id: 'mydesk',   label: '내 자리',    x0: 1,  y0: 18, x1: 8,  y1: 21, floor: '#f3ecd9', trim: '#e0d5b8' },
-  { id: 'lobby',    label: '로비',       x0: 10, y0: 18, x1: 17, y1: 21, floor: '#ebedf0', trim: '#d2d6dc' },
-  { id: 'elevator', label: '엘리베이터', x0: 19, y0: 18, x1: 26, y1: 21, floor: '#e3e5ea', trim: '#c7cbd3' },
+  { id: 'library',  label: '자료실',     x0: 1,  y0: 1,  x1: 8,  y1: 7,  floor: '#ead6b4', trim: null,      pattern: 'wood' },
+  { id: 'dev',      label: '개발실',     x0: 10, y0: 1,  x1: 17, y1: 7,  floor: '#f7f8fa', trim: '#e6e9ee', pattern: 'grid' },
+  { id: 'research', label: '정보검색실', x0: 19, y0: 1,  x1: 26, y1: 7,  floor: '#eef5f3', trim: '#dbe7e2', pattern: 'grid' },
+  { id: 'meeting',  label: '회의실',     x0: 1,  y0: 10, x1: 8,  y1: 15, floor: '#f5f3ef', trim: '#e6e2da', pattern: 'grid' },
+  { id: 'lounge',   label: '휴게실',     x0: 10, y0: 10, x1: 17, y1: 15, floor: '#f9ecdf', trim: '#efdcc8', pattern: 'checker', alt: '#f2e0cf' },
+  { id: 'server',   label: '서버실',     x0: 19, y0: 10, x1: 26, y1: 15, floor: '#ddefe7', trim: '#c9e2d6', pattern: 'grid' },
+  { id: 'mydesk',   label: '내 자리',    x0: 1,  y0: 18, x1: 8,  y1: 21, floor: '#e1ebf7', trim: '#cfdcee', pattern: 'grid' },
+  { id: 'lobby',    label: '로비',       x0: 10, y0: 18, x1: 17, y1: 21, floor: '#f4f5f7', trim: '#e4e7ec', pattern: 'grid' },
+  { id: 'elevator', label: '엘리베이터', x0: 19, y0: 18, x1: 26, y1: 21, floor: '#eceef2', trim: '#dadde4', pattern: 'grid' },
 ];
-export const CORRIDOR = { floor: '#f4f5f7', trim: '#e2e4e8' };
+export const CORRIDOR = { floor: '#f5f6f8', trim: '#e6e8ec', pattern: 'grid' };
 
 // ---------- 가구 ----------
 // { type, x, y, w, d, solid(기본 true) } 좌표는 타일 단위. 캐릭터는 solid 타일을 지나지 못한다.
@@ -28,7 +28,7 @@ const add = (type, x, y, extra = {}) => F.push({ type, x, y, w: 1, d: 1, ...extr
 // 자료실
 for (let x = 1; x <= 8; x++) add('shelf', x, 1, { seed: x });
 for (let x = 2; x <= 7; x++) add('shelf', x, 4, { seed: x + 10 });
-add('table', 3, 6, { w: 2, d: 1 });
+add('roundtable', 3, 6, { w: 2, d: 1 });
 add('chair', 3, 7, { solid: false, face: 'n' });
 add('chair', 4, 7, { solid: false, face: 'n' });
 add('plant', 8, 7);
@@ -93,16 +93,16 @@ export const FURNITURE = F;
 // v: 타일 (x, y..y+len-1) 의 왼변. (x-1, y) ↔ (x, y) 이동을 막는다.
 // doors: 막지 않는 offset 목록. h 는 높이.
 const W = [];
-W.push({ dir: 'h', x: 1, y: 1, len: 26, doors: [], h: 2.4, outer: true });
-W.push({ dir: 'v', x: 1, y: 1, len: 21, doors: [], h: 2.4, outer: true });
+W.push({ dir: 'h', x: 1, y: 1, len: 26, doors: [], h: 1.6, outer: true });
+W.push({ dir: 'v', x: 1, y: 1, len: 21, doors: [], h: 1.6, outer: true });
 for (const y of [8, 10, 16, 18]) {
-  for (const x of [1, 10, 19]) W.push({ dir: 'h', x, y, len: 8, doors: [3, 4], h: 0.9 });
+  for (const x of [1, 10, 19]) W.push({ dir: 'h', x, y, len: 8, doors: [3, 4], h: 0.6 });
 }
 // 세로 칸막이: 방의 서쪽(x=10, 19)과 동쪽(x=9, 18). 방은 복도 쪽 가로 벽의 문으로만 드나든다.
 for (const x of [9, 10, 18, 19]) {
-  W.push({ dir: 'v', x, y: 1, len: 7, doors: [], h: 0.9 });
-  W.push({ dir: 'v', x, y: 10, len: 6, doors: [], h: 0.9 });
-  W.push({ dir: 'v', x, y: 18, len: 4, doors: [], h: 0.9 });
+  W.push({ dir: 'v', x, y: 1, len: 7, doors: [], h: 0.6 });
+  W.push({ dir: 'v', x, y: 10, len: 6, doors: [], h: 0.6 });
+  W.push({ dir: 'v', x, y: 18, len: 4, doors: [], h: 0.6 });
 }
 export const WALLS = W;
 
@@ -130,7 +130,7 @@ export const SLOTS = {
   lobby:    [[11, 20], [13, 20], [15, 20], [12, 21], [14, 21]],
   elevator: [[24, 19], [25, 19], [23, 19], [26, 19], [24, 20], [25, 20], [22, 19]],
 };
-export const USER_SEAT = { x: 4, y: 20 };
+export const USER_SEAT = { x: 5, y: 20 };  // 의자(4,20) 옆에 서 있어 캐릭터가 가려지지 않게
 export const SPAWN = { x: 24, y: 19 };   // 서브에이전트 등장/퇴장 지점 (엘리베이터 앞)
 
 // ---------- 통행 ----------

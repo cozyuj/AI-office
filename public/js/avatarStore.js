@@ -2,7 +2,7 @@
 // 키: me | claude | sub | floor:<floorId>
 import { DEFAULTS, normalizeAvatar } from './scene/avatar.js';
 
-const KEY = 'aiOffice.avatars.v1';
+const KEY = 'aiOffice.avatars.v2';
 
 function load() {
   try {
@@ -43,5 +43,5 @@ export function createAvatarStore() {
     return get('claude');
   }
 
-  return { get, has, set, reset, forActor, subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); } };
+  return { get, has, set, reset, forActor, baseFor, subscribe: (fn) => { listeners.add(fn); return () => listeners.delete(fn); } };
 }

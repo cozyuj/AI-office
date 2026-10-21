@@ -1,3 +1,5 @@
+@import url('https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@master/nanumsquare.css');
+@font-face { font-family: 'D2Coding'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff') format('woff'); font-weight: normal; font-display: swap; unicode-range: U+0000-00FF, U+2000-206F, U+2190-21FF; }
 :root {
   --bg: #eef0f3;
   --panel: #ffffff;
@@ -14,13 +16,13 @@
   --gray: #b3b9c2;
   --radius: 12px;
   --shadow: 0 1px 2px rgba(20, 24, 30, .05), 0 4px 14px rgba(20, 24, 30, .06);
-  font-family: -apple-system, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  font-family: 'D2Coding', 'NanumSquare', -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font-size: 13px; }
 button { font: inherit; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #f1f3f5; padding: 1px 5px; border-radius: 4px; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.mono { font-family: 'D2Coding', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 .muted { color: var(--muted); font-weight: 400; }
 
 #app { display: grid; grid-template-columns: 250px 1fr 300px; gap: 10px; height: 100%; padding: 10px; }
@@ -193,3 +195,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
   #left { display: none; }
 }
 .card.grow .list { flex: 1; min-height: 0; }
+
+/* ---------- 외형: 직접 색 고르기 ---------- */
+.cz-swatch.custom { position: relative; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #8a919b; font-size: 14px; border: 2px dashed #cfd4da; box-shadow: none; }
+.cz-swatch.custom.on { border-style: solid; border-color: #fff; box-shadow: 0 0 0 2px var(--accent); color: #fff; }
+.cz-swatch.custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { font-weight: 800; }
