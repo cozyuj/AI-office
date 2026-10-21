@@ -13,12 +13,20 @@ const EVENTS = [
 ];
 
 const SETTINGS = process.env.CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
-const COMMAND = path.join(__dirname, '..', 'hooks', 'emit.sh');
+const argAppDir = (() => { const i = process.argv.indexOf('--app-dir'); return i >= 0 ? process.argv[i + 1] : null; })();
+const APP_DIR = path.resolve(argAppDir || path.join(__dirname, '..'));
 const remove = process.argv.includes('--remove');
 
+// Windows/macOS/Linux 공통: "<node 절대경로>" "<app>/hooks/emit.js"  (공백·역슬래시 경로 대비 따옴표)
+const q = (s) => `"${s}"`;
+const COMMAND = buildCommand(process.execPath, path.join(APP_DIR, 'hooks', 'emit.js'));
+function buildCommand(nodePath, emitPath) { return `${q(nodePath)} ${q(emitPath)}`; }
+
 function isOurs(h) {
-  return h && h.type === 'command' && typeof h.command === 'string' && h.command.endsWith(path.join('hooks', 'emit.sh'));
+  return h && h.type === 'command' && typeof h.command === 'string' && /hooks[\\/]emit\.(js|sh)"?\s*$/.test(h.command);
 }
+
+if (require.main !== module) { module.exports = { buildCommand, isOurs }; return; }
 
 let settings = {};
 if (fs.existsSync(SETTINGS)) {
@@ -40,7 +48,10 @@ for (const ev of EVENTS) {
     if (kept.length !== groups.length || has) removed++;
     if (kept.length) settings.hooks[ev] = kept; else delete settings.hooks[ev];
   } else if (has) {
-    skipped++;
+    // 이미 있지만 명령이 다르면(emit.sh → emit.js, 경로 변경) 교체
+    let replaced = false;
+    for (const g of groups) for (const h of g.hooks || []) if (isOurs(h) && h.command !== COMMAND) { h.command = COMMAND; replaced = true; }
+    if (replaced) added++; else skipped++;
   } else {
     groups.push({ matcher: '', hooks: [{ type: 'command', command: COMMAND }] });
     settings.hooks[ev] = groups;
@@ -55,4 +66,5 @@ console.log(remove
   ? `removed from ${removed} event(s) → ${SETTINGS}`
   : `added ${added}, skipped ${skipped} (already present) → ${SETTINGS}`);
 console.log(`hook command: ${COMMAND}`);
+module.exports = { buildCommand, isOurs };
 if (!remove) console.log('새 Claude Code 세션부터 적용됩니다. 서버: npm start');

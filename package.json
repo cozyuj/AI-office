@@ -9,9 +9,27 @@
     "demo": "node scripts/demo.js",
     "install-hooks": "node scripts/install-hooks.js",
     "uninstall-hooks": "node scripts/install-hooks.js --remove",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "cli": "node bin/ai-office.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "bin": {
+    "ai-office": "bin/ai-office.js"
+  },
+  "files": [
+    "bin",
+    "server.js",
+    "lib",
+    "hooks",
+    "public",
+    "scripts",
+    "README.md",
+    "docs/ARCHITECTURE.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cozyuj/AI-office.git"
   }
 }
