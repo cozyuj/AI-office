@@ -45,7 +45,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .floor-name { font-weight: 600; font-size: 13px; }
 .floor-meta { font-size: 11px; color: var(--muted); }
 .floor-text { flex: 1; min-width: 0; }
-.floor-style { border: 0; background: transparent; cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 4px; border-radius: 6px; opacity: .6; }
+.floor-style { border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 5px; border-radius: 6px; opacity: .95; }
 .floor-style:hover { opacity: 1; background: rgba(0, 0, 0, .06); }
 /* 🎨 층 인테리어 팝오버 (FE-34) */
 .style-pop { position: fixed; z-index: 40; width: 236px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(20,24,30,.16); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
