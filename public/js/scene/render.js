@@ -3,13 +3,13 @@
 // 깊이 정렬: 각 엔티티는 3D AABB {x0,y0,x1,y1,z0,z1} 를 가진다. 화면에서 겹치는 두 상자 A, B 에 대해
 //   A.x1 <= B.x0  또는  A.y1 <= B.y0  또는  A.z1 <= B.z0  이면 A 가 뒤(먼저 그림).
 // 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
-import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, project, roomAt } from './map.js';
+import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, project, roomAt, worldBounds } from './map.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
 
 const EPS = 1e-3;
 
 // ---------- 바닥 ----------
-export function drawFloor(ctx) {
+export function drawFloorRaw(ctx) {
   for (let y = GRID.y0; y <= GRID.y1; y++) {
     for (let x = GRID.x0; x <= GRID.x1; x++) {
       const r = roomAt(x, y) || CORRIDOR;
@@ -35,6 +35,52 @@ export function drawFloor(ctx) {
     ctx.strokeStyle = 'rgba(0,0,0,0.10)';
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.stroke();
   }
+}
+
+let cacheEnabled = true;
+export function setCacheEnabled(v) { cacheEnabled = v; }
+const FLOOR_MAX_SCALE = 2;      // 바닥 캐시 해상도 상한 (메모리)
+const SPRITE_MAX_SCALE = 4;
+let floorCache = null;           // { scale, canvas, x0, y0, w, h }
+
+function makeLayer(wpx, hpx) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil(wpx)); c.height = Math.max(1, Math.ceil(hpx));
+  return c;
+}
+
+/** 바닥: scale(zoom×dpr) 별로 한 번만 그려 두고 이미지로 찍는다 */
+export function drawFloor(ctx, scale = 1) {
+  if (!cacheEnabled || typeof document === 'undefined') { drawFloorRaw(ctx); return; }
+  const sc = Math.min(FLOOR_MAX_SCALE, Math.max(0.25, scale));
+  if (!floorCache || Math.abs(floorCache.scale - sc) > sc * 0.02) {
+    const b = worldBounds();
+    const pad = 8;
+    const x0 = b.x0 - pad, y0 = b.y0 - pad, w = b.x1 - b.x0 + pad * 2, h = b.y1 - b.y0 + pad * 2;
+    const canvas = makeLayer(w * sc, h * sc);
+    const c = canvas.getContext('2d');
+    c.scale(sc, sc); c.translate(-x0, -y0);
+    drawFloorRaw(c);
+    floorCache = { scale: sc, canvas, x0, y0, w, h };
+  }
+  ctx.drawImage(floorCache.canvas, floorCache.x0, floorCache.y0, floorCache.w, floorCache.h);
+}
+
+/** 정적 엔티티 하나를 스프라이트로 캐시해 찍는다. dynamic(깜빡임) 은 매 프레임 직접 그린다 */
+function drawCached(ctx, e, now, scale) {
+  if (!cacheEnabled || e.dynamic || typeof document === 'undefined') { e.draw(ctx, now); return; }
+  const sc = Math.min(SPRITE_MAX_SCALE, Math.max(0.25, scale));
+  let sp = e._sprite;
+  if (!sp || Math.abs(sp.scale - sc) > sc * 0.02) {
+    const pad = e.pad || 24;
+    const x0 = e.sb.x0 - pad, y0 = e.sb.y0 - pad, w = e.sb.x1 - e.sb.x0 + pad * 2, h = e.sb.y1 - e.sb.y0 + pad * 2;
+    const canvas = makeLayer(w * sc, h * sc);
+    const c = canvas.getContext('2d');
+    c.scale(sc, sc); c.translate(-x0, -y0);
+    e.draw(c, 0);
+    sp = e._sprite = { scale: sc, canvas, x0, y0, w, h };
+  }
+  ctx.drawImage(sp.canvas, sp.x0, sp.y0, sp.w, sp.h);
 }
 
 // ---------- 엔티티 ----------
@@ -81,7 +127,8 @@ for (const f of FURNITURE) {
   const inset = f.type === 'chair' || f.type === 'plant' || f.type === 'sign' || f.type === 'globe' ? 0.2 : 0.05;
   STATIC.push(makeEntity(
     { x0: f.x + inset, y0: f.y + inset, x1: f.x + w - inset, y1: f.y + d - inset, z0: 0, z1: HEIGHT[f.type] || 1 },
-    (ctx) => drawFurniture(ctx, f), { label: f.type },
+    (ctx) => drawFurniture(ctx, f),
+    { label: f.type, dynamic: f.type === 'rack' || f.type === 'elevator', pad: f.type === 'plant' ? 60 : f.type === 'wallscreen' || f.type === 'whiteboard' ? 36 : 28 },
   ));
 }
 for (const w of WALLS) {
@@ -115,11 +162,11 @@ export function setDebugDepth(v) { debugDepth = v; }
  * 가구·벽·캐릭터를 깊이순으로 그린다.
  * actors: makeEntity() 로 만든 엔티티 (매 프레임 새로 만들어도 된다)
  */
-export function drawEntities(ctx, now, actors = []) {
+export function drawEntities(ctx, now, actors = [], scale = 1) {
   const order = sortEntities(actors);
   for (let k = 0; k < order.length; k++) {
     const e = order[k];
-    e.draw(ctx, now);
+    if (e.isActor) e.draw(ctx, now); else drawCached(ctx, e, now, scale);
     if (debugDepth) {
       const p = project((e.box.x0 + e.box.x1) / 2, (e.box.y0 + e.box.y1) / 2, 0);
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.font = '9px monospace'; ctx.textAlign = 'center';

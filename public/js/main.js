@@ -16,6 +16,7 @@ const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
 
 // ---------- 렌더 스케줄 ----------
+const stats = { last: 0, avg: 0, frames: 0 }; // scene.frame 소요 ms (EMA)
 let dirty = true;
 store.subscribe((kind) => { dirty = true; if (kind === 'snapshot') setLabels({ me: store.me }); });
 
@@ -30,7 +31,11 @@ function frame(now) {
       cam.y += (p.y - cam.y) * 0.08;
     }
   }
+  const t0 = performance.now();
   scene.frame(now);
+  stats.last = performance.now() - t0;
+  stats.avg = stats.avg ? stats.avg * 0.95 + stats.last * 0.05 : stats.last;
+  stats.frames++;
   tooltip.frame(now);
   requestAnimationFrame(frame);
 }
@@ -170,4 +175,4 @@ if (copyBtn) copyBtn.onclick = async () => {
 };
 fetch('/api/state').then((r) => r.json()).then((st) => { if (st.installDir) document.getElementById('install-dir').textContent = st.installDir; }).catch(() => {});
 
-window.aiOffice = { store, scene, actors, tooltip, avatars, customizer }; // 디버그용
+window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, stats }; // 디버그용
