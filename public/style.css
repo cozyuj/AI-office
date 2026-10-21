@@ -55,9 +55,11 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .floor-sessions { border-top: 1px solid var(--line); background: #fff; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
 .follow { display: flex; align-items: center; gap: 6px; padding: 4px 6px 6px; font-size: 11px; color: var(--muted); cursor: pointer; }
 .follow input { margin: 0; }
-.session { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.session { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; cursor: pointer; min-width: 0; overflow: hidden; }
 .session:hover { background: #f3f5f7; }
 .session.selected { background: var(--accent-soft); outline: 1px solid #f5c9b3; }
+.session-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.session-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .session-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .session.untitled .session-title { color: var(--muted); }
 .session-time { font-size: 11px; color: var(--muted); flex: none; }
@@ -287,7 +289,7 @@ body.has-banner #app { padding-top: 44px; }
 #left { overflow: hidden; }
 
 /* ---------- 세션 브랜치 ---------- */
-.session .branch { flex: none; max-width: 90px; font-size: 10px; color: var(--muted); background: #f1f3f5; padding: 0 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'D2Coding', ui-monospace, monospace; }
+.session .branch { flex: 0 1 auto; min-width: 28px; max-width: 100%; font-size: 10px; color: var(--muted); background: #f1f3f5; padding: 0 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'D2Coding', ui-monospace, monospace; }
 :root[data-theme="dark"] .session .branch, :root:not([data-theme="light"]).auto-dark .session .branch { background: #2c3139; }
 
 /* ---------- 세션 이어가기 ---------- */
