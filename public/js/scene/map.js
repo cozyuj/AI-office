@@ -98,12 +98,25 @@ W.push({ dir: 'v', x: 1, y: 1, len: 21, doors: [], h: 2.4, outer: true });
 for (const y of [8, 10, 16, 18]) {
   for (const x of [1, 10, 19]) W.push({ dir: 'h', x, y, len: 8, doors: [3, 4], h: 0.9 });
 }
-for (const x of [10, 19]) {
+// 세로 칸막이: 방의 서쪽(x=10, 19)과 동쪽(x=9, 18). 방은 복도 쪽 가로 벽의 문으로만 드나든다.
+for (const x of [9, 10, 18, 19]) {
   W.push({ dir: 'v', x, y: 1, len: 7, doors: [], h: 0.9 });
   W.push({ dir: 'v', x, y: 10, len: 6, doors: [], h: 0.9 });
   W.push({ dir: 'v', x, y: 18, len: 4, doors: [], h: 0.9 });
 }
 export const WALLS = W;
+
+// 문: 가로 벽의 구멍. { x, y } 는 벽이 놓인 타일 (x, y) 의 윗변, 즉 (x, y-1) ↔ (x, y) 사이가 열려 있다.
+export const DOORS = [];
+for (const w of WALLS) {
+  if (w.dir !== 'h') continue;
+  for (const off of w.doors) DOORS.push({ x: w.x + off, y: w.y, first: !w.doors.includes(off - 1), last: !w.doors.includes(off + 1) });
+}
+export function isDoorEdge(x, y, nx, ny) {
+  if (x !== nx || Math.abs(y - ny) !== 1) return false;
+  const top = Math.max(y, ny);
+  return DOORS.some((d) => d.x === x && d.y === top);
+}
 
 // ---------- 서 있는 자리 ----------
 export const SLOTS = {

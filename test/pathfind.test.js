@@ -58,3 +58,48 @@ test('가구 타일이 목적지면 null, 같은 자리면 빈 배열', async ()
   const nw = nearestWalkable(rack.x, rack.y);
   assert.ok(Math.abs(nw[0] - rack.x) + Math.abs(nw[1] - rack.y) <= 2);
 });
+
+test('방 사이 이동은 반드시 문 타일을 지난다 (자료실→개발실, 자료실→회의실, 서버실→내 자리)', async () => {
+  const { DOORS, isDoorEdge, roomAt, edgeBlocked } = await mapP;
+  const { findPath } = await pfP;
+  const roomChanges = (from, p) => {
+    let prev = from, changes = [];
+    for (const t of p) {
+      const a = roomAt(prev[0], prev[1])?.id || 'corridor', b = roomAt(t[0], t[1])?.id || 'corridor';
+      if (a !== b) changes.push({ from: prev, to: t, a, b, door: isDoorEdge(prev[0], prev[1], t[0], t[1]) });
+      assert.ok(!edgeBlocked(prev[0], prev[1], t[0], t[1]), `벽 통과 ${prev}→${t}`);
+      prev = t;
+    }
+    return changes;
+  };
+  const cases = [[[2, 2], [13, 3]], [[2, 2], [2, 12]], [[20, 12], [6, 19]], [[21, 2], [24, 19]]];
+  for (const [from, to] of cases) {
+    const p = findPath(from[0], from[1], to[0], to[1]);
+    assert.ok(p, `${from}→${to} 경로 없음`);
+    const ch = roomChanges(from, p);
+    for (const c of ch) {
+      // 방 ↔ 복도 경계를 넘는 걸음은 모두 문이어야 한다
+      assert.ok(c.door, `${from}→${to}: ${c.a}→${c.b} 를 문 없이 넘음 (${c.from}→${c.to})`);
+    }
+    assert.ok(ch.length >= 2, `${from}→${to}: 방을 나갔다 들어와야 한다`);
+  }
+  assert.equal(DOORS.length, 24, '문 2타일 × 12개 벽');
+});
+
+test('방의 네 변은 문을 제외하고 모두 막혀 있다', async () => {
+  const { ROOMS, GRID, edgeBlocked, isDoorEdge } = await mapP;
+  for (const r of ROOMS) {
+    for (let x = r.x0; x <= r.x1; x++) {
+      for (const [y, ny] of [[r.y0, r.y0 - 1], [r.y1, r.y1 + 1]]) {
+        if (ny < GRID.y0 || ny > GRID.y1) continue;
+        assert.ok(edgeBlocked(x, y, x, ny) || isDoorEdge(x, y, x, ny), `${r.id} (${x},${y})→(${x},${ny}) 열림`);
+      }
+    }
+    for (let y = r.y0; y <= r.y1; y++) {
+      for (const [x, nx] of [[r.x0, r.x0 - 1], [r.x1, r.x1 + 1]]) {
+        if (nx < GRID.x0 || nx > GRID.x1) continue;
+        assert.ok(edgeBlocked(x, y, nx, y), `${r.id} (${x},${y})→(${nx},${y}) 열림`);
+      }
+    }
+  }
+});
