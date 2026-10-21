@@ -1,0 +1,62 @@
+# 태그 v* 를 푸시하면 맥(arm64)·Windows(x64) 앱을 빌드해 GitHub Release 에 올리고 updater 용 latest.json 을 만든다.
+# 로컬: git tag v0.24.0 && git push origin v0.24.0
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            triple: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles app,dmg
+          - os: windows-latest
+            triple: x86_64-pc-windows-msvc
+            args: --bundles nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
+      - name: Node 사이드카
+        run: node scripts/fetch-node.js --target ${{ matrix.triple }}
+      - name: 앱 의존성
+        run: npm ci --prefix app
+      - name: 테스트
+        run: npm test
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: app
+          tagName: ${{ github.ref_name }}
+          releaseName: 'AI Office ${{ github.ref_name }}'
+          releaseBody: |
+            ## ⬇️ 다운로드
+            - **맥 (Apple Silicon)**: `AI Office_<버전>_aarch64.dmg` — 응용 프로그램 폴더에 넣고 처음 한 번 **우클릭 → 열기** (코드 서명 없음). macOS 15 이상에서 안 열리면 시스템 설정 → 개인정보 보호 및 보안 → **그래도 열기**.
+            - **Windows (x64)**: `AI Office_<버전>_x64-setup.exe` — SmartScreen 경고가 뜨면 "추가 정보 → 실행".
+            - **그 외 / 웹 버전**: Node 18+ 에서 `npx claude-ai-office`
+            
+            설치된 앱은 새 버전이 나오면 스스로 받아 두고 메뉴바(트레이)에 ⬆ 를 표시합니다. 메뉴의 "업데이트 적용" 으로 다시 시작하면 반영됩니다.
+            
+            변경 내역: https://github.com/cozyuj/AI-office/pulls?q=is%3Apr+is%3Amerged
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
+          args: ${{ matrix.args }}
