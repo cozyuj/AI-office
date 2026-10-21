@@ -5,9 +5,12 @@ import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 import { drawAvatar } from './avatar.js';
+import { REST_SPOTS } from './spots.js';
 
 const SPEED = 3.6;          // 타일/초
 const LEAVE_TIMEOUT = 8000; // 퇴근 중 최대 대기
+const ROAM_IDLE = [10000, 30000]; // 휴식 방에 도착한 뒤 첫 명소로 옮기기까지
+const rand = (a, b) => a + Math.random() * (b - a);
 
 // ---------- 자리 배정 ----------
 class Slots {
@@ -26,6 +29,17 @@ class Slots {
     this.byActor.set(actorKey, key);
     return pick;
   }
+  /** 특정 타일을 잡는다 (다른 캐릭터가 점유 중이면 false). 방 안 배회용 */
+  acquireAt(actorKey, [x, y]) {
+    const key = `${x},${y}`;
+    const owner = this.taken.get(key);
+    if (owner && owner !== actorKey) return false;
+    this.release(actorKey);
+    this.taken.set(key, actorKey);
+    this.byActor.set(actorKey, key);
+    return true;
+  }
+  isFree([x, y], actorKey) { const o = this.taken.get(`${x},${y}`); return !o || o === actorKey; }
 }
 
 // ---------- 자율 행동 목적지 (쉬는 캐릭터용) ----------
@@ -63,6 +77,7 @@ class Actor {
     // 생동감: 자율 행동 / 미세 동작
     this.seed = Math.random() * 1000;
     this.ambient = null;            // { phase:'go'|'stay'|'back', until, bubble, icon, from }
+    this.roam = null;               // 휴식 방 안 배회 { spot|null, phase:'go'|'stay', until }
     this.nextAmbientAt = Date.now() + 8000 + Math.random() * 30000;
     this.nextTurnAt = Date.now() + 4000 + Math.random() * 8000;
   }
@@ -97,7 +112,7 @@ function drawPerson(ctx, a, now, spec) {
   shadow(ctx, cx, cy, 0.28, 0.14, 0.2);
   const breath = Math.sin(now / 700 + a.seed) * 0.7;                       // 숨쉬기
   const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : breath);
-  const sit = a.activity === 'rest' && !a.ambient ? 4 : 0;
+  const sit = a.activity === 'rest' && !a.ambient && !a.walking ? 4 : 0;
   const blink = ((now + a.seed * 37) % 4200) < 130;                        // 4.2초마다 130ms 깜빡임
   const typing = !a.walking && (a.activity === 'edit' || a.activity === 'work' || a.activity === 'run');
   const fx = base.x, fy = base.y - bob + sit;
@@ -116,7 +131,8 @@ function drawPerson(ctx, a, now, spec) {
     ctx.fillStyle = '#5aa7e6'; ctx.fillRect(fx - 6, fy - 20, 12, 5);
     const k = Math.floor(now / 160 + a.seed) % 3;                           // 타자 치는 커서/손
     ctx.fillStyle = '#eaf6ff'; ctx.fillRect(fx - 5 + k * 3, fy - 19, 2, 1.2);
-  } else if (a.activity === 'rest') {
+  } else if (a.activity === 'rest' && !a.walking && (!a.roam || !a.roam.spot || a.roam.spot.icon === '☕')) {
+    // 휴식 중 컵 (명소에서는 커피 자리일 때만)
     ctx.fillStyle = '#fff'; ctx.fillRect(fx + 6, fy - 20, 5, 6);
     ctx.fillStyle = '#e8683a'; ctx.fillRect(fx + 6, fy - 20, 5, 2);
   }
@@ -161,7 +177,8 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
   ctx.fillStyle = '#2b2f3a';
   ctx.fillText(name, s.x + 4, ny + 0.5);
   // 말풍선 (머리 위) — 본체와 꼬리를 한 경로로
-  const amb = a.ambient && a.ambient.phase !== 'back' ? a.ambient.spot : null;
+  const roam = a.roam && a.roam.spot && a.roam.phase === 'stay' ? a.roam.spot : null; // 휴식 방 명소에 도착하면 그 자리 말풍선
+  const amb = (a.ambient && a.ambient.phase !== 'back' ? a.ambient.spot : null) || roam;
   if ((amb || a.bubble) && !a.user && (bubbleMode !== 'selected' || a.selected)) {
     ctx.font = `8px ${FONT}`;
     let text = amb ? `${amb.icon} ${amb.bubble}` : `${a.icon ? a.icon + ' ' : ''}${a.bubble}`;
@@ -229,6 +246,7 @@ export function createActors(store, scene, avatars) {
       }
       if (a.room !== agent.room) {
         a.room = agent.room;
+        a.roam = null;
         const t = agent.room === 'elevator' && agent.leaving ? [SPAWN.x, SPAWN.y] : slots.acquire(key, agent.room);
         a.goTo(t);
       }
@@ -260,6 +278,7 @@ export function createActors(store, scene, avatars) {
     const t = Date.now();
     // 서 있을 때 가끔 고개 돌리기 (걷는 중엔 이동 방향이 우선)
     if (!a.walking && t > a.nextTurnAt && a.activity !== 'ask') { a.faceRight = !a.faceRight; a.nextTurnAt = t + 4000 + Math.random() * 10000; }
+    if (roamStep(a, key, t)) return;
     if (!store.ambient) { if (a.ambient) { a.ambient = null; const sl = slots.byActor.get(key); if (sl) a.goTo(sl.split(',').map(Number)); } return; }
     const resting = a.activity === 'rest' || a.activity === 'wait';
     if (!a.ambient) {
@@ -275,6 +294,31 @@ export function createActors(store, scene, avatars) {
     if (am.phase === 'go' && !a.walking) { am.phase = 'stay'; am.until = t + am.spot.stay[0] + Math.random() * (am.spot.stay[1] - am.spot.stay[0]); }
     else if (am.phase === 'stay' && t > am.until) { am.phase = 'back'; a.goTo(am.from); }
     else if (am.phase === 'back' && !a.walking) { a.ambient = null; a.nextAmbientAt = t + 20000 + Math.random() * 50000; }
+  }
+
+  /**
+   * 휴식 방(휴게실·카페·테라스) 안 배회. 쉬는 캐릭터면 true 를 돌려 바깥 자율 행동(ambient)을 건너뛴다.
+   * 10~30초마다 그 방의 빈 명소로 자리를 옮기고(Slots 로 점유해 둘이 겹치지 않게), 도착하면 명소 말풍선을 띄운다.
+   * "생동감" 이 꺼져 있으면 자리를 옮기지 않고 서 있는다.
+   */
+  function roamStep(a, key, t) {
+    const spots = a.activity === 'rest' ? REST_SPOTS[a.room] : null;
+    if (!spots || !spots.length) { a.roam = null; return false; }
+    if (!a.roam) a.roam = { spot: null, phase: 'stay', until: t + rand(...ROAM_IDLE) };
+    const r = a.roam;
+    if (r.phase === 'go') {
+      if (!a.walking) { r.phase = 'stay'; r.until = t + rand(...r.spot.stay); }
+      return true;
+    }
+    if (!store.ambient || a.walking || t < r.until) return true;
+    const [cx, cy] = a.tile;
+    const free = spots.filter((s) => (s.tile[0] !== cx || s.tile[1] !== cy) && slots.isFree(s.tile, key));
+    if (!free.length) { r.until = t + 5000; return true; }
+    const spot = free[Math.floor(Math.random() * free.length)];
+    if (!slots.acquireAt(key, spot.tile)) { r.until = t + 5000; return true; }
+    r.spot = spot; r.phase = 'go';
+    a.goTo(spot.tile);
+    return true;
   }
 
   function tick(now) {

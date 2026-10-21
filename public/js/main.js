@@ -338,4 +338,12 @@ themeBtn.onclick = () => { try { localStorage.setItem('aiOffice.theme', currentT
 if (mql) mql.addEventListener('change', applyTheme);
 applyTheme();
 
+// ---------- 시간대 조명 (FE-33): 실제 시각으로 아침·낮·저녁·밤, 설정 행으로 고정 가능 ----------
+const daylightSel = document.getElementById('daylight-select');
+function applyDaylight() { scene.setDaylight(store.daylight); if (daylightSel.value !== store.daylight) daylightSel.value = store.daylight; }
+daylightSel.onchange = () => store.setDaylight(daylightSel.value);
+store.subscribe((kind) => { if (kind === 'option') applyDaylight(); });
+setInterval(applyDaylight, 60 * 1000); // 자동 모드: 1분마다 실제 시각으로 다시 판단 (시간대가 바뀔 때만 창문을 다시 그린다)
+applyDaylight();
+
 window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, stats, applyTheme, floorStyles, floorStylePicker, applyFloorStyle }; // 디버그용
