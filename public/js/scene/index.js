@@ -1,6 +1,6 @@
 // 사무실 장면 진입점: 캔버스 크기, 카메라, 프레임 루프. 캐릭터(FE-03)는 actorProvider 로 끼워 넣는다.
 import { createCamera } from './camera.js';
-import { drawFloor, drawEntities, drawLabels, setDebugDepth, setCacheEnabled, setTheme } from './render.js';
+import { drawFloor, drawEntities, drawLabels, setDebugDepth, setCacheEnabled, setTheme, setFloorStyle } from './render.js';
 import { worldBounds, unproject } from './map.js';
 
 export function createScene(canvas, store) {
@@ -64,5 +64,6 @@ export function createScene(canvas, store) {
     onClick: (fn) => { clickHandler = fn; },
     onHover: (fn) => { hoverHandler = fn; },
     setTheme,
+    setFloorStyle,
   };
 }

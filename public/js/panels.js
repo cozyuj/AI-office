@@ -67,6 +67,7 @@ export function renderFloors() {
           <div class="floor-meta">세션 ${sessions.length}개 · ${status === 'idle' ? timeAgo(f.lastActivity, now) : STATUS_LABEL[status]}</div>
         </div>
         ${store.waitingOfFloor(f.id).length ? `<span class="badge-wait">${store.waitingOfFloor(f.id).length}</span>` : ''}
+        ${selected ? '<button class="floor-style" title="이 층 인테리어 스타일 고르기">🎨</button>' : ''}
         <span class="dot ${status}"></span>
       </div>`;
     if (!selected) return `<div class="floor">${head}</div>`;
@@ -154,7 +155,7 @@ export function bindPanelEvents() {
   $('floors').addEventListener('click', (e) => {
     const follow = e.target.closest('#auto-follow');
     if (follow) { store.setAutoFollow(follow.checked); return; }
-    if (e.target.closest('.follow')) return;
+    if (e.target.closest('.follow') || e.target.closest('.floor-style')) return; // 🎨 는 floorStylePicker 가 처리
     const sess = e.target.closest('[data-session]');
     if (sess) { store.selectSession(sess.dataset.session); return; }
     const floor = e.target.closest('[data-floor]');
