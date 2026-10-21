@@ -64,7 +64,7 @@ Agent {                      // 화면의 캐릭터 한 명
 
 LogEntry { t, floorId, sessionId, agentId, agentName, icon, text }
 
-RoomId = 'library' | 'dev' | 'research' | 'server' | 'meeting' | 'lounge' | 'mydesk' | 'elevator' | 'corridor'
+RoomId = 'library' | 'dev' | 'research' | 'server' | 'meeting' | 'lounge' | 'cafe' | 'terrace' | 'mydesk' | 'lobby' | 'elevator' | 'corridor'
 ```
 
 ## 3. 훅 이벤트 → 상태 전이
@@ -82,15 +82,17 @@ Claude Code 2.1.x 훅 payload 기준. 서브에이전트가 낸 도구 호출은
 | SubagentStart | 새 sub 생성 | elevator → meeting | think | "출근했습니다" | name = pendingSubagents.shift() ?? agent_type |
 | SubagentStop | sub | elevator | leave | "퇴근" | 3초 뒤 제거 (클라이언트가 걸어서 나감) |
 | Notification(permission_prompt) | main | mydesk | ask | "허락이 필요해요" | status=waiting |
-| Notification(idle_prompt) | main | lounge | rest | "할 일 기다리는 중" | status=idle |
+| Notification(idle_prompt) | main | 휴식 방* | rest | "할 일 기다리는 중" | status=idle |
 | Notification(elicitation_*, agent_needs_input) | main | mydesk | ask | message 앞 40자 | status=waiting |
 | PreToolUse(AskUserQuestion) | main | mydesk | ask | "질문 있어요" | status=waiting |
-| Stop | main | lounge | rest | "휴식 중" | status=idle. last_assistant_message 앞 60자 로그 |
+| Stop | main | 휴식 방* | rest | "휴식 중" / "커피 마시는 중" / "바람 쐬는 중" | status=idle. last_assistant_message 앞 60자 + 간 곳 로그 |
 | PreCompact | main | 현재 위치 | compact | "기억 정리 중" | |
 | TaskCompleted | – | – | – | – | 로그만 ("✅ {task_subject}") |
 | SessionEnd | 세션 | elevator | leave | "퇴근" | status=ended, 10초 뒤 세션 제거 |
 
 추가 규칙
+- *휴식 방: `lounge`(휴게실) · `cafe`(카페) · `terrace`(테라스) 중 하나를 세션 id 해시(`restRoomFor`)로 고른다. 서버가 정하므로 모든 클라이언트가 같은 방을 보고, 같은 세션은 늘 같은 방이다. 30분 자리 비움도 같은 방.
+- 휴식 중인 캐릭터는 클라이언트(`actors.js` roamStep)가 그 방의 명소(`spots.js` REST_SPOTS)를 10~30초마다 옮겨 다니게 한다. 자리는 Slots 로 점유해 둘이 겹치지 않고, 새 이벤트가 오면 즉시 멈추고 해당 방으로 간다. "생동감" 이 꺼져 있으면 자리를 옮기지 않는다.
 - 2시간 동안 이벤트 없는 세션은 `ended` 로 간주해 정리한다 (터미널을 그냥 닫은 경우).
 - 서브에이전트가 있는 동안 main 은 meeting 에서 `delegate` 를 유지하되, main 이 직접 도구를 쓰면 그 도구 규칙을 따른다.
 - `tool_response`, `prompt`, `last_assistant_message` 등 큰 필드는 normalize 단계에서 앞부분만 남기고 버린다 (메모리/SSE 크기 보호).
@@ -141,7 +143,8 @@ public/
     scene/
       map.js          28x22 타일 그리드, 방 영역, 가구 footprint, 벽, 서 있는 자리(slot), 통행 가능 맵
       pathfind.js     A* (4방향), 타일 단위
-      actors.js       Agent → Actor(위치, 경로, 걷기 애니, 말풍선, 슬롯 점유/해제)
+      actors.js       Agent → Actor(위치, 경로, 걷기 애니, 말풍선, 슬롯 점유/해제, 휴식 방 안 배회)
+      spots.js        휴식 방(휴게실·카페·테라스) 안 명소 목록: 타일, 말풍선, 머무는 시간
       render.js       canvas 2D 아이소메트릭: 바닥 → 깊이 정렬된 가구/벽/캐릭터 → 말풍선/이름표 → 선택 하이라이트
       camera.js       pan(드래그), zoom(휠/버튼), 초기 fit, 선택 세션 따라가기
       sprites.js      가구/캐릭터를 코드로 그리는 함수들 (외부 이미지 없음, 색상 팔레트)
@@ -158,7 +161,7 @@ y 16-17 ───────────── 복도 ────────�
 y 18-21 내 자리(사용자)   로비(안내, 화분)   엘리베이터(문 2개)
 ```
 
-- x 27 은 세로 복도. 카페는 남쪽 벽 문, 테라스는 북쪽 벽 문으로 드나든다. 카페·테라스는 활동 매핑 대상이 아니라 "생동감" 자율 행동의 목적지(커피, 창가, 바람 쐬기)다.
+- x 27 은 세로 복도. 카페는 남쪽 벽 문, 테라스는 북쪽 벽 문으로 드나든다. 카페·테라스는 도구 매핑 대상이 아니라 휴게실과 함께 휴식 방(세션마다 하나)이며, 쉬는 캐릭터가 방 안 명소를 옮겨 다닌다. "생동감" 자율 행동(대기 중 산책)의 목적지이기도 하다.
 - 테라스 난간은 격자 밖(x 36, y 22)에 놓인 낮은 벽이라 통행에는 영향이 없다.
 
 - 캐릭터는 방마다 정해진 "서는 자리(slot)" 중 빈 곳을 차지한다. 같은 방에 여럿이면 옆 자리로.
