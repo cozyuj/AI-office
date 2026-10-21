@@ -6,7 +6,9 @@ Claude Code 가 터미널에서 뭘 하고 있는지 한눈에 보려고 차린 
 
 ## 설치
 
-Node 18 이상만 있으면 됩니다. Windows · macOS · Linux 공통 한 줄:
+**맥(Apple Silicon)은 앱으로:** ⬇️ **[AI Office_0.23.4_aarch64.dmg 받기](https://github.com/cozyuj/AI-office/releases/download/v0.23.4/AI-Office_0.23.4_aarch64.dmg)** (39MB, Node 내장 · 다른 버전은 [Releases](https://github.com/cozyuj/AI-office/releases/latest)). 받은 뒤 `AI Office.app` 을 응용 프로그램 폴더에 넣고 처음 한 번 **우클릭 → 열기**. 자세한 건 아래 [맥 메뉴바 앱](#맥-메뉴바-앱-tauri).
+
+**그 외(Intel 맥 · Windows · Linux)는 웹 버전으로:** Node 18 이상만 있으면 공통 한 줄:
 
 ```bash
 npx github:cozyuj/AI-office
@@ -150,7 +152,7 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 
 웹 버전을 그대로 창에 담은 상주 앱입니다. 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 메뉴바 아이콘에서 열기/숨기기/항상 위/종료를 합니다. 답을 기다리는 세션이 있으면 메뉴바에 `🙋 n` 이 뜹니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다. 앱에는 Node 가 내장되어 있고, 첫 실행 때 서버 파일을 `~/.ai-office/app` 에 복사하고 훅을 등록합니다.
 
-> **다운로드**: [Releases](https://github.com/cozyuj/AI-office/releases/latest) 에서 `AI Office_<버전>_aarch64.dmg` (Apple Silicon) 를 받아 `AI Office.app` 을 응용 프로그램 폴더에 넣으세요. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니, 앱을 **우클릭 → 열기** 로 한 번 허용하면 됩니다. Intel 맥·Windows 는 아직 빌드하지 않으니 위의 `npx` 한 줄로 웹 버전을 쓰세요. 직접 빌드하려면:
+> **다운로드**: ⬇️ **[AI Office_0.23.4_aarch64.dmg](https://github.com/cozyuj/AI-office/releases/download/v0.23.4/AI-Office_0.23.4_aarch64.dmg)** (Apple Silicon, 39MB) · 다른 버전은 [Releases](https://github.com/cozyuj/AI-office/releases/latest). DMG 를 열어 `AI Office.app` 을 응용 프로그램 폴더에 넣으세요. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니 앱을 **우클릭 → 열기** 로 한 번 허용하고, macOS 15 이상에서 안 열리면 시스템 설정 → 개인정보 보호 및 보안 → **그래도 열기**, 그래도 "손상됨" 이라고 나오면 터미널에서 `xattr -dr com.apple.quarantine "/Applications/AI Office.app"` 를 한 번 실행하세요. Intel 맥·Windows 는 아직 빌드하지 않으니 위의 `npx` 한 줄로 웹 버전을 쓰세요. 직접 빌드하려면:
 
 ```bash
 npm run app:dev      # 개발 실행 (Rust 툴체인 + Xcode CLT 필요, 첫 빌드 수 분)
