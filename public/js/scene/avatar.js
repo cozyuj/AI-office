@@ -114,7 +114,7 @@ export function drawAvatar(ctx, fx, fy, s, o = {}) {
   }
   // 팔
   const bare = s.top.style === 'tee' || isDress;
-  const armRaise = o.thinking ? -4 : 0;
+  const armRaise = o.thinking ? -4 : (o.typing ? Math.round(Math.sin((o.now || 0) / 90) * 1.5) : 0);
   rr(ctx, -14, -28, 4, 12 + armRaise, 2, bare ? skin : bodyC);
   rr(ctx, 10, -28, 4, 12, 2, bare ? skin : bodyC);
   if (bare) { rr(ctx, -14, -28, 4, 5, 2, bodyC); rr(ctx, 10, -28, 4, 5, 2, bodyC); }
@@ -152,7 +152,9 @@ export function drawAvatar(ctx, fx, fy, s, o = {}) {
   }
   // 얼굴
   const ex = faceRight ? 1 : -1;
-  ctx.fillStyle = '#2b2f3a'; ctx.beginPath(); ctx.arc(-5 + ex, hy + 5, 1.8, 0, Math.PI * 2); ctx.arc(5 + ex, hy + 5, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2b2f3a';
+  if (o.blink) { ctx.fillRect(-7 + ex, hy + 5, 4, 1.4); ctx.fillRect(3 + ex, hy + 5, 4, 1.4); }
+  else { ctx.beginPath(); ctx.arc(-5 + ex, hy + 5, 1.8, 0, Math.PI * 2); ctx.arc(5 + ex, hy + 5, 1.8, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = 'rgba(240,120,120,0.35)'; ctx.beginPath(); ctx.arc(-8, hy + 9, 2.5, 0, Math.PI * 2); ctx.arc(8, hy + 9, 2.5, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#b0605a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(ex, hy + 9, 2, 0.2, Math.PI - 0.2); ctx.stroke();
   // 안경

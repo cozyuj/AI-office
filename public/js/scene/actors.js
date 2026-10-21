@@ -1,5 +1,5 @@
 // 캐릭터: 서버 상태(Agent.room/activity/bubble) → 자리 배정 → A* 로 걸어가기 → 그리기 + 말풍선.
-import { SLOTS, SPAWN, USER_SEAT, project } from './map.js';
+import { SLOTS, SPAWN, USER_SEAT, project, isWalkable } from './map.js';
 import { findPath, nearestWalkable } from './pathfind.js';
 import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
@@ -28,6 +28,19 @@ class Slots {
   }
 }
 
+// ---------- 자율 행동 목적지 (쉬는 캐릭터용) ----------
+const AMBIENT_SPOTS = [
+  { tile: [16, 11], bubble: '커피 한 잔', icon: '☕', stay: [6000, 11000] },
+  { tile: [17, 11], bubble: '커피 한 잔', icon: '☕', stay: [6000, 11000] },
+  { tile: [11, 12], bubble: '소파에서 잠깐', icon: '🛋️', stay: [8000, 14000] },
+  { tile: [9, 10], bubble: '화분 구경', icon: '🌿', stay: [4000, 8000] },
+  { tile: [10, 16], bubble: '화분 구경', icon: '🌿', stay: [4000, 8000] },
+  { tile: [26, 4], bubble: '창밖 구경', icon: '🪟', stay: [5000, 9000] },
+  { tile: [26, 2], bubble: '창밖 구경', icon: '🪟', stay: [5000, 9000] },
+  { tile: [13, 20], bubble: '로비 산책', icon: '🚶', stay: [3000, 6000] },
+  { tile: [21, 19], bubble: '벤치에서 한숨', icon: '🪑', stay: [6000, 10000] },
+].filter((s) => isWalkable(s.tile[0], s.tile[1]));
+
 // ---------- 캐릭터 ----------
 class Actor {
   constructor(key, info, startTile) {
@@ -41,6 +54,11 @@ class Actor {
     this.walkT = 0;
     this.dead = false; this.deadAt = 0;
     this.selected = false; this.dim = false;
+    // 생동감: 자율 행동 / 미세 동작
+    this.seed = Math.random() * 1000;
+    this.ambient = null;            // { phase:'go'|'stay'|'back', until, bubble, icon, from }
+    this.nextAmbientAt = Date.now() + 8000 + Math.random() * 30000;
+    this.nextTurnAt = Date.now() + 4000 + Math.random() * 8000;
   }
   get tile() { return [Math.round(this.x), Math.round(this.y)]; }
   goTo(tile) {
@@ -71,17 +89,27 @@ function drawPerson(ctx, a, now, spec) {
   ctx.save();
   ctx.globalAlpha = a.dim ? 0.45 : 1;
   shadow(ctx, cx, cy, 0.28, 0.14, 0.2);
-  const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : 0);
-  const sit = a.activity === 'rest' ? 4 : 0;
+  const breath = Math.sin(now / 700 + a.seed) * 0.7;                       // 숨쉬기
+  const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : breath);
+  const sit = a.activity === 'rest' && !a.ambient ? 4 : 0;
+  const blink = ((now + a.seed * 37) % 4200) < 130;                        // 4.2초마다 130ms 깜빡임
+  const typing = !a.walking && (a.activity === 'edit' || a.activity === 'work' || a.activity === 'run');
   const fx = base.x, fy = base.y - bob + sit;
-  drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, faceRight: a.faceRight, thinking: a.activity === 'think', hardHat: a.kind === 'sub' });
+  drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, faceRight: a.faceRight, thinking: a.activity === 'think', hardHat: a.kind === 'sub', blink, typing });
   // 활동 소품 (손 높이)
-  if (a.activity === 'read' || a.activity === 'search') {
+  if (a.ambient) {
+    // 자율 행동 소품: 커피잔 / 없음
+    if (a.ambient.spot.icon === '☕' && a.ambient.phase !== 'go') { ctx.fillStyle = '#fff'; ctx.fillRect(fx + 6, fy - 20, 5, 6); ctx.fillStyle = '#6b4e3d'; ctx.fillRect(fx + 6, fy - 20, 5, 2); }
+  } else if (a.activity === 'read' || a.activity === 'search') {
+    const page = Math.floor(now / 900 + a.seed) % 2;                       // 책장 넘기기
     ctx.fillStyle = '#fff'; ctx.fillRect(fx - 7, fy - 20, 14, 8);
     ctx.fillStyle = '#c0504d'; ctx.fillRect(fx - 7, fy - 20, 2, 8);
+    ctx.fillStyle = '#d9dce2'; ctx.fillRect(fx - 4 + page * 6, fy - 19, 4, 6);
   } else if (a.activity === 'edit' || a.activity === 'work' || a.activity === 'run') {
     ctx.fillStyle = '#2f3542'; ctx.fillRect(fx - 7, fy - 21, 14, 8);
     ctx.fillStyle = '#5aa7e6'; ctx.fillRect(fx - 6, fy - 20, 12, 5);
+    const k = Math.floor(now / 160 + a.seed) % 3;                           // 타자 치는 커서/손
+    ctx.fillStyle = '#eaf6ff'; ctx.fillRect(fx - 5 + k * 3, fy - 19, 2, 1.2);
   } else if (a.activity === 'rest') {
     ctx.fillStyle = '#fff'; ctx.fillRect(fx + 6, fy - 20, 5, 6);
     ctx.fillStyle = '#e8683a'; ctx.fillRect(fx + 6, fy - 20, 5, 2);
@@ -127,9 +155,10 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
   ctx.fillStyle = '#2b2f3a';
   ctx.fillText(name, s.x + 4, ny + 0.5);
   // 말풍선 (머리 위) — 본체와 꼬리를 한 경로로
-  if (a.bubble && !a.user && (bubbleMode !== 'selected' || a.selected)) {
+  const amb = a.ambient && a.ambient.phase !== 'back' ? a.ambient.spot : null;
+  if ((amb || a.bubble) && !a.user && (bubbleMode !== 'selected' || a.selected)) {
     ctx.font = `8px ${FONT}`;
-    let text = `${a.icon ? a.icon + ' ' : ''}${a.bubble}`;
+    let text = amb ? `${amb.icon} ${amb.bubble}` : `${a.icon ? a.icon + ' ' : ''}${a.bubble}`;
     if (text.length > 30) text = text.slice(0, 29) + '…';
     const ago = elapsed(a.since, now);
     const full = `${text} · ${ago}`;
@@ -188,6 +217,10 @@ export function createActors(store, scene, avatars) {
       }
       a.name = agent.name;
       a.dead = false;
+      if (a.ambient && a.since !== agent.since) { // 새 이벤트 → 자율 행동 즉시 중단
+        a.ambient = null;
+        a.goTo(slots.byActor.has(key) ? slots.byActor.get(key).split(',').map(Number) : slots.acquire(key, agent.room));
+      }
       if (a.room !== agent.room) {
         a.room = agent.room;
         const t = agent.room === 'elevator' && agent.leaving ? [SPAWN.x, SPAWN.y] : slots.acquire(key, agent.room);
@@ -215,6 +248,29 @@ export function createActors(store, scene, avatars) {
     );
   }
 
+  /** 쉬는 캐릭터의 자율 행동과 고개 돌리기 */
+  function ambientStep(a, now, key) {
+    if (a.user || a.dead) return;
+    const t = Date.now();
+    // 서 있을 때 가끔 고개 돌리기 (걷는 중엔 이동 방향이 우선)
+    if (!a.walking && t > a.nextTurnAt && a.activity !== 'ask') { a.faceRight = !a.faceRight; a.nextTurnAt = t + 4000 + Math.random() * 10000; }
+    if (!store.ambient) { if (a.ambient) { a.ambient = null; const sl = slots.byActor.get(key); if (sl) a.goTo(sl.split(',').map(Number)); } return; }
+    const resting = a.activity === 'rest' || a.activity === 'wait';
+    if (!a.ambient) {
+      if (resting && t > a.nextAmbientAt && AMBIENT_SPOTS.length) {
+        const spot = AMBIENT_SPOTS[Math.floor(Math.random() * AMBIENT_SPOTS.length)];
+        const [sx, sy] = a.tile;
+        a.ambient = { phase: 'go', spot, until: 0, from: [sx, sy] };
+        a.goTo(spot.tile);
+      }
+      return;
+    }
+    const am = a.ambient;
+    if (am.phase === 'go' && !a.walking) { am.phase = 'stay'; am.until = t + am.spot.stay[0] + Math.random() * (am.spot.stay[1] - am.spot.stay[0]); }
+    else if (am.phase === 'stay' && t > am.until) { am.phase = 'back'; a.goTo(am.from); }
+    else if (am.phase === 'back' && !a.walking) { a.ambient = null; a.nextAmbientAt = t + 20000 + Math.random() * 50000; }
+  }
+
   function tick(now) {
     const dt = Math.min(0.1, (now - (last || now)) / 1000);
     last = now;
@@ -223,6 +279,7 @@ export function createActors(store, scene, avatars) {
     const ordered = [...actors.entries()].sort(([, a], [, b]) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0));
     for (const [key, a] of ordered) {
       a.update(dt);
+      ambientStep(a, now, key);
       if (a.dead && (!a.walking || now - a.deadAt > LEAVE_TIMEOUT)) { actors.delete(key); continue; }
       out.push(entityOf(a));
     }
