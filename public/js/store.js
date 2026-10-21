@@ -64,6 +64,8 @@ class Store {
     this.detectWaiting();
   }
 
+  applyFloor(floor) { if (this.floors.has(floor.id)) { this.floors.set(floor.id, floor); this.emit('update', { floor }); } }
+
   applyRemove({ sessionId, floorId, floorRemoved }) {
     this.sessions.delete(sessionId);
     if (floorRemoved) this.floors.delete(floorId);
