@@ -1,15 +1,8 @@
 # AI Office
 
-Claude Code 가 터미널에서 뭘 하고 있는지 한눈에 보려고 차린 사무실.
+Claude Code 가 터미널에서 뭘 하고 있는지 한눈에 보려고 차린 사무실. 내 터미널의 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 아이소메트릭 사무실에서 실시간으로 움직인다. 파일을 읽을 땐 **자료실** 가서 책을 펴고, 명령을 돌릴 땐 **서버실** 랙 앞에 서 있고, 막히면 그 자리에서 턱 괴고 **고민 중**, 일을 나눠 맡기면 서브에이전트가 **엘리베이터** 타고 출근한다. git 프로젝트마다 층이 하나씩 생기고, 한 층에 그 프로젝트의 세션 전부가 보인다. 답을 기다리는 세션은 **내 자리** 에서 손을 들고, 브라우저 알림·소리·탭 제목으로도 알려 준다.
 
-- 파일 읽을 땐 **자료실** 가서 책 펴고
-- 명령 돌릴 땐 **서버실** 랙 앞에 서 있고
-- 막히면 그 자리에서 턱 괴고 **고민 중…**
-- 일을 나눠 맡기면 서브에이전트가 **엘리베이터** 타고 출근한다
-
-전부 내 터미널의 Claude Code 세션들과 실시간으로 같이 움직인다. 프로젝트마다 층이 하나씩 생기고, 한 층에 그 프로젝트의 세션 전부가 보인다.
-
-![overview](docs/screenshots/fe-03-overview.jpg)
+![AI Office 전체 화면](docs/screenshots/fe-30-overview.jpg)
 
 ## 설치
 
@@ -19,41 +12,53 @@ Node 18 이상만 있으면 됩니다. Windows · macOS · Linux 공통 한 줄:
 npx github:cozyuj/AI-office
 ```
 
-이 한 줄이 (1) 앱을 `~/.ai-office/app` 에 복사하고 (2) `~/.claude/settings.json` 에 훅을 등록한 뒤 (3) 서버를 띄우고 브라우저를 엽니다. 다음부터는 같은 명령으로 서버만 다시 띄우면 되고, 코드가 바뀌었으면 자동으로 설치본을 갱신합니다(업데이트도 같은 명령). 훅은 **새로 시작하는** Claude Code 세션부터 적용됩니다.
+이 한 줄이 (1) 앱을 `~/.ai-office/app` 에 복사하고 (2) `~/.claude/settings.json` 에 훅을 등록한 뒤 (3) 서버를 띄우고 브라우저를 엽니다. 다음부터는 같은 명령으로 서버만 다시 띄우면 되고, 레포가 바뀌었으면 설치본도 자동으로 갱신됩니다(업데이트도 같은 명령). 훅은 **새로 시작하는** Claude Code 세션부터 적용됩니다.
 
-다른 명령:
+> 레포가 공개된 뒤 빈 npm 캐시에서 `npx --yes github:cozyuj/AI-office doctor` 가 5초 안에 끝나는 것을 확인했습니다(v0.15.0, 2026-10-21). 처음 한 번만 git clone 을 하고, 그 뒤로는 npx 캐시를 씁니다.
+
+### `ai-office` 하위 명령
+
+| 명령 | 하는 일 |
+|---|---|
+| `npx github:cozyuj/AI-office` | `up` = install + install-hooks + start + 브라우저 열기 |
+| `… install [--force]` | `~/.ai-office/app` 에 앱 복사 (npx 캐시와 무관한 안정 경로) |
+| `… install-hooks` | `~/.claude/settings.json` 에 훅 등록 (멱등, 기존 설정은 백업) |
+| `… uninstall-hooks` | 훅 제거 |
+| `… start [--port N] [--no-open]` | 서버만 기동. 이미 떠 있으면 그 주소를 연다 |
+| `… demo` | 가짜 세션으로 사무실을 북적이게 (화면의 ⚙️ 설정 → 데모와 같음) |
+| `… doctor` | Node 버전·훅 등록 수·설치본·포트·저널·훅 포트 점검 |
+
+### 훅
+
+`scripts/install-hooks.js` 가 Claude Code 의 11개 이벤트(SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, SubagentStart, SubagentStop, PreCompact)에 `node hooks/emit.js` 를 등록합니다. 셸이나 curl 없이 Node 만으로 동작하고(Windows 포함), 서버가 꺼져 있어도 1초 안에 조용히 포기하므로 Claude 를 절대 막지 않습니다.
+
+### 포트
+
+기본 포트는 `4777`. 바꾸려면 서버와 훅이 같은 포트를 봐야 합니다.
 
 ```bash
-npx github:cozyuj/AI-office doctor            # Node·훅·포트 점검
-npx github:cozyuj/AI-office start --port 4800 # 다른 포트 (훅도 AI_OFFICE_PORT=4800 으로 띄운 세션만 보임)
-npx github:cozyuj/AI-office uninstall-hooks   # 훅 제거
+npx github:cozyuj/AI-office install-hooks --port 4800   # 훅을 4800 으로
+npx github:cozyuj/AI-office start --port 4800           # 서버도 4800 으로
 ```
 
-레포를 받아서 쓰려면:
+포트가 어긋나면 화면 위에 노란 배너로 알려 주고, `doctor` 의 `hook port` 줄에도 표시됩니다. 레포를 받아서 쓰려면:
 
 ```bash
-git clone git@github.com:cozyuj/AI-office.git && cd AI-office
-node bin/ai-office.js        # 또는 npm run install-hooks && npm start
-```
-
-훅은 `node hooks/emit.js` 로 등록되어 셸이나 curl 이 없어도 동작합니다 (Windows 포함).
-
-## 데모
-
-실제 세션 없이 화면을 보고 싶으면 서버를 띄운 상태에서:
-
-```bash
-npm run demo            # 가짜 세션 4개가 사무실을 돌아다닌다
-DEMO_SPEED=3 npm run demo
+git clone https://github.com/cozyuj/AI-office.git && cd AI-office
+node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 ```
 
 ## 화면
 
+![카페와 테라스](docs/screenshots/fe-30-cafe-terrace.jpg)
+
 | 영역 | 내용 |
 |---|---|
-| 좌측 층별 안내 | 프로젝트(cwd) = 층. 층을 열면 세션 목록. "최근 세션 자동으로 따라가기" 켜면 최신 활동 세션으로 선택이 옮겨감 |
-| 중앙 사무실 | 드래그 이동, 휠/버튼 줌. 캐릭터 클릭 → 세션 선택. 📍 따라가기 = 카메라가 선택 세션의 Claude 를 쫓아감. 💬 말풍선 전체/선택만 |
-| 우측 | 프로젝트 경로·세션 id, 사무실 사람들(방·말풍선·경과), 활동 로그, 범례 |
+| **좌측 층별 안내** | git 프로젝트(저장소 루트) = 층. worktree 는 같은 층으로 묶이고 브랜치(⎇)가 함께 보인다. 층을 열면 세션 목록 — `답 기다림`, `지금 보는 중` 표시. "최근 세션 자동으로 따라가기"(`A`)를 켜면 최신 활동 세션으로 선택이 옮겨간다 |
+| **중앙 사무실** | 드래그 이동, 휠/버튼 줌, `⟲` 초기 위치. 캐릭터 클릭 → 세션 선택, 캐릭터에 마우스를 올리면 툴팁(지금 하는 일·대상 파일·요청·브랜치·경로). 📍 **따라가기**(`F`) = 카메라가 선택 세션의 Claude 를 쫓아감. 🏢 **전체 보기**(`O`)는 층이 둘 이상일 때 나타난다 |
+| **우측 패널** | 세션 카드(프로젝트 경로 · 세션 id · 캐릭터 이름 · 이어가기 명령 복사), 사무실 사람들(방·말풍선·경과), 활동 로그(검색 `/`, 선택 세션만), 범례(제목 클릭으로 접기) |
+
+세션 카드의 **이어가기** 는 `claude --resume <세션 id>` 를 프로젝트 폴더로 `cd` 하는 명령과 함께 클립보드에 복사합니다. 브라우저에서 보던 세션을 터미널에서 바로 이어갈 수 있습니다.
 
 ### 어디서 무엇을 하나
 
@@ -67,16 +72,67 @@ DEMO_SPEED=3 npm run demo
 | AskUserQuestion, 허락 요청 | 🙋 내 자리 | `질문 있어요`, `허락이 필요해요` |
 | Stop (턴 종료) | ☕ 휴게실 | `휴식 중` |
 | SubagentStart / Stop | 🛗 엘리베이터 | 출근 / 퇴근 |
+| (생동감) | ☕ 카페 · 🌿 테라스 | `카페에서 라떼`, `테라스 산책`, `벤치에서 햇볕` |
 
-서브에이전트는 파란 안전모를 쓰고, Agent 도구에 적은 description 이 이름이 된다.
+카페(창가 자리가 있는 유리벽 방)와 테라스(데크·파라솔·벤치)는 도구와 짝지어진 방이 아니라, ⚙️ 설정의 **생동감** 을 켰을 때 쉬는 캐릭터가 알아서 찾아가는 자율 행동 목적지입니다. 휴게실 커피머신, 화분, 창가, 로비 벤치도 같은 목적지입니다.
 
-## 다운로드 (맥)
+서브에이전트는 파란 안전모를 쓰고, Agent 도구에 적은 description 이 이름이 됩니다. 사용자 본인(`나`)은 내 자리에 앉아 있고, Claude 가 질문하거나 허락을 기다리면 그 옆으로 찾아옵니다.
 
-[Releases](https://github.com/cozyuj/AI-office/releases) 에서 최신 `.dmg` 를 받아 `AI Office.app` 을 응용 프로그램에 끌어다 놓습니다. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니, 앱을 **우클릭 → 열기** 로 한 번 허용하면 됩니다. 앱에는 Node 가 내장되어 있어 따로 설치할 것이 없습니다. 첫 실행 때 서버 파일을 `~/.ai-office/app` 에 복사하고 `~/.claude/settings.json` 에 훅을 등록한 뒤 서버를 띄웁니다. 앱을 다른 위치로 옮겼다면 메뉴바 → "훅 다시 설치".
+## 설정 메뉴와 단축키
+
+헤더의 **⚙️ 설정** 을 열면 아래 항목이 있고, 모두 이 브라우저에만 저장됩니다(localStorage).
+
+| 항목 | 내용 | 키 |
+|---|---|---|
+| 말풍선 범위 | 말풍선을 **전체** 세션에 보일지 **선택** 세션만 보일지 | `B` |
+| 브라우저 알림 | Claude 가 질문하거나 허락을 기다리면 OS 알림. 처음 켤 때 브라우저 권한을 묻는다 | |
+| 대기 알림 소리 | 답을 기다리는 세션이 생기면 짧은 소리. 한 번 클릭해 켜야 브라우저가 소리를 허용한다 | `S` |
+| 생동감 | 쉬는 캐릭터가 커피 마시러 가거나 카페·테라스로 나가는 자율 행동 + 서 있을 때 미세 동작 | |
+| 테마 | 라이트 / 다크 | `T` |
+| 데모 | 가짜 세션 4개를 띄워 사무실을 북적이게. 실제 세션과 별도 층이고 `(데모)` 가 붙는다 | `D` |
+| 캐릭터 외형 | 외형 모달 열기 (아래 참고) | |
+
+단축키는 입력창에 커서가 없을 때 동작하고, `?` 를 누르면 목록이 뜹니다(화면 아래 힌트에 마우스를 올려도 보임).
+
+| 키 | 동작 |
+|---|---|
+| `1` ~ `9` | n 번째 층으로 이동 |
+| `←` `→` (또는 `↑` `↓`) | 이전 · 다음 층 |
+| `F` | 📍 따라가기 (카메라가 선택 세션의 Claude 를 쫓아감) |
+| `A` | 최근 세션 자동으로 따라가기 |
+| `O` | 🏢 전체 보기 열기/닫기 |
+| `D` | 데모 켜기/끄기 |
+| `B` | 말풍선 전체 / 선택만 |
+| `S` | 대기 알림 소리 |
+| `T` | 라이트 / 다크 테마 |
+| `/` | 활동 로그 검색창으로 |
+| `Esc` | 모달 · 설정 메뉴 · 전체 보기 닫기 → 검색창 비우기 → 따라가기 해제 (순서대로 하나씩) |
+| `?` | 단축키 도움말 |
+
+## 캐릭터 외형과 이름
+
+![캐릭터 외형 모달](docs/screenshots/fe-30-customize.jpg)
+
+⚙️ 설정 → **캐릭터 외형** 에서 **나 / Claude 기본 / 서브에이전트 기본 / 지금 보는 세션의 Claude** 네 대상을 따로 꾸밀 수 있습니다.
+
+- **프리셋** 10종: 개발자 · 정장 · 연구원 · 캐주얼 · 예술가 · 마법사 · 임금님 · 로봇 · 고양이 · 곰. 고른 뒤 파츠를 더 바꿀 수 있다.
+- **몸 종류** 4가지: 사람 · 로봇 · 고양이 · 곰. 몸에 따라 피부(털·금속) 팔레트가 바뀐다.
+- **파츠**: 피부색, 머리(12가지 스타일 + 색), 상의(8종 + 색, `auto` 는 세션 색), 하의(바지·반바지·치마), 신발, 안경(둥근·네모·선글라스·고글·외알), 모자(캡·비니·베레모·머리띠·버킷햇·실크햇·마법사·왕관…), 소품(헤드폰·스카프·사원증·귀걸이·나비넥타이·수염·마스크…).
+- 🎲 랜덤, ↺ 초기화, 🗑 저장 삭제. 저장은 이 브라우저에만 남는다.
+
+**세션별 이름**: 세션마다 캐릭터에 자동 별명(Alex, Sam, Max, Leo, Mia, Zoe, …)이 붙고, 우측 세션 카드의 "캐릭터" 행이나 외형 모달의 이름 행에서 직접 이름을 지을 수 있습니다(🎲 로 다른 별명 뽑기, 비우면 자동 별명으로). 활동 로그와 툴팁도 그 이름으로 표시됩니다. 서버가 보는 이름은 그대로 `Claude` 이고 화면에서만 바뀝니다.
+
+## 전체 보기
+
+![전체 보기](docs/screenshots/fe-30-building.jpg)
+
+층이 둘 이상이면 헤더에 🏢 **전체 보기**(`O`)가 나타납니다. 층들을 건물처럼 세로로 쌓아, 층마다 미니 사무실 위에 캐릭터 점과 세션 수·상태(`답 기다림` / `작업 중` / `생각 중` / `조용함`)를 보여 줍니다. 층을 클릭하면 그 층 사무실로 들어갑니다. `Esc` 또는 같은 버튼으로 닫습니다.
 
 ## 맥 메뉴바 앱 (Tauri)
 
-웹 버전을 그대로 창에 담은 상주 앱입니다. 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 메뉴바 아이콘에서 열기/숨기기/항상 위/종료를 합니다. 답을 기다리는 세션이 있으면 메뉴바에 `🙋 n` 이 뜹니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다.
+웹 버전을 그대로 창에 담은 상주 앱입니다. 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 메뉴바 아이콘에서 열기/숨기기/항상 위/종료를 합니다. 답을 기다리는 세션이 있으면 메뉴바에 `🙋 n` 이 뜹니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다. 앱에는 Node 가 내장되어 있고, 첫 실행 때 서버 파일을 `~/.ai-office/app` 에 복사하고 훅을 등록합니다.
+
+> **웹 버전이 최신입니다.** [Releases](https://github.com/cozyuj/AI-office/releases) 의 `.dmg` 는 v0.3.0 이 마지막이라 설정 메뉴·전체 보기·카페·외형 등 이후 기능이 없습니다. 지금 기능을 쓰려면 위의 `npx` 한 줄을 쓰거나 아래처럼 직접 빌드하세요. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니, 앱을 **우클릭 → 열기** 로 한 번 허용하면 됩니다.
 
 ```bash
 npm run app:dev      # 개발 실행 (Rust 툴체인 + Xcode CLT 필요, 첫 빌드 수 분)
@@ -88,30 +144,32 @@ npm run app:build    # app/src-tauri/target/release/bundle/ 에 .app / .dmg
 ## 구조
 
 ```
-Claude Code 세션 ─hooks─▶ hooks/emit.sh ─POST /hook─▶ server.js ─SSE /events─▶ public/ (canvas)
+Claude Code 세션 ─hooks─▶ hooks/emit.js ─POST /hook─▶ server.js ─SSE /events─▶ public/ (canvas)
 ```
 
-- `server.js` 훅 수신, 상태 머신 적용, SSE 중계, 정적 서빙
+- `server.js` 훅 수신, 상태 머신 적용, SSE 중계, 정적 서빙, 데모 켜고 끄기(`/api/demo/start|stop`)
 - `lib/normalize.js` 훅 payload 축소 + 도구 → 방/말풍선 해석
-- `lib/state.js` 층/세션/캐릭터 상태 머신
-- `lib/journal.js` 이벤트 JSONL 기록 + 기동 시 재생
-- `public/js/scene/*` 아이소메트릭 맵·가구·캐릭터·A*·카메라
-- `scripts/install-hooks.js` 훅 등록/제거, `scripts/demo.js` 데모
+- `lib/state.js` 층/세션/캐릭터 상태 머신, `lib/project.js` cwd → git 저장소·브랜치·worktree
+- `lib/journal.js` 이벤트 JSONL 기록(`~/.ai-office/events.jsonl`) + 기동 시 재생, 주기 압축
+- `public/js/scene/*` 아이소메트릭 맵·가구·캐릭터(외형 `avatar.js`)·A*·카메라
+- `public/js/overview.js` 전체 보기, `customize.js` 외형 모달, `names.js` 세션별 이름, `panels.js` 좌/우 패널
+- `bin/ai-office.js` CLI, `scripts/install-hooks.js` 훅 등록/제거, `scripts/demo.js` 데모
 
-자세한 설계는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+외부 의존성 0, 번들러 없음. 자세한 설계는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## 개발
 
 ```bash
-npm test                # node --test (상태 머신 + 경로 탐색)
-AI_OFFICE_PORT=4799 npm start
+npm test                      # node --test (상태 머신 · 경로 탐색 · 외형 · 이름 · CLI …)
+AI_OFFICE_PORT=4799 npm start # 다른 포트로 띄우기 (훅도 같은 포트로 등록해야 보임)
+npm run demo                  # 서버가 떠 있는 상태에서 가짜 세션 흘려 넣기 (DEMO_SPEED=3 으로 빠르게)
 ```
 
-버전: 버그 수정은 patch, 기능은 minor, 호환이 깨지면 major. 네 파일(package.json, app/package.json, tauri.conf.json, Cargo.toml)을 한 번에 올린다.
+버전: 버그 수정·문서는 patch, 기능은 minor, 호환이 깨지면 major. 네 파일(package.json, app/package.json, tauri.conf.json, Cargo.toml)을 한 번에 올린다.
 
 ```bash
-npm run bump:patch   # 0.3.0 → 0.3.1
-npm run bump:minor   # 0.3.0 → 0.4.0
+npm run bump:patch   # 0.15.0 → 0.15.1
+npm run bump:minor   # 0.15.0 → 0.16.0
 ```
 
-작업 흐름: GitHub 이슈를 `[BE-01]`, `[FE-01]` 처럼 FE/BE 로 나눠 만들고, `main` 에서 `feature/BE-01` 식 브랜치를 분리해 작업한 뒤 결과·테스트·캡처를 이슈 댓글로 남긴다.
+작업 흐름: GitHub 이슈를 `[FE-30]`, `[BE-13]`, `[APP-03]` 처럼 FE/BE/APP 으로 나눠 만들고, `main` 에서 `feature/FE-30` 식 브랜치를 분리해 작업한 뒤 결과·테스트·캡처를 이슈 댓글로 남긴다.
