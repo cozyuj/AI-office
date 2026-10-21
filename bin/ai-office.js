@@ -16,6 +16,7 @@ const os = require('os');
 const net = require('net');
 const { spawn, execFileSync } = require('child_process');
 const { readHookPort } = require('../lib/hookport');
+const crypto = require('crypto');
 
 const SRC = path.join(__dirname, '..');
 const HOME = process.env.AI_OFFICE_HOME || path.join(os.homedir(), '.ai-office');
@@ -46,13 +47,30 @@ function copyDir(from, to) {
 function installedVersion() {
   try { return JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8')).version; } catch { return null; }
 }
+/** 소스 파일 목록 + 크기 + mtime 의 지문. 버전이 같아도 내용이 바뀌면 달라진다 */
+function fingerprint(dir) {
+  const h = crypto.createHash('sha1');
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else { const st = fs.statSync(p); h.update(`${path.relative(dir, p)}:${st.size}:${Math.floor(st.mtimeMs)}\n`); }
+    }
+  };
+  for (const f of FILES) { const p = path.join(dir, f); if (fs.existsSync(p)) (fs.statSync(p).isDirectory() ? walk(p) : (() => { const st = fs.statSync(p); h.update(`${f}:${st.size}:${Math.floor(st.mtimeMs)}\n`); })()); }
+  return h.digest('hex');
+}
+const runningFromSource = () => path.resolve(SRC) !== path.resolve(APP) && fs.existsSync(path.join(SRC, '.git'));
 function install({ force = false } = {}) {
+  if (path.resolve(SRC) === path.resolve(APP)) return APP; // 이미 설치 경로에서 실행 중
   const have = installedVersion();
-  if (!force && have === PKG.version && path.resolve(SRC) !== path.resolve(APP)) {
-    log(`app ${PKG.version} 이미 설치됨 → ${APP}`);
+  const fp = fingerprint(SRC);
+  let installedFp = null;
+  try { installedFp = fs.readFileSync(path.join(APP, '.fingerprint'), 'utf8').trim(); } catch {}
+  if (!force && have && installedFp === fp) {
+    log(`app ${PKG.version} 이미 최신 → ${APP}`);
     return APP;
   }
-  if (path.resolve(SRC) === path.resolve(APP)) return APP; // 이미 설치 경로에서 실행 중
   fs.rmSync(APP, { recursive: true, force: true });
   fs.mkdirSync(APP, { recursive: true });
   for (const f of FILES) {
@@ -61,7 +79,8 @@ function install({ force = false } = {}) {
     if (fs.statSync(from).isDirectory()) copyDir(from, path.join(APP, f));
     else fs.copyFileSync(from, path.join(APP, f));
   }
-  log(`app ${PKG.version} 설치 → ${APP}${have ? ` (이전 ${have})` : ''}`);
+  fs.writeFileSync(path.join(APP, '.fingerprint'), fp + '\n');
+  log(`app ${PKG.version} ${have ? '갱신' : '설치'} → ${APP}`);
   return APP;
 }
 
@@ -125,12 +144,12 @@ async function doctor() {
 
 (async () => {
   switch (cmd) {
-    case 'up': { const app = install(); runScript(app, 'install-hooks.js', ['--app-dir', app]); await start(app); break; }
+    case 'up': { const app = install(); runScript(app, 'install-hooks.js', ['--app-dir', app]); await start(runningFromSource() ? SRC : app); break; }
     case 'install': install({ force: flag('force') }); break;
     case 'install-hooks': { const app = installedVersion() ? APP : install(); runScript(app, 'install-hooks.js', ['--app-dir', app, '--port', String(PORT)]); break; }
     case 'uninstall-hooks': runScript(installedVersion() ? APP : SRC, 'install-hooks.js', ['--remove']); break;
-    case 'start': await start(installedVersion() ? APP : SRC); break;
-    case 'demo': execFileSync(process.execPath, [path.join(installedVersion() ? APP : SRC, 'scripts', 'demo.js')], { stdio: 'inherit', env: { ...process.env, AI_OFFICE_PORT: String(PORT) } }); break;
+    case 'start': await start(runningFromSource() || !installedVersion() ? SRC : APP); break;
+    case 'demo': execFileSync(process.execPath, [path.join(runningFromSource() || !installedVersion() ? SRC : APP, 'scripts', 'demo.js')], { stdio: 'inherit', env: { ...process.env, AI_OFFICE_PORT: String(PORT) } }); break;
     case 'doctor': await doctor(); break;
     default:
       log(`ai-office ${PKG.version}\n\n  ai-office                 설치 + 훅 등록 + 서버 기동 + 브라우저\n  ai-office install [--force]\n  ai-office install-hooks | uninstall-hooks\n  ai-office start [--port N] [--no-open]\n  ai-office demo\n  ai-office doctor`);
