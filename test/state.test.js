@@ -205,6 +205,23 @@ test('UserPromptSubmit: <task-notification> 같은 시스템 메시지는 제목
   assert.equal(s().title, '진짜 요청');
 });
 
+test('도구 detail 과 세션 firstPrompt/lastPrompt 가 저장된다', () => {
+  const { st, main, s } = fresh();
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '첫 요청' }), 1000);
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '둘째 요청' }), 1100);
+  assert.equal(s().firstPrompt, '첫 요청');
+  assert.equal(s().lastPrompt, '둘째 요청');
+  st.apply(pre('Read', { file_path: '/very/long/path/to/server.js' }), 1200);
+  assert.equal(main().tool.detail, '/very/long/path/to/server.js');
+  st.apply(pre('Bash', { command: 'npm test -- --watch', description: '테스트' }), 1300);
+  assert.equal(main().tool.detail, 'npm test -- --watch');
+  st.apply(pre('Grep', { pattern: 'TODO', path: '/src' }), 1400);
+  assert.equal(main().tool.detail, 'TODO in /src');
+  st.apply(pre('Agent', { description: 'API 찾기', subagent_type: 'Explore', prompt: 'x'.repeat(500) }), 1500);
+  assert.ok(main().tool.detail.startsWith('[Explore] xxx'));
+  assert.ok(main().tool.detail.length <= 200);
+});
+
 test('30분 무활동이면 자리 비움(away), 새 이벤트가 오면 복귀', () => {
   const { st, main, s } = fresh();
   st.apply(base({ hook_event_name: 'Stop', last_assistant_message: 'done' }), 1000);

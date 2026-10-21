@@ -9,12 +9,19 @@ export function createScene(canvas, store) {
   let fitted = false;
   let actorProvider = null;   // () => [{ key, draw(ctx, now), overlay?(ctx, camera, now), hit?(world) }]
   let clickHandler = null;
+  let hoverHandler = null;
 
   const camera = createCamera(canvas, {
     onClick: (world, screen) => {
       if (!clickHandler) return;
       const t = unproject(world.x, world.y);
       clickHandler({ world, screen, tile: { x: Math.floor(t.tx), y: Math.floor(t.ty) }, tx: t.tx, ty: t.ty });
+    },
+    onHover: (world, screen) => {
+      if (!hoverHandler) return;
+      if (!world) { hoverHandler(null); return; }
+      const t = unproject(world.x, world.y);
+      hoverHandler({ world, screen, tx: t.tx, ty: t.ty });
     },
   });
 
@@ -52,5 +59,6 @@ export function createScene(canvas, store) {
     resetView: () => camera.fit(worldBounds()),
     setActorProvider: (fn) => { actorProvider = fn; },
     onClick: (fn) => { clickHandler = fn; },
+    onHover: (fn) => { hoverHandler = fn; },
   };
 }

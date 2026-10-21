@@ -128,3 +128,18 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 /* ---------- 대기 배지 ---------- */
 .badge-wait { font-size: 10px; font-weight: 700; color: #fff; background: var(--red); padding: 1px 7px; border-radius: 999px; flex: none; animation: pulse 1.2s infinite; }
 .tool.off { color: var(--muted); text-decoration: line-through; }
+
+/* ---------- 툴팁 ---------- */
+.tooltip { position: fixed; z-index: 50; max-width: 320px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 24px rgba(20,24,30,.14); padding: 10px 12px; font-size: 12px; line-height: 1.5; pointer-events: none; }
+.tooltip.hidden { display: none; }
+.tooltip .tt-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+.tooltip .tt-name .avatar { width: 18px; height: 18px; font-size: 10px; }
+.tooltip .tt-name .sub { font-size: 10px; background: var(--blue-soft); color: var(--blue); padding: 0 5px; border-radius: 4px; font-weight: 600; }
+.tooltip .tt-where { color: var(--muted); font-size: 11px; margin-bottom: 6px; }
+.tooltip .tt-row { display: grid; grid-template-columns: 34px 1fr; gap: 6px; }
+.tooltip .tt-k { color: var(--muted); font-size: 11px; }
+.tooltip .tt-v { word-break: break-all; }
+.tooltip .tt-v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: #f5f6f8; padding: 2px 6px; border-radius: 4px; }
+.tooltip .tt-prompt { color: #444; font-style: italic; }
+.tooltip .tt-foot { margin-top: 6px; color: var(--muted); font-size: 11px; }
+#office.hover-actor { cursor: pointer; }
