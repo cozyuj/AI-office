@@ -242,3 +242,21 @@ body.has-banner #app { padding-top: 44px; }
 /* ---------- 말줄임표 툴팁 ---------- */
 .texttip { position: fixed; z-index: 70; max-width: 420px; background: #2b2f3a; color: #fff; font-size: 11px; line-height: 1.5; padding: 6px 9px; border-radius: 8px; box-shadow: 0 6px 20px rgba(20,24,30,.25); pointer-events: none; white-space: pre-wrap; word-break: break-all; }
 .texttip.hidden { display: none; }
+
+/* ---------- FE-19: 작은 창에서 카드별 스크롤 ---------- */
+#right > .card { flex: 0 0 auto; min-height: 0; }
+#right > .card.grow { flex: 1 1 160px; min-height: 160px; }
+#people { max-height: 28vh; overflow-y: auto; min-height: 44px; }
+#log { flex: 1; min-height: 0; }
+#left .floor-sessions { max-height: 40vh; overflow-y: auto; }
+#legend-card .card-head { cursor: pointer; user-select: none; }
+#legend-card .card-head::after { content: '▾'; color: var(--muted); font-weight: 400; margin-left: 6px; }
+#legend-card.collapsed .card-head::after { content: '▸'; }
+#legend-card.collapsed #legend { display: none; }
+#legend-card.collapsed { padding-bottom: 8px; }
+@media (max-height: 640px) {
+  #legend-card:not(.expanded) #legend { display: none; }
+  #legend-card:not(.expanded) .card-head::after { content: '▸'; }
+  #people { max-height: 22vh; }
+  #session-card .kv { line-height: 1.4; }
+}

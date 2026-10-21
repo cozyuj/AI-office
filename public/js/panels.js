@@ -149,5 +149,17 @@ export function bindPanelEvents() {
   const pick = (e) => { const el = e.target.closest('[data-session]'); if (el) store.selectSession(el.dataset.session); };
   $('people').addEventListener('click', pick);
   $('log').addEventListener('click', pick);
+  // 범례 접기/펼치기 (작은 창에서는 기본 접힘, 클릭으로 토글, 기억)
+  const legendCard = $('legend-card');
+  let legendState = null; try { legendState = localStorage.getItem('aiOffice.legend'); } catch {}
+  const applyLegend = () => { legendCard.classList.toggle('collapsed', legendState === 'collapsed'); legendCard.classList.toggle('expanded', legendState === 'expanded'); };
+  applyLegend();
+  legendCard.querySelector('.card-head').addEventListener('click', () => {
+    const small = window.innerHeight <= 640;
+    const visibleNow = legendState === 'expanded' || (legendState !== 'collapsed' && !small);
+    legendState = visibleNow ? 'collapsed' : 'expanded';
+    try { localStorage.setItem('aiOffice.legend', legendState); } catch {}
+    applyLegend();
+  });
   renderLegend();
 }
