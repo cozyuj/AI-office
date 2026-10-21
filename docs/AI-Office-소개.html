@@ -1,0 +1,368 @@
+<title>AI Office 기술 소개</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 레이아웃: 왼쪽 고정 목차 + 본문 한 열(최대 980px). 사무실 화면의 주황 강조색을 그대로 쓴다. */
+:root {
+  --bg: #f7f5f1; --panel: #ffffff; --fg: #1f2328; --muted: #6b717c; --line: #e4e0d8;
+  --accent: #e8683a; --accent-soft: #fdeee6; --code-bg: #f1eee8; --blue: #3b6fd6; --green: #2fa36b;
+  --font-body: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'D2Coding', ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #16181d; --panel: #1f2329; --fg: #e6e8ec; --muted: #9aa2ae; --line: #2d323b; --accent: #f0825a; --accent-soft: #3a2a22; --code-bg: #272c34; --blue: #7aa2ff; --green: #5ccf93; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #16181d; --panel: #1f2329; --fg: #e6e8ec; --muted: #9aa2ae; --line: #2d323b; --accent: #f0825a; --accent-soft: #3a2a22; --code-bg: #272c34; --blue: #7aa2ff; --green: #5ccf93; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.7; margin: 0; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; }
+nav.toc { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); align-self: start; font-size: 13px; }
+nav.toc .toc-title { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+nav.toc a { display: block; color: var(--fg); text-decoration: none; padding: 4px 8px; border-left: 2px solid var(--line); }
+nav.toc a:hover, nav.toc a:focus-visible { border-left-color: var(--accent); color: var(--accent); outline: none; }
+main { min-width: 0; }
+h1 { font-size: 34px; line-height: 1.25; margin: 0 0 8px; text-wrap: balance; }
+h2 { font-size: 24px; margin: 56px 0 14px; padding-top: 12px; border-top: 1px solid var(--line); text-wrap: balance; }
+h3 { font-size: 17px; margin: 28px 0 8px; }
+p { margin: 0 0 12px; max-width: 72ch; }
+.lead { font-size: 17px; color: var(--muted); max-width: 70ch; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 20px 0 8px; }
+.fact { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.fact b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 12px; color: var(--muted); }
+figure { margin: 16px 0 20px; }
+figure img { width: 100%; max-width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; }
+figcaption { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.grid2 figure { margin: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 10px 0 18px; }
+.tbl { overflow-x: auto; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td code, p code, li code { font-family: var(--font-mono); font-size: 12.5px; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0 18px; }
+pre code { background: none; padding: 0; }
+ul { padding-left: 20px; margin: 0 0 12px; } li { margin: 3px 0; }
+.note { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; max-width: 76ch; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--code-bg); color: var(--muted); margin-right: 4px; font-family: var(--font-mono); }
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow-x: auto; margin: 14px 0 20px; }
+.diagram svg { display: block; width: 100%; height: auto; min-width: 680px; }
+.kv { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 14px; font-size: 14px; margin: 8px 0 16px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; }
+kbd { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; background: var(--panel); }
+footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav.toc { position: static; display: flex; flex-wrap: wrap; gap: 4px 10px; } nav.toc .toc-title { width: 100%; } nav.toc a { border-left: 0; padding: 2px 0; } h1 { font-size: 28px; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="목차">
+  <div class="toc-title">목차</div>
+  <a href="#overview">1. 한눈에</a>
+  <a href="#system">2. 시스템 구성도</a>
+  <a href="#flow">3. 데이터 흐름</a>
+  <a href="#backend">4. 백엔드</a>
+  <a href="#state">5. 상태 전이</a>
+  <a href="#frontend">6. 프런트엔드·렌더링</a>
+  <a href="#features">7. 주요 기능</a>
+  <a href="#app">8. 맥 앱과 설치</a>
+  <a href="#quality">9. 테스트·성능</a>
+  <a href="#roadmap">10. 설계 결정·로드맵</a>
+</nav>
+
+<main>
+<div class="eyebrow">AI Office · v0.23 · 2026-10-21</div>
+<h1>Claude Code 세션을 아이소메트릭 사무실로 보여주는 로컬 뷰어</h1>
+<p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생깁니다.</p>
+
+<section id="overview">
+<h2>1. 한눈에</h2>
+<figure><img src="screenshots/fe-30-overview.jpg" alt="AI Office 전체 화면: 왼쪽 층별 안내, 가운데 아이소메트릭 사무실, 오른쪽 세션 정보·사람·로그"><figcaption>전체 화면. 왼쪽 층별 안내(프로젝트 = 층), 가운데 사무실 캔버스, 오른쪽 세션 카드·사람·활동 로그.</figcaption></figure>
+<div class="facts">
+  <div class="fact"><b>0</b><span>런타임 의존성 (Node 18+ 표준 모듈만)</span></div>
+  <div class="fact"><b>12</b><span>처리하는 훅 이벤트 종류</span></div>
+  <div class="fact"><b>11 + α</b><span>방 (업무 9 + 휴식 편의시설, 프리셋마다 교체)</span></div>
+  <div class="fact"><b>96</b><span>node --test 테스트 (서버·경로·렌더·스모크)</span></div>
+  <div class="fact"><b>456 KB</b><span>npm 패키지 (48 파일)</span></div>
+  <div class="fact"><b>39 MB</b><span>맥 앱 DMG (Node 22 사이드카 포함)</span></div>
+</div>
+<h3>기술 스택</h3>
+<dl class="kv">
+  <dt>서버</dt><dd>Node.js 18+ · <code>http</code> 표준 모듈만 · 상태 머신 + JSONL 저널 · SSE 푸시</dd>
+  <dt>프런트</dt><dd>바닐라 ES 모듈 · Canvas 2D 아이소메트릭 렌더러(빌드 없음, 번들러 없음) · 폰트 D2Coding + NanumSquare</dd>
+  <dt>데스크톱 앱</dt><dd>Tauri 2 (Rust) 메뉴바 앱 · Node 22.12 바이너리를 사이드카로 번들 · 서버 파일은 앱 리소스</dd>
+  <dt>입력</dt><dd>Claude Code 훅 12종 (<code>~/.claude/settings.json</code> 에 등록, <code>hooks/emit.js</code> 가 POST)</dd>
+  <dt>배포</dt><dd><code>npx claude-ai-office</code> (npm) · <code>npx github:cozyuj/AI-office</code> · GitHub Release DMG</dd>
+  <dt>테스트</dt><dd><code>node --test</code> 96개: 상태 머신, 경로 탐색, 깊이 정렬, 저널, CLI, 서버 통합, 프런트 스모크(가짜 캔버스·DOM)</dd>
+</dl>
+</section>
+
+<section id="system">
+<h2>2. 시스템 구성도</h2>
+<p>세 프로세스가 있습니다. Claude Code(여러 터미널)가 훅마다 짧은 Node 프로세스(<code>emit.js</code>)를 띄워 이벤트를 서버에 POST 하고, 서버 한 개가 상태를 들고 브라우저(또는 Tauri 창)에 SSE 로 밀어 줍니다. 맥 앱은 서버를 자식으로 띄우고 메뉴바에 상태를 보여 주는 껍데기입니다.</p>
+<div class="diagram">
+<svg viewBox="0 0 980 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="시스템 구성도">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b717c"/></marker></defs>
+  <style>
+    .box{fill:#ffffff;stroke:#c9c3b8;stroke-width:1.2;rx:10}
+    .acc{fill:#fdeee6;stroke:#e8683a}
+    .t{font:500 13px 'IBM Plex Sans KR',system-ui,sans-serif;fill:#1f2328}
+    .s{font:12px 'IBM Plex Mono',monospace;fill:#6b717c}
+    .l{stroke:#6b717c;stroke-width:1.4;fill:none;marker-end:url(#arr)}
+    .lab{font:11.5px 'IBM Plex Mono',monospace;fill:#3b6fd6}
+    .grp{fill:none;stroke:#c9c3b8;stroke-dasharray:4 4;rx:12}
+    .gt{font:600 11px 'IBM Plex Sans KR',system-ui,sans-serif;fill:#6b717c;letter-spacing:.08em}
+  </style>
+  <!-- 터미널들 -->
+  <rect class="grp" x="16" y="30" width="230" height="300"/><text class="gt" x="28" y="22">TERMINALS · CLAUDE CODE</text>
+  <rect class="box" x="32" y="52" width="196" height="54"/><text class="t" x="44" y="74">claude 세션 A</text><text class="s" x="44" y="94">~/proj-a · 메인 + 서브에이전트</text>
+  <rect class="box" x="32" y="122" width="196" height="54"/><text class="t" x="44" y="144">claude 세션 B</text><text class="s" x="44" y="164">~/proj-a (worktree)</text>
+  <rect class="box" x="32" y="192" width="196" height="54"/><text class="t" x="44" y="214">claude 세션 C</text><text class="s" x="44" y="234">~/proj-b</text>
+  <rect class="box" x="32" y="262" width="196" height="54"/><text class="t" x="44" y="284">훅: hooks/emit.js</text><text class="s" x="44" y="304">POST /hook · 1초 타임아웃 · exit 0</text>
+  <!-- 설정 파일 -->
+  <rect class="box" x="32" y="350" width="196" height="46"/><text class="t" x="44" y="370">~/.claude/settings.json</text><text class="s" x="44" y="388">훅 12종 등록 (install-hooks.js)</text>
+  <!-- 서버 -->
+  <rect class="grp" x="300" y="30" width="330" height="366"/><text class="gt" x="312" y="22">LOCAL SERVER · node server.js · :4777</text>
+  <rect class="box acc" x="318" y="52" width="294" height="60"/><text class="t" x="330" y="74">lib/state.js 상태 머신</text><text class="s" x="330" y="94">floors → sessions → agents · sweep() 1초</text>
+  <rect class="box" x="318" y="126" width="140" height="56"/><text class="t" x="330" y="148">normalize.js</text><text class="s" x="330" y="168">도구 → 방/문구</text>
+  <rect class="box" x="472" y="126" width="140" height="56"/><text class="t" x="484" y="148">project.js</text><text class="s" x="484" y="168">cwd → git 루트</text>
+  <rect class="box" x="318" y="196" width="294" height="56"/><text class="t" x="330" y="218">journal.js · ~/.ai-office/events.jsonl</text><text class="s" x="330" y="238">append(1s flush) · replay on boot · compact 1h</text>
+  <rect class="box" x="318" y="266" width="294" height="56"/><text class="t" x="330" y="288">HTTP: /hook · /events(SSE) · /api/*</text><text class="s" x="330" y="308">정적 파일 public/ · 데모 자식 프로세스</text>
+  <rect class="box" x="318" y="336" width="294" height="46"/><text class="t" x="330" y="356">floor-styles.json</text><text class="s" x="330" y="374">층 인테리어 선택 (서버 저장)</text>
+  <!-- 클라이언트 -->
+  <rect class="grp" x="690" y="30" width="274" height="366"/><text class="gt" x="702" y="22">CLIENTS</text>
+  <rect class="box" x="708" y="52" width="238" height="112"/><text class="t" x="720" y="74">브라우저 · public/</text><text class="s" x="720" y="94">store.js (상태 미러)</text><text class="s" x="720" y="112">panels.js (DOM 패널)</text><text class="s" x="720" y="130">scene/* (Canvas 아이소메트릭)</text><text class="s" x="720" y="148">overview.js · customize.js</text>
+  <rect class="box" x="708" y="184" width="238" height="92"/><text class="t" x="720" y="206">AI Office.app (Tauri 2 · Rust)</text><text class="s" x="720" y="226">메뉴바 트레이 · WebView 창</text><text class="s" x="720" y="244">Node 사이드카로 서버 spawn</text><text class="s" x="720" y="262">리소스 → ~/.ai-office/app 복사</text>
+  <rect class="box" x="708" y="296" width="238" height="86"/><text class="t" x="720" y="318">CLI · bin/ai-office.js</text><text class="s" x="720" y="338">up · install · install-hooks</text><text class="s" x="720" y="356">start · demo · doctor · compact</text><text class="s" x="720" y="374">npx claude-ai-office</text>
+  <!-- 화살표 -->
+  <path class="l" d="M228 79 L318 79"/><path class="l" d="M228 149 L318 100"/><path class="l" d="M228 219 L318 108"/>
+  <text class="lab" x="236" y="66">hook JSON</text>
+  <path class="l" d="M612 294 L708 110"/><text class="lab" x="618" y="214">SSE /events</text>
+  <path class="l" d="M708 90 L612 300" transform="translate(0,16)"/><text class="lab" x="640" y="330">GET /api/state</text>
+  <path class="l" d="M708 230 L646 230 L646 296 L612 296"/><text class="lab" x="650" y="252">spawn</text>
+  <path class="l" d="M228 373 L318 373" stroke-dasharray="3 3"/><text class="lab" x="236" y="364">port 읽기</text>
+</svg>
+</div>
+<p>포트는 기본 4777 하나입니다. 서버가 이미 떠 있으면 앱과 CLI 는 새로 띄우지 않고 재사용하고, 훅 명령에 적힌 <code>--port</code> 와 서버 포트가 다르면 서버 기동 로그와 화면 배너가 경고합니다(<code>lib/hookport.js</code>).</p>
+</section>
+
+<section id="flow">
+<h2>3. 데이터 흐름</h2>
+<h3>훅 → 서버</h3>
+<p>Claude Code 는 훅마다 <code>"/path/node" "/path/hooks/emit.js"</code> 를 실행하고 stdin 으로 JSON 을 넘깁니다. <code>emit.js</code> 는 그 바이트를 그대로 <code>POST /hook</code> 하고 1초 안에 끝냅니다. 서버가 없어도 항상 exit 0 이라 Claude Code 의 흐름을 막지 않습니다. 서버는 본문을 파싱한 뒤 <strong>먼저 204 를 보내고</strong> 상태를 갱신합니다(훅 쪽은 응답 내용을 쓰지 않습니다).</p>
+<pre><code>Claude Code ──(stdin JSON)──▶ emit.js ──POST /hook──▶ server.js
+                                                   ├─ state.apply(payload, now)   # 상태 전이
+                                                   ├─ journal.append(now, slim)   # 데모 제외
+                                                   └─ broadcast('update' | 'remove' | 'floor')  # SSE</code></pre>
+<h3>서버 → 브라우저</h3>
+<p><code>GET /events</code> 는 Server-Sent Events 입니다. 접속 직후 <code>snapshot</code>(전체 상태) 한 번, 그 뒤로는 바뀐 세션만 <code>update</code>, 사라지면 <code>remove</code>, 층 이름·프리셋이 바뀌면 <code>floor</code>, 데모 on/off 는 <code>demo</code>. 클라이언트 <code>store.js</code> 가 같은 모양으로 미러링하고, 패널은 DOM 을 다시 그리고 캔버스는 다음 프레임에 캐릭터 목표를 갱신합니다.</p>
+<h3>저널과 복구</h3>
+<p>훅 payload 는 큰 필드(<code>tool_response</code>, 긴 프롬프트)를 잘라낸 slim 형태로 <code>~/.ai-office/events.jsonl</code> 에 1초 단위로 flush 됩니다. 서버를 다시 켜면 최근 2시간치를 그대로 다시 흘려 상태를 복원하고, 1시간마다 오래된 줄을 정리합니다(<code>ai-office compact</code> 로 즉시 가능). 데모 이벤트는 저널에 남기지 않습니다.</p>
+<h3>층 = git 프로젝트</h3>
+<p><code>lib/project.js</code> 가 cwd 에서 위로 올라가며 <code>.git</code> 을 찾아 저장소 루트를 층 id 로 씁니다. worktree 는 원래 저장소로 묶이므로 같은 층에 보이고, 브랜치 이름은 <code>HEAD</code> 파일을 읽어 세션 옆에 <code>⎇</code> 태그로 붙습니다. git 을 실행하지 않습니다.</p>
+</section>
+
+<section id="backend">
+<h2>4. 백엔드 모듈</h2>
+<div class="tbl"><table>
+<tr><th>파일</th><th>역할</th><th>핵심 포인트</th></tr>
+<tr><td><code>server.js</code></td><td>HTTP·SSE·정적 파일·데모 자식·저널 연결</td><td>의존성 없음. <code>/hook</code> 은 먼저 204. <code>AI_OFFICE_WATCH_PARENT</code> 가 있으면 부모 pid 를 2초마다 확인해 사라지면 종료(앱·CLI 강제 종료 대비)</td></tr>
+<tr><td><code>lib/state.js</code></td><td>상태 머신</td><td>floors → sessions → agents. 훅 12종 전이, 서브에이전트 <code>agent_id</code> 매칭, <code>pendingSubagents</code> 큐로 Agent 도구 description 과 SubagentStart 짝짓기, sweep(): 30분 자리 비움·transcript mtime 으로 퇴근 감지·2시간 TTL, 층 이름 충돌 시 상위 경로로 구분</td></tr>
+<tr><td><code>lib/normalize.js</code></td><td>도구 → 방·활동·말풍선·아이콘</td><td>Read/Grep/Glob → 자료실, Edit/Write → 개발실, Bash → 서버실, Web*/MCP → 정보검색실, Agent/Todo/Plan → 회의실, AskUserQuestion → 내 자리. 시스템 프롬프트(<code>&lt;task-notification&gt;</code>)는 요청으로 치지 않음</td></tr>
+<tr><td><code>lib/project.js</code></td><td>cwd → 저장소 루트·이름·브랜치·worktree</td><td><code>.git</code> 파일(worktree)이면 <code>gitdir:</code> 을 따라가 본 저장소로</td></tr>
+<tr><td><code>lib/journal.js</code></td><td>JSONL 저널</td><td>slim 페이로드, 1초 flush, 2시간 창 replay, 1시간 compact, 20MB 상한</td></tr>
+<tr><td><code>lib/floorStyle.js</code></td><td>층 인테리어 프리셋 배정</td><td>층 id 해시 + 아직 안 쓰인 프리셋 우선, 직접 선택은 <code>floor-styles.json</code> 에 저장해 모든 브라우저가 같은 층을 봄</td></tr>
+<tr><td><code>lib/hookport.js</code></td><td>settings.json 의 훅 명령에서 포트 읽기</td><td>포트 불일치 경고의 근거</td></tr>
+<tr><td><code>hooks/emit.js</code></td><td>훅 → POST</td><td>표준 http, 1초 타임아웃, 항상 exit 0</td></tr>
+<tr><td><code>scripts/install-hooks.js</code></td><td>훅 등록/제거</td><td>멱등. <code>--app-dir</code>, <code>--node</code>, <code>--port</code>. 우리 훅만 골라 교체</td></tr>
+<tr><td><code>scripts/demo.js</code></td><td>가짜 세션 생성기</td><td><code>/demo/</code> cwd 로 실제 훅 흐름을 재현. 서버가 자식으로 띄우고 끄면 세션을 정리</td></tr>
+</table></div>
+<h3>HTTP API</h3>
+<div class="tbl"><table>
+<tr><th>메서드·경로</th><th>설명</th></tr>
+<tr><td><code>POST /hook</code></td><td>Claude Code 훅 payload. 204 즉시 응답 후 처리. 데모가 꺼진 상태의 <code>/demo/</code> 이벤트는 무시</td></tr>
+<tr><td><code>GET /events</code></td><td>SSE: <code>snapshot</code>, <code>update</code>, <code>remove</code>, <code>floor</code>, <code>demo</code></td></tr>
+<tr><td><code>GET /api/state</code></td><td>전체 스냅샷 + <code>serverPort</code>, <code>hookPort</code>, <code>version</code>, <code>demo</code>, <code>journal</code> 통계. CORS <code>*</code>(Tauri 로더용)</td></tr>
+<tr><td><code>POST /api/demo/start</code> · <code>/stop</code></td><td>데모 자식 프로세스 시작/종료, 종료 시 데모 세션 전부 제거</td></tr>
+<tr><td><code>POST /api/floors/style</code></td><td>층 인테리어 프리셋 저장 (<code>{ floorId, preset }</code>, 빈 값이면 자동)</td></tr>
+<tr><td><code>DELETE /api/sessions/:id</code></td><td>끝난·자리 비운 세션을 TTL 전에 목록에서 치우기</td></tr>
+</table></div>
+<h3>데이터 모델</h3>
+<pre><code>Floor   { id: gitRoot, name, no, sessions: Map, lastActivity, style, styleAuto, styleOverride }
+Session { id, floorId, title, status: thinking|working|waiting|idle|away|ended,
+          cwd, branch, worktree, transcriptPath, agents: Map, pendingSubagents[] }
+Agent   { id: 'main'|agent_id, kind: main|sub, name, room, activity, bubble, icon,
+          tool?: { name, useId, target, detail }, since, leaving }
+LogEntry{ t, floorId, sessionId, agentId, agentName, icon, text }   // 최근 500건</code></pre>
+</section>
+
+<section id="state">
+<h2>5. 훅 이벤트 → 상태 전이</h2>
+<p>Claude Code 2.1 훅 payload 기준입니다. 서브에이전트가 낸 도구 호출은 <code>agent_id</code> 가 실려 오므로 그 값으로 캐릭터를 찾고, 없으면 <code>main</code> 입니다.</p>
+<div class="tbl"><table>
+<tr><th>훅</th><th>대상</th><th>방</th><th>activity</th><th>말풍선 / 비고</th></tr>
+<tr><td>SessionStart</td><td>main 생성</td><td>elevator → mydesk</td><td>wait</td><td>"출근했습니다". resume/compact 는 기존 세션 유지</td></tr>
+<tr><td>UserPromptSubmit</td><td>main</td><td>현재 위치</td><td>think</td><td>"고민 중…". 첫 프롬프트 40자가 세션 제목. status=thinking</td></tr>
+<tr><td>PreToolUse</td><td>agent_id 또는 main</td><td>도구별</td><td>도구별</td><td>"a.js 읽는 중", "npm test 실행 중"… status=working</td></tr>
+<tr><td>PostToolUse</td><td>동일</td><td>그 자리</td><td>think</td><td>도구 해제. 로그는 시작 때만</td></tr>
+<tr><td>PostToolUseFailure</td><td>동일</td><td>그 자리</td><td>think</td><td>❌ "실패했네, 다시 생각 중" + error 앞 60자</td></tr>
+<tr><td>PreToolUse(Agent)</td><td>main</td><td>meeting</td><td>delegate</td><td>"{description} 맡기는 중". description 을 큐에 push</td></tr>
+<tr><td>SubagentStart</td><td>sub 생성</td><td>elevator → meeting</td><td>think</td><td>이름 = 큐의 description ?? agent_type</td></tr>
+<tr><td>SubagentStop</td><td>sub</td><td>elevator</td><td>leave</td><td>"퇴근합니다", 4초 뒤 제거(걸어서 나감)</td></tr>
+<tr><td>Notification</td><td>main</td><td>mydesk / 휴식 방</td><td>ask / rest</td><td>permission_prompt·elicitation → "허락이 필요해요"(waiting), idle_prompt → 휴식(idle)</td></tr>
+<tr><td>PreToolUse(AskUserQuestion)</td><td>main</td><td>mydesk</td><td>ask</td><td>"질문 있어요". status=waiting → 브라우저 알림·소리·탭 배지</td></tr>
+<tr><td>Stop</td><td>main</td><td>휴식 방*</td><td>rest</td><td>휴게실 "휴식 중" / 카페 "커피 마시는 중" / 테라스 "바람 쐬는 중". status=idle</td></tr>
+<tr><td>PreCompact</td><td>main</td><td>현재 위치</td><td>compact</td><td>"기억 정리 중"</td></tr>
+<tr><td>TaskCompleted</td><td>–</td><td>–</td><td>–</td><td>로그만 "✅ {task_subject}"</td></tr>
+<tr><td>SessionEnd</td><td>세션</td><td>elevator</td><td>leave</td><td>status=ended, 10초 뒤 세션 제거. 마지막 세션이면 층도 제거</td></tr>
+</table></div>
+<p>*휴식 방은 세션 id 해시로 휴게실·카페·테라스 중 하나를 서버가 고르므로 모든 클라이언트가 같은 방을 봅니다. 층의 인테리어 프리셋이 카페·테라스 대신 다른 편의시설(헬스장·옥상정원·구내식당·수면실·북 라운지·게임룸·세미나실·스튜디오)을 갖고 있으면 로그와 말풍선도 그 이름으로 바뀝니다.</p>
+<div class="note">훅 없이 끊긴 세션(터미널을 그냥 닫은 경우)은 <code>sweep()</code> 이 잡습니다. 10분 무활동부터 세션의 transcript 파일 mtime 을 1분 간격으로 확인해 60분 동안 갱신이 없으면 퇴근 처리하고, 30분 무활동이면 "자리 비움", 2시간이면 완전히 제거합니다.</div>
+</section>
+
+<section id="frontend">
+<h2>6. 프런트엔드와 렌더링 파이프라인</h2>
+<div class="tbl"><table>
+<tr><th>모듈</th><th>역할</th></tr>
+<tr><td><code>store.js</code></td><td>서버 상태 미러 + UI 옵션(선택 층·세션, 따라가기, 말풍선 범위, 소리, 생동감, 테마, 시간대 조명, 로그 필터). 비대기 → 대기 전이를 <code>waiting</code> 이벤트로 알림. 세션별 캐릭터 이름 장부(localStorage)</td></tr>
+<tr><td><code>panels.js</code></td><td>층별 안내·세션 카드·사람·활동 로그·범례를 innerHTML 템플릿으로 렌더. 저장소 이벤트마다 다시 그리고 경과 시간은 1초마다</td></tr>
+<tr><td><code>main.js</code></td><td>SSE 연결, 프레임 루프, ⚙️ 설정 팝오버, 단축키, 알림·차임, 테마, 시간대 조명, 층 인테리어 적용</td></tr>
+<tr><td><code>scene/map.js</code> · <code>layouts.js</code></td><td>타일 격자(x 1~35, y 1~21), 방·가구·벽·문·슬롯. 레이아웃 5종이 업무 방 9개의 위치와 편의시설 2곳을 정함</td></tr>
+<tr><td><code>scene/sprites.js</code></td><td>가구·벽·유리창·난간·파라솔 등을 코드로 그리는 플랫 벡터 스프라이트(외부 이미지 없음)</td></tr>
+<tr><td><code>scene/render.js</code></td><td>바닥 캐시, 종류별 공유 스프라이트 캐시, AABB 위상 정렬, 방 이름표, 시간대 틴트·조명</td></tr>
+<tr><td><code>scene/pathfind.js</code></td><td>A*. 방은 문으로만 드나들고 가구 타일은 막힘</td></tr>
+<tr><td><code>scene/actors.js</code> · <code>avatar.js</code></td><td>캐릭터 상태(이동·바운스·호흡·깜빡임·타이핑), 치비 아바타(몸 종류 4 · 머리·옷·안경·모자·악세사리), 말풍선 스태킹, 휴식 방 안 배회</td></tr>
+<tr><td><code>overview.js</code></td><td>🏢 전체 보기: 층을 건물 단면처럼 쌓고 미니 사무실 + 캐릭터 점</td></tr>
+<tr><td><code>customize.js</code> · <code>floorStylePicker.js</code></td><td>외형 모달(프리셋·파츠·색·이름), 층 인테리어 팝오버</td></tr>
+</table></div>
+<h3>아이소메트릭 투영과 깊이 정렬</h3>
+<pre><code>// 타일 (tx, ty), 높이 z → 월드 px.  TW=64, TH=32, ZH=26
+x = (tx - ty) * TW/2
+y = (tx + ty) * TH/2 - z * ZH
+
+// 깊이: 엔티티마다 3D AABB {x0,y0,x1,y1,z0,z1}. 화면에서 겹치는 두 상자 A,B 에 대해
+//   A.x1 <= B.x0  또는  A.y1 <= B.y0  또는  A.z1 <= B.z0  이면 A 가 뒤.
+// 정적끼리의 관계는 한 번만 계산(STATIC_EDGES), 캐릭터와의 관계만 매 프레임 → Kahn 위상 정렬</code></pre>
+<h3>프레임 한 번</h3>
+<pre><code>frame(now):
+  dirty → renderAll()                     # 패널 DOM
+  busy = 따라가기 || 카메라 입력 || 걷는 캐릭터     # 아니면 20fps 로 쉼
+  scene.frame: drawFloor(캐시) → drawDaylightFloor → drawEntities(정적+캐릭터 정렬) → drawLabels → 말풍선 오버레이
+  overview.visible 이면 대신 overview.frame</code></pre>
+<p>스프라이트는 종류(타입·크기·방향·seed·위치 변형)별로 한 장만 캐시합니다. 그리기가 타일 평행이동에 불변이라 기준점 기준 오프셋으로 찍으면 픽셀이 같고, 390개 엔티티가 89장으로 줄어 메모리가 3분의 1이 됐습니다. 테마·프리셋이 바뀌면 캐시를 비우고, 시간대가 바뀌면 창문 스프라이트만 다시 그립니다.</p>
+</section>
+
+<section id="features">
+<h2>7. 주요 기능</h2>
+
+<h3>층과 세션</h3>
+<p>git 저장소마다 층. 같은 저장소의 세션(worktree 포함)은 한 층에 모이고 세션 색으로 구분됩니다. 왼쪽 층별 안내에서 층·세션을 고르고, 숫자 키로 층 번호(<kbd>7</kbd> → 7F, 12F 는 <kbd>1</kbd> <kbd>2</kbd> 연타), 화살표로 이전·다음 층. "최근 세션 자동으로 따라가기" 를 켜면 마지막으로 활동한 세션이 자동 선택됩니다.</p>
+<div class="grid2">
+<figure><img src="screenshots/fe-05-waiting.jpg" alt="답을 기다리는 세션이 내 자리에서 손을 든 화면"><figcaption>질문·허락 대기: 내 자리에서 손을 들고, 층·세션에 빨간 배지, 탭 제목에 <code>(nF)</code>, 브라우저 알림·차임.</figcaption></figure>
+<figure><img src="screenshots/fe-36-log.jpg" alt="활동 로그와 세션 카드"><figcaption>세션 카드(프로젝트·브랜치·이어가기 명령 복사·캐릭터 이름·치우기)와 활동 로그(검색·선택 세션만 필터).</figcaption></figure>
+</div>
+
+<h3>캐릭터와 외형, 이름</h3>
+<p>치비 스타일 아바타를 코드로 그립니다. 몸 종류(사람·로봇·고양이·곰), 머리 모양·색, 상의·하의·신발 색, 안경·모자·악세사리를 고르고 프리셋 10개가 있습니다. 역할(나·Claude·서브에이전트)별 기본 외형에 더해 세션마다 다른 외형과 이름을 줄 수 있고, 이름이 없는 세션은 별명 풀(Alex·Sam·Mia …)에서 자동으로 받습니다. 모두 브라우저 localStorage 에 저장됩니다.</p>
+<figure><img src="screenshots/fe-30-customize.jpg" alt="캐릭터 외형 모달"><figcaption>외형 모달. 왼쪽 미리보기, 프리셋 칩, 파츠·색 선택, 세션 캐릭터 이름 입력.</figcaption></figure>
+
+<h3>사무실 공간: 카페·테라스와 층별 다른 구조</h3>
+<p>업무 방 9개(자료실·개발실·정보검색실·회의실·휴게실·서버실·내 자리·로비·엘리베이터)에 휴식용 편의시설 두 곳이 더해집니다. 층마다 인테리어 프리셋(따뜻한 우드·쿨 그레이·민트·라벤더·샌드·파스텔)이 배정되고, 프리셋은 색과 함께 방 배치·편의시설을 정합니다. 층 행의 🎨 또는 ⚙️ 설정 → 층 인테리어에서 직접 고르면 서버에 저장되어 모든 브라우저가 같은 층을 봅니다.</p>
+<div class="grid2">
+<figure><img src="screenshots/fe-30-cafe-terrace.jpg" alt="유리창 있는 카페와 데크 테라스"><figcaption>카페(북쪽 외벽 유리창, 카운터·커피머신)와 테라스(데크·난간·파라솔). 휴식 시간에 캐릭터가 들어가 자리를 옮겨 다닙니다.</figcaption></figure>
+<figure><img src="screenshots/fe-35-closeup-gym-garden.jpg" alt="헬스장과 옥상정원 편의시설"><figcaption>민트 프리셋: 헬스장·옥상정원. 레이아웃이 다르면 방 위치와 경로도 달라집니다.</figcaption></figure>
+<figure><img src="screenshots/fe-35-closeup-canteen.jpg" alt="구내식당 편의시설"><figcaption>샌드 프리셋: 구내식당·수면실. 휴식 로그와 말풍선이 "밥 먹는 중"으로 바뀝니다.</figcaption></figure>
+<figure><img src="screenshots/fe-34-picker.jpg" alt="층 인테리어 프리셋 팝오버"><figcaption>층 인테리어 팝오버. 자동(해시 배정) 또는 프리셋 선택.</figcaption></figure>
+</div>
+
+<h3>시간대 조명과 다크 모드</h3>
+<p>실제 시각으로 아침(06~10)·낮·저녁(17~20)·밤을 판단해 창문 유리, 테라스 데크, 실내 틴트가 바뀌고 밤에는 파라솔·난간에 조명 점이 켜집니다. 설정에서 시간대를 고정해 미리 볼 수 있습니다. 다크 모드는 UI 팔레트와 맵 팔레트를 함께 바꾸는 별개 축입니다.</p>
+<div class="grid2">
+<figure><img src="screenshots/fe-33-evening.jpg" alt="저녁 조명"><figcaption>저녁: 주황빛 창문과 따뜻한 틴트.</figcaption></figure>
+<figure><img src="screenshots/fe-33-night.jpg" alt="밤 조명"><figcaption>밤: 남색 창문, 어두운 테라스, 조명 점.</figcaption></figure>
+</div>
+
+<h3>전체 보기 (건물 단면)</h3>
+<p>🏢 전체 보기(<kbd>O</kbd>)는 층을 높은 층부터 쌓아 한 화면에 보여 줍니다. 층마다 미니 사무실(그 층의 프리셋으로 한 번 캐시), 캐릭터 점, 세션 수·상태 라벨. 대기 중인 세션은 빨간 링이 맥동하고, 층을 클릭하면 그 층으로 갑니다.</p>
+<figure><img src="screenshots/fe-30-building.jpg" alt="전체 보기: 층을 건물처럼 쌓은 단면"><figcaption>전체 보기.</figcaption></figure>
+
+<h3>설정, 단축키, 알림</h3>
+<p>헤더에는 🏢 전체 보기 · 📍 따라가기 · ⚙️ 설정만 두고, 설정 팝오버에 말풍선 범위, 브라우저 알림, 대기 알림 소리(답 기다림만 / 실패·종료도), 생동감, 테마, 데모, 캐릭터 외형, 시간대 조명, 층 인테리어, 단축키 표를 모았습니다. 알림은 세션이 새로 "답 기다림"이 될 때 한 번 오고, 소리는 Web Audio 로 생성한 2음 차임입니다(파일 없음).</p>
+<div class="tbl"><table>
+<tr><th>키</th><th>동작</th><th>키</th><th>동작</th></tr>
+<tr><td><kbd>0</kbd>~<kbd>9</kbd></td><td>층 번호로 이동</td><td><kbd>O</kbd></td><td>전체 보기</td></tr>
+<tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>이전·다음 층</td><td><kbd>B</kbd></td><td>말풍선 범위</td></tr>
+<tr><td><kbd>F</kbd></td><td>따라가기</td><td><kbd>S</kbd></td><td>알림 소리</td></tr>
+<tr><td><kbd>A</kbd></td><td>자동 따라가기</td><td><kbd>T</kbd></td><td>테마</td></tr>
+<tr><td><kbd>D</kbd></td><td>데모</td><td><kbd>/</kbd></td><td>로그 검색</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>패널·모달·메뉴·전체 보기 닫기 → 검색 비우기 → 따라가기 해제</td><td><kbd>?</kbd></td><td>단축키 표</td></tr>
+</table></div>
+
+<h3>생동감, 데모, 작은 창</h3>
+<p>쉬는 캐릭터는 휴식 방 안의 명소(카운터·창가·벤치·난간)를 10~30초마다 옮겨 다니고 가끔 산책을 나갑니다. 새 이벤트가 오면 즉시 멈추고 해당 방으로 갑니다. 데모(<code>scripts/demo.js</code>)는 실제 훅 흐름을 <code>/demo/</code> 층에 재현해 세션이 없어도 사무실을 볼 수 있게 합니다. 창이 좁아지면(1100px 이하) 좌·우 패널이 숨고 사무실만 남으며, 터치 기기에서는 두 손가락 핀치로 확대합니다.</p>
+<div class="grid2">
+<figure><img src="screenshots/fe-16-dark.jpg" alt="다크 모드"><figcaption>다크 모드.</figcaption></figure>
+<figure><img src="screenshots/fe-19-small-window.jpg" alt="작은 창에서 사무실만 남은 화면"><figcaption>작은 창.</figcaption></figure>
+</div>
+</section>
+
+<section id="app">
+<h2>8. 맥 앱과 설치</h2>
+<p>Tauri 2 메뉴바 앱(<code>app/src-tauri/src/lib.rs</code>)은 창 하나와 트레이 메뉴(열기·숨기기·항상 위·훅 다시 설치·종료)를 가집니다. 첫 실행 때 앱 리소스의 서버 파일을 <code>~/.ai-office/app</code> 에, 번들 Node 바이너리를 <code>~/.ai-office/node</code> 에 복사하고(버전이 바뀔 때만, <code>.app-version</code> 스탬프) 그 경로로 훅을 등록합니다. 그래서 앱을 옮기거나 지워도 훅이 깨지지 않습니다. 서버는 내장 Node 로 자식 프로세스로 띄우고, 포트가 이미 열려 있으면 재사용합니다. 답을 기다리는 세션이 있으면 트레이 제목이 <code>🙋 n</code> 이 됩니다.</p>
+<figure><img src="screenshots/app-01-window.png" alt="맥 메뉴바 앱 창"><figcaption>맥 앱 창. 로더가 <code>/api/state</code> 를 폴링해 서버가 뜨면 웹 UI 를 엽니다.</figcaption></figure>
+<div class="tbl"><table>
+<tr><th>방법</th><th>대상</th><th>명령·파일</th></tr>
+<tr><td>npm</td><td>Node 18+ 모든 OS</td><td><code>npx claude-ai-office</code> → 설치 + 훅 등록 + 서버 + 브라우저. 하위 명령 <code>install · install-hooks · uninstall-hooks · start · demo · doctor · compact</code></td></tr>
+<tr><td>GitHub</td><td>동일</td><td><code>npx github:cozyuj/AI-office</code></td></tr>
+<tr><td>DMG</td><td>맥 Apple Silicon</td><td>Releases 의 <code>AI Office_&lt;버전&gt;_aarch64.dmg</code>. 서명이 없어 처음엔 우클릭 → 열기</td></tr>
+</table></div>
+<p>CLI 는 소스 파일 지문(경로·크기·mtime 해시)을 비교해 설치본을 갱신하고, git clone 에서 실행하면 소스를 그대로 씁니다. <code>doctor</code> 는 Node 버전, 훅 등록 수와 node·emit.js 경로 존재, 설치본 버전, 포트 사용 여부, 저널 크기(5MB 이상 경고), 훅 포트 일치를 점검합니다.</p>
+<h3>버전과 릴리스 규칙</h3>
+<p>작업마다 GitHub 이슈(<code>[FE-nn]</code> / <code>[BE-nn]</code> / <code>[APP-nn]</code>) → <code>main</code> 에서 <code>feature|fix|test|docs/&lt;ID&gt;</code> 브랜치 → PR → 머지 → 이슈 댓글 보고. 변경마다 버전을 올리며(<code>npm run bump:minor|patch</code> 가 package.json·app·tauri.conf·Cargo.toml 을 함께 갱신) DMG 는 <code>npm run app:build</code>(Node 사이드카 fetch → tauri build) 로 만들어 Release 에 올립니다.</p>
+</section>
+
+<section id="quality">
+<h2>9. 테스트와 성능</h2>
+<div class="tbl"><table>
+<tr><th>테스트 파일</th><th>다루는 것</th></tr>
+<tr><td><code>state.test.js</code></td><td>훅 12종 전이, 서브에이전트 매칭, 휴식 방 배정, 자리 비움·퇴근 감지, TTL, 층 이름 충돌</td></tr>
+<tr><td><code>pathfind.test.js</code> · <code>layouts.test.js</code> · <code>spots.test.js</code></td><td>모든 레이아웃에서 슬롯·명소가 걷기 가능하고 그 방 안에 있음, 방은 문으로만 출입, 문 수</td></tr>
+<tr><td><code>depth.test.js</code></td><td>AABB 비교 규칙, 위상 정렬, 공유 스프라이트의 평행이동 불변</td></tr>
+<tr><td><code>journal.test.js</code> · <code>cli.test.js</code> · <code>hookport.test.js</code> · <code>bump.test.js</code> · <code>project.test.js</code></td><td>저널 slim/replay/compact, CLI 설치·compact, 훅 포트 파싱, 버전 올림, git 루트 탐지</td></tr>
+<tr><td><code>server.test.js</code> · <code>api.test.js</code></td><td>실제 server.js 프로세스: 데모 훅 무시·저널 제외, 부모 SIGKILL 후 8초 안 종료, 세션 치우기 API</td></tr>
+<tr><td><code>smoke.test.js</code></td><td>가짜 2D 컨텍스트(NaN 인자 감지)·최소 DOM 으로 프리셋×테마×시간대 60여 조합 그리기, 아바타 전 파츠, 캐릭터 400프레임, 패널 템플릿, 전체 보기, store</td></tr>
+<tr><td><code>avatar.test.js</code> · <code>names.test.js</code> · <code>floorStyle*.test.js</code> · <code>daylight.test.js</code></td><td>외형 정규화, 별명 배정, 프리셋 배정 결정성, 시간대 판정</td></tr>
+</table></div>
+<h3>실측 (1600×900, zoom 0.83, 캐릭터 4)</h3>
+<div class="tbl"><table>
+<tr><th>항목</th><th>개선 전</th><th>개선 후</th></tr>
+<tr><td>스프라이트 캐시</td><td>390장 개별</td><td>89 키 공유</td></tr>
+<tr><td>캐시 메모리 (scale 1 / 2 / 3)</td><td>15 / 62 / 139 MB</td><td>5 / 21 / 48 MB</td></tr>
+<tr><td>정적 레이어 프레임</td><td>1.7 ms</td><td>0.3 ms</td></tr>
+<tr><td>전체 프레임 (캐릭터 포함)</td><td colspan="2">약 1.4 ms, 전체 보기 1 ms, 층 전환 첫 프레임 6 ms 이하</td></tr>
+<tr><td>유휴 프레임</td><td>항상 60fps</td><td>움직임 없으면 20fps</td></tr>
+<tr><td>npm 패키지</td><td colspan="2">188 KB (압축) / 456 KB, 48 파일</td></tr>
+</table></div>
+</section>
+
+<section id="roadmap">
+<h2>10. 설계 결정과 로드맵</h2>
+<ul>
+  <li><strong>의존성 0.</strong> 훅마다 프로세스가 뜨므로 <code>emit.js</code> 는 표준 모듈만 쓰고 1초 안에 끝나야 합니다. 서버도 같은 이유로 가볍게 유지했습니다.</li>
+  <li><strong>서버가 진실.</strong> 휴식 방, 인테리어 프리셋, 세션 제거처럼 "모든 브라우저가 같은 것을 봐야 하는" 결정은 서버에서 하고, 외형·이름·테마처럼 보는 사람의 취향은 브라우저에 둡니다.</li>
+  <li><strong>이미지 없이 코드로 그리기.</strong> 플랫 벡터 스프라이트와 치비 아바타는 전부 Canvas 코드라 팔레트·레이아웃을 바꾸기 쉽고 패키지가 작습니다. 대신 캐시 전략이 중요해 종류별 공유 캐시를 넣었습니다.</li>
+  <li><strong>층 = git 루트.</strong> cwd 가 바뀔 때마다 층이 늘어나는 문제를 피하고 worktree 를 한 층에 모읍니다.</li>
+  <li><strong>잔류 방지.</strong> 앱·CLI 가 띄운 서버는 부모를 감시해 스스로 끝나고, 데모 이벤트는 저널에 남기지 않습니다.</li>
+</ul>
+<h3>보류·다음</h3>
+<ul>
+  <li>Windows 실기 테스트와 Tauri 자동 업데이트(코드 서명 필요)</li>
+  <li>맥 앱 서명·공증(지금은 우클릭 → 열기 필요)</li>
+  <li>영어 UI·README, Homebrew cask</li>
+  <li>아이패드 등 터치 기기 실기 확인</li>
+</ul>
+</section>
+
+<footer>AI Office · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · MIT</footer>
+</main>
+</div>
