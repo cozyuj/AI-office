@@ -1,11 +1,12 @@
 // 캐릭터: 서버 상태(Agent.room/activity/bubble) → 자리 배정 → A* 로 걸어가기 → 그리기 + 말풍선.
-import { SLOTS, SPAWN, USER_SEAT, project, isWalkable } from './map.js';
+import { SLOTS, SPAWN, USER_SEAT, project, AMBIENT_SPOTS, REST_SPOTS, resolveRoom } from './map.js';
+import * as MAP from './map.js';
+import { ROOM_DEFS } from './layouts.js';
 import { findPath, nearestWalkable } from './pathfind.js';
 import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 import { drawAvatar } from './avatar.js';
-import { REST_SPOTS } from './spots.js';
 
 const SPEED = 3.6;          // 타일/초
 const LEAVE_TIMEOUT = 8000; // 퇴근 중 최대 대기
@@ -42,24 +43,9 @@ class Slots {
   isFree([x, y], actorKey) { const o = this.taken.get(`${x},${y}`); return !o || o === actorKey; }
 }
 
-// ---------- 자율 행동 목적지 (쉬는 캐릭터용) ----------
-const AMBIENT_SPOTS = [
-  { tile: [16, 11], bubble: '커피 한 잔', icon: '☕', stay: [6000, 11000] },
-  { tile: [17, 11], bubble: '커피 한 잔', icon: '☕', stay: [6000, 11000] },
-  { tile: [11, 12], bubble: '소파에서 잠깐', icon: '🛋️', stay: [8000, 14000] },
-  { tile: [9, 10], bubble: '화분 구경', icon: '🌿', stay: [4000, 8000] },
-  { tile: [10, 16], bubble: '화분 구경', icon: '🌿', stay: [4000, 8000] },
-  { tile: [26, 4], bubble: '창밖 구경', icon: '🪟', stay: [5000, 9000] },
-  { tile: [26, 2], bubble: '창밖 구경', icon: '🪟', stay: [5000, 9000] },
-  { tile: [13, 20], bubble: '로비 산책', icon: '🚶', stay: [3000, 6000] },
-  { tile: [21, 19], bubble: '벤치에서 한숨', icon: '🪑', stay: [6000, 10000] },
-  { tile: [28, 4], bubble: '카페에서 라떼', icon: '☕', stay: [7000, 12000] },
-  { tile: [31, 4], bubble: '창가 자리', icon: '🪟', stay: [6000, 11000] },
-  { tile: [34, 6], bubble: '카페에서 수다', icon: '🥐', stay: [5000, 9000] },
-  { tile: [29, 13], bubble: '바람 쐬는 중', icon: '🌤️', stay: [7000, 12000] },
-  { tile: [32, 15], bubble: '테라스 산책', icon: '🌿', stay: [5000, 9000] },
-  { tile: [31, 19], bubble: '벤치에서 햇볕', icon: '☀️', stay: [7000, 12000] },
-].filter((s) => isWalkable(s.tile[0], s.tile[1]));
+// 자율 행동 목적지(쉬는 캐릭터용)는 레이아웃이 준다: map.AMBIENT_SPOTS (live, 레이아웃이 바뀌면 내용이 바뀐다)
+// 서버가 휴식 방 cafe/terrace 에 붙이는 기본 말풍선. 층의 편의시설이 다른 방이면(헬스장 등) 그 방의 말풍선으로 바꿔 보여 준다
+const SERVER_REST_BUBBLE = { cafe: '커피 마시는 중', terrace: '바람 쐬는 중' };
 
 // ---------- 캐릭터 ----------
 class Actor {
@@ -218,6 +204,7 @@ export function createActors(store, scene, avatars) {
   const slots = new Slots();
   let actors = new Map();   // key → Actor
   let floorId = null;
+  let layoutId = null;
   let last = 0;
   const user = new Actor('user', { name: store.me, color: '#6b7fd6', kind: 'user', user: true, sessionId: null }, [USER_SEAT.x, USER_SEAT.y]);
 
@@ -225,7 +212,8 @@ export function createActors(store, scene, avatars) {
 
   function sync(initial = false) {
     const fid = store.selectedFloorId;
-    if (fid !== floorId) { actors = new Map(); slots.byActor.clear(); slots.taken.clear(); floorId = fid; initial = true; }
+    // 층이 바뀌었거나 같은 층의 레이아웃이 바뀌면(🎨 프리셋 변경) 자리 배정을 처음부터
+    if (fid !== floorId || MAP.LAYOUT !== layoutId) { actors = new Map(); slots.byActor.clear(); slots.taken.clear(); floorId = fid; layoutId = MAP.LAYOUT; initial = true; }
     user.name = store.me;
     const seen = new Set();
     for (const { agent, session } of store.agentsOfFloor(fid)) {
@@ -251,6 +239,10 @@ export function createActors(store, scene, avatars) {
         a.goTo(t);
       }
       a.activity = agent.activity; a.bubble = agent.bubble; a.icon = agent.icon; a.since = agent.since;
+      if (agent.activity === 'rest' && agent.bubble === SERVER_REST_BUBBLE[agent.room]) {
+        const def = ROOM_DEFS[resolveRoom(agent.room)];
+        if (def && def.rest && resolveRoom(agent.room) !== agent.room) { a.bubble = def.rest.bubble; a.icon = def.rest.icon; }
+      }
       a.selected = session.id === store.selectedSessionId;
       a.dim = !a.selected;
     }

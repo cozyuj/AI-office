@@ -1,5 +1,6 @@
 // 전체 보기: 층들을 건물처럼 세로로 쌓아 한눈에. 층마다 미니 사무실(정적 레이어 캐시) + 캐릭터 점 + 세션 수·상태.
-import { GRID, SLOTS, project, worldBounds } from './scene/map.js';
+import { GRID, project, worldBounds, layoutOfPreset } from './scene/map.js';
+import { buildLayout } from './scene/layouts.js';
 import { drawFloor, drawEntities, roundRect, withFloorStyle } from './scene/render.js';
 import { palette, DEFAULT_PRESET } from './scene/floorStyle.js';
 
@@ -92,10 +93,11 @@ export function createOverview(canvas, store, { onPick, styleOf } = {}) {
       const preset = presetOf(f);
       ctx.drawImage(miniFor(preset).canvas, ox, oy, w, h);
       const pal = palette(preset, theme);
+      const L = buildLayout(layoutOfPreset(preset)); // 이 층의 레이아웃 (방 위치·슬롯이 층마다 다르다)
       // 캐릭터 점
       const roomCount = {};
       for (const { agent, session } of store.agentsOfFloor(f.id)) {
-        const slots = SLOTS[agent.room] || SLOTS.lobby;
+        const slots = L.slots[agent.room] || L.slots.lobby;
         const k = roomCount[agent.room] = (roomCount[agent.room] || 0);
         roomCount[agent.room]++;
         const [tx, ty] = slots[k % slots.length];

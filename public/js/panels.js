@@ -124,7 +124,7 @@ export function renderPeople() {
       <div class="person ${selected ? 'selected' : 'dim'}" data-session="${esc(s.id)}" data-agent="${esc(a.id)}">
         <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(name)}</span>
         <div class="person-body">
-          <div class="person-name">${esc(name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${ROOM_LABEL[a.room] || a.room}</span></div>
+          <div class="person-name">${esc(name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${esc(store.roomLabel(a.room, s.floorId))}</span></div>
           <div class="person-act ellipsis" data-tip="${esc(a.bubble)}">${a.icon || ''} ${esc(a.bubble)} <span class="ago">· ${elapsed(a.since, now)}</span></div>
         </div>
       </div>`; }).join('')}

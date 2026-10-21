@@ -1,5 +1,6 @@
 // 층 행의 🎨 버튼 → 인테리어 프리셋 팝오버 (FE-34). 선택은 localStorage(aiOffice.floorStyle.<floorId>) 에 남는다.
 import { PRESETS, presetById } from './scene/floorStyle.js';
+import { LAYOUTS } from './scene/layouts.js';
 
 export function createFloorStylePicker(store, book, { onChange } = {}) {
   const pop = document.createElement('div');
@@ -18,7 +19,7 @@ export function createFloorStylePicker(store, book, { onChange } = {}) {
     pop.innerHTML = `
       <div class="style-pop-head">🎨 ${esc(floor.no)}F 인테리어</div>
       <button class="style-opt ${chosen ? '' : 'on'}" data-preset=""><span class="style-chips">${chips(autoP)}</span><span class="style-name">자동 <span class="muted">(${esc(autoP.label)})</span></span></button>
-      ${PRESETS.map((p) => `<button class="style-opt ${chosen === p.id ? 'on' : ''}" data-preset="${p.id}"><span class="style-chips">${chips(p)}</span><span class="style-name">${p.emoji} ${esc(p.label)}</span></button>`).join('')}`;
+      ${PRESETS.map((p) => `<button class="style-opt ${chosen === p.id ? 'on' : ''}" data-preset="${p.id}"><span class="style-chips">${chips(p)}</span><span class="style-name">${p.emoji} ${esc(p.label)}<span class="style-layout">${esc(LAYOUTS[p.layout] ? LAYOUTS[p.layout].label : '')}</span></span></button>`).join('')}`;
   }
   function open(id, anchor) {
     floorId = id;

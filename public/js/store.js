@@ -4,6 +4,7 @@ import { createNameBook } from './names.js';
 export const ROOM_LABEL = {
   library: '자료실', dev: '개발실', research: '정보검색실', server: '서버실',
   meeting: '회의실', lounge: '휴게실', mydesk: '내 자리', lobby: '로비', elevator: '엘리베이터', cafe: '카페', terrace: '테라스',
+  gym: '헬스장', garden: '옥상정원', canteen: '구내식당', nap: '수면실', game: '게임룸', booklounge: '북 라운지', studio: '스튜디오', seminar: '세미나실',
 };
 
 export const LEGEND = [
@@ -52,6 +53,11 @@ class Store {
   }
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+  /** 방 라벨. 층의 레이아웃(FE-35)에 따라 휴식 방 cafe/terrace 가 다른 편의시설일 수 있어 main.js 가 resolver 를 끼운다 */
+  roomLabel(room, floorId) {
+    const v = this.roomLabelResolver ? this.roomLabelResolver(room, floorId) : null;
+    return v || ROOM_LABEL[room] || room;
+  }
   emit(kind, detail) { for (const fn of this.listeners) fn(kind, detail); }
 
   // ---------- 서버 이벤트 ----------
