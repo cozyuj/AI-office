@@ -2,3 +2,5 @@ node_modules/
 .DS_Store
 *.log
 .claude/
+app/node_modules/
+app/src-tauri/target/

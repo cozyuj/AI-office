@@ -108,14 +108,16 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .person-act { font-size: 12px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .person-act .ago { color: var(--muted); font-size: 11px; }
 
-.log-item { display: grid; grid-template-columns: 38px 1fr; gap: 8px; padding: 5px 4px; border-bottom: 1px dashed var(--line); font-size: 12px; line-height: 1.45; }
+.log-item { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; padding: 5px 4px; border-bottom: 1px dashed var(--line); font-size: 12px; line-height: 1.45; }
+.log-item > span:last-child { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-item:last-child { border-bottom: 0; }
 .log-time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; padding-top: 1px; }
 .log-who { font-weight: 600; margin-right: 4px; }
-.log-text { color: #444; word-break: break-word; }
+.log-text { color: #444; }
 .log-item.dim { opacity: .5; }
 
-.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px; color: #444; }
+.legend { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 10px; font-size: 11px; color: #444; }
+.legend span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .legend span b { font-weight: 600; color: var(--text); }
 
 /* ---------- 헤더 도구 ---------- */
@@ -140,7 +142,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .tooltip .tt-where { color: var(--muted); font-size: 11px; margin-bottom: 6px; }
 .tooltip .tt-row { display: grid; grid-template-columns: 34px 1fr; gap: 6px; }
 .tooltip .tt-k { color: var(--muted); font-size: 11px; }
-.tooltip .tt-v { word-break: break-all; }
+.tooltip .tt-v { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tooltip .tt-v.tt-prompt-wrap { white-space: normal; }
 .tooltip .tt-v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: #f5f6f8; padding: 2px 6px; border-radius: 4px; }
 .tooltip .tt-prompt { color: #444; font-style: italic; }
 .tooltip .tt-foot { margin-top: 6px; color: var(--muted); font-size: 11px; }
@@ -201,3 +204,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .cz-swatch.custom.on { border-style: solid; border-color: #fff; box-shadow: 0 0 0 2px var(--accent); color: #fff; }
 .cz-swatch.custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
 b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { font-weight: 800; }
+
+/* ---------- 말줄임표 툴팁 ---------- */
+.texttip { position: fixed; z-index: 70; max-width: 420px; background: #2b2f3a; color: #fff; font-size: 11px; line-height: 1.5; padding: 6px 9px; border-radius: 8px; box-shadow: 0 6px 20px rgba(20,24,30,.25); pointer-events: none; white-space: pre-wrap; word-break: break-all; }
+.texttip.hidden { display: none; }
