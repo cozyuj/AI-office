@@ -40,6 +40,7 @@ class Store {
     this.orderCache = new Map();  // floorId → { t, ids }  목록 순서를 5초마다만 바꾼다
     this.logFilter = { q: '', mine: false };
     this.names = createNameBook(); // 세션별 캐릭터 이름 (브라우저 저장)
+    this.daylight = (() => { try { return localStorage.getItem('aiOffice.daylight') || 'auto'; } catch { return 'auto'; } })(); // 시간대 조명: auto|off|morning|day|evening|night
   }
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -92,6 +93,7 @@ class Store {
   setDemo(v) { this.demo = !!v; this.emit('option'); }
   setSound(v) { this.sound = !!v; try { localStorage.setItem('aiOffice.sound', v ? 'on' : 'off'); } catch {} this.emit('option'); }
   setAmbient(v) { this.ambient = !!v; try { localStorage.setItem('aiOffice.ambient', v ? 'on' : 'off'); } catch {} this.emit('option'); }
+  setDaylight(v) { this.daylight = String(v || 'auto'); try { localStorage.setItem('aiOffice.daylight', this.daylight); } catch {} this.emit('option'); }
 
   setConnected(v) { if (this.connected !== v) { this.connected = v; this.emit('conn'); } }
 
