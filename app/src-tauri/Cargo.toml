@@ -17,3 +17,7 @@ tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ureq = { version = "2", features = ["json"] }
+
+# macOS 27 dyld 가 strip 된 proc-macro dylib 를 거부(mis-aligned LINKEDIT string pool)하므로 release 에서 strip 끔
+[profile.release]
+strip = false
