@@ -1,0 +1,19 @@
+[package]
+name = "ai-office-app"
+version = "0.2.0"
+description = "AI Office — Claude Code 세션을 아이소메트릭 사무실로 보여주는 메뉴바 앱"
+edition = "2021"
+
+[lib]
+name = "ai_office_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "2", features = ["json"] }

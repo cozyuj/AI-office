@@ -10,7 +10,10 @@
     "install-hooks": "node scripts/install-hooks.js",
     "uninstall-hooks": "node scripts/install-hooks.js --remove",
     "test": "node --test test/*.test.js",
-    "cli": "node bin/ai-office.js"
+    "cli": "node bin/ai-office.js",
+    "app:dev": "npm --prefix app run dev",
+    "app:build": "npm --prefix app run build",
+    "app:icon": "npm --prefix app run icon"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>AI Office</title>
+<style>html,body{height:100%;margin:0;background:#eef0f3;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#4a515a}
+.c{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:13px}
+.dot{width:10px;height:10px;border-radius:50%;background:#e8683a;animation:p 1s infinite}@keyframes p{50%{opacity:.3}}
+code{background:#fff;padding:2px 6px;border-radius:4px}</style></head>
+<body><div class="c"><div class="dot"></div><div id="m">사무실 서버를 시작하는 중…</div><div id="h" style="font-size:11px;color:#8a919b"></div></div>
+<script>
+// Rust 쪽이 Node 서버를 띄우는 동안 기다렸다가 서버 페이지로 넘어간다.
+const port = new URLSearchParams(location.search).get('port') || '4777';
+const url = `http://127.0.0.1:${port}/`;
+let tries = 0;
+async function tick() {
+  tries++;
+  try { const r = await fetch(url + 'api/state', { cache: 'no-store' }); if (r.ok) { location.replace(url); return; } } catch {}
+  if (tries > 40) { document.getElementById('m').textContent = '서버에 연결하지 못했습니다.'; document.getElementById('h').innerHTML = `터미널에서 <code>npx github:cozyuj/AI-office start</code> 를 실행한 뒤 창을 다시 여세요.`; return; }
+  setTimeout(tick, 500);
+}
+tick();
+</script></body></html>
