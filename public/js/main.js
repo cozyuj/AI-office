@@ -201,6 +201,17 @@ people.addEventListener('mouseleave', () => { people._hoverRow = null; tooltip.h
 const customizer = createCustomizer(store, avatars);
 document.getElementById('customize-btn').onclick = () => customizer.open();
 
+// ---------- 세션 이어가기 명령 복사 ----------
+const resumeBtn = document.getElementById('resume-copy');
+resumeBtn.onclick = async () => {
+  const cmd = resumeBtn.dataset.cmd;
+  if (!cmd) return;
+  const s = store.selectedSession();
+  const full = s && s.cwd ? `cd ${JSON.stringify(s.cwd)} && ${cmd}` : cmd;
+  try { await navigator.clipboard.writeText(full); resumeBtn.textContent = '복사됨'; } catch { resumeBtn.textContent = '복사 실패'; }
+  setTimeout(() => { resumeBtn.textContent = '복사'; }, 1500);
+};
+
 // ---------- 빈 상태: 설치 명령 복사 ----------
 const copyBtn = document.getElementById('copy-cmd');
 if (copyBtn) copyBtn.onclick = async () => {
