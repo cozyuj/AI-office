@@ -278,3 +278,13 @@ test('같은 폴더명 프로젝트는 상위 폴더를 붙여 구분하고, 하
   st.sweep(2000 + SESSION_LEAVE_MS);
   assert.ok(st.snapshot().floors.some((f) => f.name === 'nccx'), '혼자 남으면 다시 짧은 이름');
 });
+
+test('데모 층은 이름에 (데모) 가 붙고 removeDemo 로 한 번에 제거된다', () => {
+  const st = createState({ statFile: () => ({ mtimeMs: Number.MAX_SAFE_INTEGER }) });
+  st.apply({ session_id: 'd1', cwd: '/demo/nccx', hook_event_name: 'SessionStart', source: 'startup' }, 1000);
+  st.apply({ session_id: 'r1', cwd: '/Users/me/nccx', hook_event_name: 'SessionStart', source: 'startup' }, 1001);
+  const names = st.snapshot().floors.map((f) => f.name).sort();
+  assert.deepEqual(names, ['nccx', 'nccx (데모)']);
+  assert.equal(st.removeDemo(), 1);
+  assert.deepEqual(st.snapshot().floors.map((f) => f.name), ['nccx']);
+});

@@ -52,6 +52,7 @@ function connect() {
   es.addEventListener('update', (e) => store.applyUpdate(JSON.parse(e.data)));
   es.addEventListener('remove', (e) => store.applyRemove(JSON.parse(e.data)));
   es.addEventListener('floor', (e) => store.applyFloor(JSON.parse(e.data)));
+  es.addEventListener('demo', (e) => store.setDemo(JSON.parse(e.data).on));
   es.onopen = () => store.setConnected(true);
   es.onerror = () => { store.setConnected(false); renderHeader(); }; // EventSource 가 알아서 재접속한다
 }
@@ -104,6 +105,16 @@ function renderFavicon(badge) {
 }
 setInterval(renderTitle, 1000);
 store.subscribe((kind) => { if (kind === 'snapshot' || kind === 'select' || kind === 'update' || kind === 'remove' || kind === 'waiting-count') renderTitle(); });
+
+const demoBtn = document.getElementById('demo-btn');
+function renderDemoBtn() { demoBtn.classList.toggle('on', store.demo); demoBtn.textContent = store.demo ? '🎬 데모 끄기' : '🎬 데모'; }
+demoBtn.onclick = async () => {
+  demoBtn.disabled = true;
+  try { const r = await fetch(`/api/demo/${store.demo ? 'stop' : 'start'}`, { method: 'POST' }); const j = await r.json(); store.setDemo(j.demo); } catch {}
+  demoBtn.disabled = false;
+};
+store.subscribe((kind) => { if (kind === 'option' || kind === 'snapshot') renderDemoBtn(); });
+renderDemoBtn();
 
 const ambientBtn = document.getElementById('ambient-btn');
 function renderAmbientBtn() { ambientBtn.classList.toggle('on', store.ambient); }

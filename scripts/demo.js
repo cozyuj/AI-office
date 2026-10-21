@@ -11,9 +11,10 @@ const SPEED = Number(process.env.DEMO_SPEED || 1);
 const ONCE = process.env.DEMO_ONCE === '1';
 
 const HOME = process.env.HOME || '/Users/me';
+// 실제 프로젝트와 섞이지 않도록 /demo/ 아래 가짜 경로를 쓴다 (서버가 "(데모)" 로 표시)
 const PROJECTS = {
-  nccx: `${HOME}/dev/workspace_bitbucket/nccx`,
-  'mcp-hub': `${HOME}/dev/mcp-hub`,
+  nccx: '/demo/nccx',
+  'mcp-hub': '/demo/mcp-hub',
 };
 
 function post(payload) {

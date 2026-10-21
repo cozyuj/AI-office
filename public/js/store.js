@@ -47,6 +47,7 @@ class Store {
     this.me = snap.me || this.me;
     this.serverPort = snap.serverPort || null;
     this.version = snap.version || '';
+    this.demo = !!snap.demo;
     this.hookPort = snap.hookPort === undefined ? null : snap.hookPort;
     this.floors = new Map(snap.floors.map((f) => [f.id, f]));
     this.sessions = new Map(snap.sessions.map((s) => [s.id, s]));
@@ -85,6 +86,7 @@ class Store {
 
   setFollowCamera(v) { this.followCamera = v; this.emit('option'); }
   setBubbleMode(v) { this.bubbleMode = v; this.emit('option'); }
+  setDemo(v) { this.demo = !!v; this.emit('option'); }
   setAmbient(v) { this.ambient = !!v; try { localStorage.setItem('aiOffice.ambient', v ? 'on' : 'off'); } catch {} this.emit('option'); }
 
   setConnected(v) { if (this.connected !== v) { this.connected = v; this.emit('conn'); } }

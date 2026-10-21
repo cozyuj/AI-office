@@ -10,6 +10,7 @@ const os = require('os');
 const { createState } = require('./lib/state');
 const { createJournal } = require('./lib/journal');
 const { readHookPort } = require('./lib/hookport');
+const { spawn } = require('child_process');
 
 const PORT = Number(process.env.AI_OFFICE_PORT || 4777);
 const VERSION = require('./package.json').version;
@@ -32,7 +33,23 @@ const MIME = {
 const state = createState({ me: os.userInfo().username });
 let hookPort = readHookPort(); // settings.json 의 훅 포트 (없으면 null)
 setInterval(() => { hookPort = readHookPort(); }, 30 * 1000).unref();
-function withPorts(snap) { return { ...snap, serverPort: PORT, hookPort, version: VERSION }; }
+let demoChild = null;
+function demoRunning() { return !!(demoChild && demoChild.exitCode === null); }
+function startDemo() {
+  if (demoRunning()) return true;
+  demoChild = spawn(process.execPath, [path.join(__dirname, 'scripts', 'demo.js')], { env: { ...process.env, AI_OFFICE_PORT: String(PORT), DEMO_SPEED: process.env.DEMO_SPEED || '1.5' }, stdio: 'ignore' });
+  demoChild.on('exit', () => { demoChild = null; broadcast('demo', { on: false }); });
+  broadcast('demo', { on: true });
+  return true;
+}
+function stopDemo() {
+  if (demoRunning()) { try { demoChild.kill(); } catch {} }
+  demoChild = null;
+  const n = state.removeDemo();
+  broadcast('demo', { on: false });
+  return n;
+}
+function withPorts(snap) { return { ...snap, serverPort: PORT, hookPort, version: VERSION, demo: demoRunning() }; }
 const clients = new Set();
 
 // 이벤트 저널: 재시작해도 최근 2시간 상태를 복원한다. --no-journal 로 끌 수 있다.
@@ -122,6 +139,8 @@ const server = http.createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/hook') return handleHook(req, res);
   if (req.method === 'GET' && pathname === '/events') return handleEvents(req, res);
+  if (req.method === 'POST' && pathname === '/api/demo/start') { startDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: true })); }
+  if (req.method === 'POST' && pathname === '/api/demo/stop') { const removed = stopDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: false, removed })); }
   if (req.method === 'GET' && pathname === '/api/state') {
     // 데스크탑 앱(tauri://) 로더가 서버 준비 여부를 묻는다 — 로컬 전용 서버라 전체 허용
     res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
@@ -141,5 +160,5 @@ server.listen(PORT, '127.0.0.1', () => {
 // 예약 작업(서브에이전트 퇴근, 세션 제거) 실행 + 오래 조용한 세션 정리
 setInterval(() => state.sweep(Date.now()), 1000).unref();
 
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { journal.close(); process.exit(0); });
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { if (demoRunning()) { try { demoChild.kill(); } catch {} } journal.close(); process.exit(0); });
 process.on('exit', () => journal.close());
