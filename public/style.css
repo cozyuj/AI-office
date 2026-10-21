@@ -274,3 +274,8 @@ body.has-banner #app { padding-top: 44px; }
 /* ---------- 세션 브랜치 ---------- */
 .session .branch { flex: none; max-width: 90px; font-size: 10px; color: var(--muted); background: #f1f3f5; padding: 0 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'D2Coding', ui-monospace, monospace; }
 :root[data-theme="dark"] .session .branch, :root:not([data-theme="light"]).auto-dark .session .branch { background: #2c3139; }
+
+/* ---------- 세션 이어가기 ---------- */
+#session-card .kv .v { display: flex; align-items: center; gap: 6px; }
+.resume-cmd { font-size: 11px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#resume-copy { padding: 2px 8px; font-size: 10px; }
