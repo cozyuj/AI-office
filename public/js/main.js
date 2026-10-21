@@ -303,6 +303,7 @@ const keysModal = document.getElementById('keys');
 const keysOpen = () => !keysModal.classList.contains('hidden');
 function setKeys(open) { keysModal.classList.toggle('hidden', !open); }
 document.getElementById('keys-btn').onclick = () => { setSettings(false); setKeys(true); };
+document.getElementById('floor-style-btn').onclick = () => { setSettings(false); if (store.selectedFloorId) floorStylePicker.open(store.selectedFloorId, settingsBtn); };
 keysModal.addEventListener('click', (e) => { if (e.target === keysModal || e.target.closest('[data-action="close"]')) setKeys(false); }); // 바깥 클릭 · 닫기 버튼
 
 // ---------- 키보드 단축키 ----------

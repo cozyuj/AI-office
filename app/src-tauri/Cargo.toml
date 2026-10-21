@@ -1,6 +1,6 @@
 [package]
 name = "ai-office-app"
-version = "0.21.0"
+version = "0.21.1"
 description = "AI Office — Claude Code 세션을 아이소메트릭 사무실로 보여주는 메뉴바 앱"
 edition = "2021"
 
