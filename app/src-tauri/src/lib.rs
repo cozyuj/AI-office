@@ -34,6 +34,24 @@ fn node_path() -> String {
     "node".to_string()
 }
 
+/// 훅에 쓸 node: 번들 node 는 앱 번들 안에 있어 앱을 옮기거나 지우면 훅이 깨진다.
+/// 그래서 ~/.ai-office/node 로 복사해 두고(크기가 다를 때만) 그 경로를 등록한다. 번들이 없으면(개발 실행) 시스템 node.
+fn hook_node_path() -> String {
+    let bundled = node_path();
+    let is_bundle = bundled.contains("/Contents/MacOS/");
+    if let (true, Some(home)) = (is_bundle, home_dir()) {
+        let dest = home.join(".ai-office").join("node");
+        let src = Path::new(&bundled);
+        let same = match (std::fs::metadata(&dest), std::fs::metadata(src)) { (Ok(a), Ok(b)) => a.len() == b.len(), _ => false };
+        if same { return dest.to_string_lossy().to_string(); }
+        if let Some(parent) = dest.parent() { let _ = std::fs::create_dir_all(parent); }
+        let tmp = dest.with_extension("tmp");
+        if std::fs::copy(src, &tmp).is_ok() && std::fs::rename(&tmp, &dest).is_ok() { return dest.to_string_lossy().to_string(); }
+        let _ = std::fs::remove_file(&tmp);
+    }
+    bundled
+}
+
 /// 앱 리소스의 server/ 폴더 (Contents/Resources/server)
 fn bundled_server_dir(app: &AppHandle) -> Option<PathBuf> {
     let dir = app.path().resource_dir().ok()?.join("server");
@@ -66,7 +84,7 @@ fn ensure_installed(app: &AppHandle) -> Option<PathBuf> {
     let _ = Command::new(node_path())
         .arg(dest.join("scripts").join("install-hooks.js"))
         .arg("--app-dir").arg(&dest)
-        .arg("--node").arg(node_path())
+        .arg("--node").arg(hook_node_path())
         .arg("--port").arg(PORT.to_string())
         .stdout(Stdio::null()).stderr(Stdio::null())
         .status();
@@ -91,6 +109,7 @@ fn spawn_server(app: &AppHandle) -> Option<Child> {
     Command::new(node_path())
         .arg(script)
         .env("AI_OFFICE_PORT", PORT.to_string())
+        .env("AI_OFFICE_WATCH_PARENT", "1") // 앱이 강제 종료돼도 서버가 스스로 끝나게
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()

@@ -46,9 +46,11 @@ export function renderHeader() {
   $('info-project').title = f ? f.id : '';
   $('info-session').textContent = s ? s.id.slice(0, 8) : '–';
   $('info-session').title = s ? s.id : '';
-  const cmd = s ? `claude --resume ${s.id}` : '';
-  $('resume-cmd').textContent = cmd || '–';
-  $('resume-cmd').title = cmd ? `${cmd}  (프로젝트 폴더: ${s.cwd || store.selectedFloor()?.id || ''})` : '';
+  // 세션은 프로젝트 폴더에서만 이어갈 수 있으니 cd 를 붙인다
+  const dir = s ? (s.cwd || store.selectedFloor()?.id || '') : '';
+  const cmd = s ? `${dir ? `cd "${dir}" && ` : ''}claude --resume ${s.id}` : '';
+  $('resume-cmd').textContent = s ? `claude --resume ${s.id}` : '–';
+  $('resume-cmd').title = cmd ? `복사되는 명령: ${cmd}` : '';
   $('resume-copy').disabled = !s;
   $('resume-copy').dataset.cmd = cmd;
   const dismissBtn = $('session-dismiss');
