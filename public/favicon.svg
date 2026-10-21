@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#f3f4f7"/>
+  <!-- 아이소메트릭 사무실 블록 -->
+  <polygon points="32,12 54,24 32,36 10,24" fill="#ffffff" stroke="#d8dbe2" stroke-width="1.5"/>
+  <polygon points="10,24 32,36 32,54 10,42" fill="#e9ebf0"/>
+  <polygon points="54,24 32,36 32,54 54,42" fill="#d8dbe2"/>
+  <!-- 책상 + 모니터 -->
+  <polygon points="26,26 38,32 32,35 20,29" fill="#e8683a"/>
+  <polygon points="29,20 35,23 35,29 29,26" fill="#2b2f3a"/>
+  <polygon points="30,21 34,23 34,27 30,25" fill="#5fb4ff"/>
+  <!-- 화분 -->
+  <circle cx="44" cy="30" r="4" fill="#5fae6a"/>
+  <circle cx="47" cy="27" r="3" fill="#3f8a49"/>
+</svg>

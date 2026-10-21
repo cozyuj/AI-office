@@ -71,16 +71,31 @@ canvas.addEventListener('pointerdown', () => { if (store.followCamera) store.set
 store.subscribe((kind) => { if (kind === 'option') renderTools(); });
 renderTools();
 
-// ---------- 대기 알림: 탭 제목 + 브라우저 알림 ----------
+// ---------- 탭 제목 "(7F) ai-office" 고정 + 파비콘 (대기 세션이 있으면 빨간 점) ----------
 const BASE_TITLE = 'AI Office';
-let blink = false;
+let faviconState = null;
 function renderTitle() {
-  const n = store.waitingSessions().length;
-  if (!n) { document.title = BASE_TITLE; return; }
-  blink = !blink;
-  document.title = blink ? `(${n}) 🙋 답을 기다립니다 · ${BASE_TITLE}` : `(${n}) ${BASE_TITLE}`;
+  const f = store.selectedFloor();
+  document.title = f ? `(${f.no}F) ${f.name}` : BASE_TITLE;
+  const waiting = store.waitingSessions().length > 0;
+  if (waiting !== faviconState) { faviconState = waiting; renderFavicon(waiting); }
+}
+function renderFavicon(badge) {
+  const link = document.getElementById('favicon');
+  if (!badge) { link.href = '/favicon.svg'; return; }
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, 64, 64);
+    ctx.fillStyle = '#e05252'; ctx.beginPath(); ctx.arc(50, 14, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    link.href = c.toDataURL('image/png');
+  };
+  img.src = '/favicon.svg';
 }
 setInterval(renderTitle, 1000);
+store.subscribe((kind) => { if (kind === 'snapshot' || kind === 'select' || kind === 'update' || kind === 'remove' || kind === 'waiting-count') renderTitle(); });
 
 const notifyBtn = document.getElementById('notify-btn');
 const canNotify = () => typeof Notification !== 'undefined';
