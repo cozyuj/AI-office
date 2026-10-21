@@ -314,7 +314,8 @@ document.getElementById('floor-style-btn').onclick = () => { setSettings(false);
 keysModal.addEventListener('click', (e) => { if (e.target === keysModal || e.target.closest('[data-action="close"]')) setKeys(false); }); // 바깥 클릭 · 닫기 버튼
 
 // ---------- 키보드 단축키 ----------
-const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기 · ? 이 도움말';
+let digitBuf = '', digitAt = 0; // 숫자 연타 버퍼 (10층 이상)
+const KEYS_HELP = '숫자 층 번호로 이동 (12F 는 1,2 연타) · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기 · ? 이 도움말';
 document.addEventListener('keydown', (e) => {
   const t = e.target;
   const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
@@ -332,7 +333,15 @@ document.addEventListener('keydown', (e) => {
   if (keysOpen()) { if (e.key === '?') { setKeys(false); e.preventDefault(); } return; } // 도움말이 열려 있으면 다른 단축키는 쉰다
   const floors = store.floorsByNo();
   const idx = floors.findIndex((f) => f.id === store.selectedFloorId);
-  if (/^[1-9]$/.test(e.key)) { const f = floors[Number(e.key) - 1]; if (f) store.selectFloor(f.id); return; }
+  if (/^[0-9]$/.test(e.key)) { // 층 번호로 이동: 7 → 7F. 10층 이상은 연타(1 다음 2 → 12F)
+    const t = performance.now();
+    digitBuf = (t - digitAt < 800 ? digitBuf : '') + e.key; digitAt = t;
+    const byNo = (n) => floors.find((f) => f.no === n);
+    const f = byNo(Number(digitBuf)) || byNo(Number(e.key));
+    if (f) store.selectFloor(f.id);
+    if (!byNo(Number(digitBuf))) digitBuf = e.key; // 조합이 없는 층이면 마지막 숫자부터 다시
+    return;
+  }
   switch (e.key) {
     case 'ArrowLeft': case 'ArrowUp': if (floors.length) store.selectFloor(floors[(idx - 1 + floors.length) % floors.length].id); break;
     case 'ArrowRight': case 'ArrowDown': if (floors.length) store.selectFloor(floors[(idx + 1) % floors.length].id); break;
