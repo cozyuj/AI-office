@@ -12,6 +12,7 @@ const { createJournal } = require('./lib/journal');
 const { readHookPort } = require('./lib/hookport');
 
 const PORT = Number(process.env.AI_OFFICE_PORT || 4777);
+const VERSION = require('./package.json').version;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAX_BODY = 2 * 1024 * 1024; // 2MB
 
@@ -31,7 +32,7 @@ const MIME = {
 const state = createState({ me: os.userInfo().username });
 let hookPort = readHookPort(); // settings.json 의 훅 포트 (없으면 null)
 setInterval(() => { hookPort = readHookPort(); }, 30 * 1000).unref();
-function withPorts(snap) { return { ...snap, serverPort: PORT, hookPort }; }
+function withPorts(snap) { return { ...snap, serverPort: PORT, hookPort, version: VERSION }; }
 const clients = new Set();
 
 // 이벤트 저널: 재시작해도 최근 2시간 상태를 복원한다. --no-journal 로 끌 수 있다.
@@ -131,7 +132,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`ai-office  →  http://127.0.0.1:${PORT}`);
+  console.log(`ai-office v${VERSION}  →  http://127.0.0.1:${PORT}`);
   console.log(`hooks POST →  http://127.0.0.1:${PORT}/hook   (AI_OFFICE_PORT=${PORT})`);
   if (hookPort === null) console.log('⚠ settings.json 에 ai-office 훅이 없습니다 → ai-office install-hooks');
   else if (hookPort !== PORT) console.log(`⚠ 훅은 포트 ${hookPort} 로 보내는데 서버는 ${PORT} 입니다 → ai-office install-hooks --port ${PORT}`);

@@ -103,4 +103,11 @@ npm test                # node --test (상태 머신 + 경로 탐색)
 AI_OFFICE_PORT=4799 npm start
 ```
 
+버전: 버그 수정은 patch, 기능은 minor, 호환이 깨지면 major. 네 파일(package.json, app/package.json, tauri.conf.json, Cargo.toml)을 한 번에 올린다.
+
+```bash
+npm run bump:patch   # 0.3.0 → 0.3.1
+npm run bump:minor   # 0.3.0 → 0.4.0
+```
+
 작업 흐름: GitHub 이슈를 `[BE-01]`, `[FE-01]` 처럼 FE/BE 로 나눠 만들고, `main` 에서 `feature/BE-01` 식 브랜치를 분리해 작업한 뒤 결과·테스트·캡처를 이슈 댓글로 남긴다.
