@@ -100,3 +100,12 @@ test('CLI: install 이 AI_OFFICE_HOME/app 에 복사하고 doctor 가 동작한�
   assert.match(doc, /node\s+v/);
   assert.match(doc, /훅 11개 등록/);
 });
+
+test('install-hooks --node: 지정한 node 경로로 훅 명령을 만든다', () => {
+  const dir = tmp('ai-office-settings-');
+  const settings = path.join(dir, 'settings.json');
+  fs.writeFileSync(settings, '{}');
+  execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'install-hooks.js'), '--app-dir', ROOT, '--node', '/Applications/AI Office.app/Contents/MacOS/node'], { env: { ...process.env, CLAUDE_SETTINGS: settings }, encoding: 'utf8' });
+  const h = JSON.parse(fs.readFileSync(settings, 'utf8')).hooks;
+  assert.equal(h.Stop[0].hooks[0].command, `"/Applications/AI Office.app/Contents/MacOS/node" "${path.join(ROOT, 'hooks', 'emit.js')}"`);
+});

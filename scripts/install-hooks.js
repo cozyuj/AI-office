@@ -17,10 +17,11 @@ const argAppDir = (() => { const i = process.argv.indexOf('--app-dir'); return i
 const APP_DIR = path.resolve(argAppDir || path.join(__dirname, '..'));
 const remove = process.argv.includes('--remove');
 const argPort = (() => { const i = process.argv.indexOf('--port'); return i >= 0 ? Number(process.argv[i + 1]) : null; })();
+const argNode = (() => { const i = process.argv.indexOf('--node'); return i >= 0 ? process.argv[i + 1] : null; })();
 
 // Windows/macOS/Linux 공통: "<node 절대경로>" "<app>/hooks/emit.js"  (공백·역슬래시 경로 대비 따옴표)
 const q = (s) => `"${s}"`;
-const COMMAND = buildCommand(process.execPath, path.join(APP_DIR, 'hooks', 'emit.js'), argPort);
+const COMMAND = buildCommand(argNode || process.execPath, path.join(APP_DIR, 'hooks', 'emit.js'), argPort);
 function buildCommand(nodePath, emitPath, port) { return `${q(nodePath)} ${q(emitPath)}${port && port !== 4777 ? ` --port ${port}` : ''}`; }
 
 function isOurs(h) {
