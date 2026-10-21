@@ -17,6 +17,17 @@ export function drawFloorRaw(ctx) {
       let fill = r.floor;
       if (r.pattern === 'checker' && (x + y) % 2) fill = r.alt || r.floor;
       tile(ctx, x, y, fill, r.trim);
+      if (r.pattern === 'deck') { // 테라스 데크: 가로 널빤지 + 틈
+        ctx.strokeStyle = 'rgba(90,60,30,0.22)'; ctx.lineWidth = 1;
+        for (const f of [0.25, 0.5, 0.75]) {
+          const a = project(x, y + f), b = project(x + 1, y + f);
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+        const off = (x * 5 + y * 11) % 3 / 3;
+        const c = project(x + off, y), d = project(x + off, y + 1);
+        ctx.strokeStyle = 'rgba(90,60,30,0.14)';
+        ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+      }
       if (r.pattern === 'wood') {
         ctx.strokeStyle = 'rgba(120,85,40,0.16)'; ctx.lineWidth = 1;
         for (const f of [0.33, 0.66]) {
@@ -122,6 +133,7 @@ const HEIGHT = {
   shelf: 2.05, desk: 1.4, desk2: 1.4, chair: 1.0, table: 0.78, roundtable: 0.78, coffeetable: 0.45, sofa: 0.95, armchair: 0.9,
   counter: 1.55, vending: 1.85, rack: 2.25, ac: 1.95, wallscreen: 2.05, globe: 1.35, whiteboard: 2.05,
   plant: 1.35, cabinet: 1.05, reception: 1.15, sign: 1.45, bench: 0.5, elevator: 2.35,
+  cafetable: 0.78, stool: 0.62, coffeemachine: 1.5, planter: 0.95, parasol: 2.2,
 };
 
 const STATIC = [];
@@ -132,7 +144,7 @@ for (const f of FURNITURE) {
   STATIC.push(makeEntity(
     { x0: f.x + inset, y0: f.y + inset, x1: f.x + w - inset, y1: f.y + d - inset, z0: 0, z1: HEIGHT[f.type] || 1 },
     (ctx) => drawFurniture(ctx, f),
-    { label: f.type, dynamic: f.type === 'rack' || f.type === 'elevator', pad: f.type === 'plant' ? 60 : f.type === 'wallscreen' || f.type === 'whiteboard' ? 36 : 28 },
+    { label: f.type, dynamic: f.type === 'rack' || f.type === 'elevator', pad: f.type === 'plant' || f.type === 'parasol' ? 70 : f.type === 'wallscreen' || f.type === 'whiteboard' ? 36 : 28 },
   ));
 }
 for (const w of WALLS) {

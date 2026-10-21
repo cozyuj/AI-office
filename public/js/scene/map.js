@@ -1,11 +1,11 @@
 // 사무실 맵 정의: 타일 격자, 방, 가구, 벽, 서 있는 자리(slot), 통행 규칙, 투영.
-// 유효 타일은 x 1..26, y 1..21. x 가 커지면 화면 오른쪽 아래, y 가 커지면 왼쪽 아래.
+// 유효 타일은 x 1..35, y 1..21. (x 28~35 는 카페·테라스 확장 열) x 가 커지면 화면 오른쪽 아래, y 가 커지면 왼쪽 아래.
 
 export const TW = 64;  // 타일 가로 (월드 px)
 export const TH = 32;  // 타일 세로
 export const ZH = 26;  // 높이 1 단위
 
-export const GRID = { x0: 1, y0: 1, x1: 26, y1: 21 }; // inclusive
+export const GRID = { x0: 1, y0: 1, x1: 35, y1: 21 }; // inclusive
 
 export const ROOMS = [
   { id: 'library',  label: '자료실',     x0: 1,  y0: 1,  x1: 8,  y1: 7,  floor: '#ead6b4', trim: null,      pattern: 'wood' },
@@ -17,6 +17,8 @@ export const ROOMS = [
   { id: 'mydesk',   label: '내 자리',    x0: 1,  y0: 18, x1: 8,  y1: 21, floor: '#e1ebf7', trim: '#cfdcee', pattern: 'grid' },
   { id: 'lobby',    label: '로비',       x0: 10, y0: 18, x1: 17, y1: 21, floor: '#f4f5f7', trim: '#e4e7ec', pattern: 'grid' },
   { id: 'elevator', label: '엘리베이터', x0: 19, y0: 18, x1: 26, y1: 21, floor: '#eceef2', trim: '#dadde4', pattern: 'grid' },
+  { id: 'cafe',     label: '카페',       x0: 28, y0: 1,  x1: 35, y1: 7,  floor: '#f8efe4', trim: '#eadbc7', pattern: 'checker', alt: '#f1e4d3' },
+  { id: 'terrace',  label: '테라스',     x0: 28, y0: 10, x1: 35, y1: 21, floor: '#dcc39f', trim: '#c9ad85', pattern: 'deck' },
 ];
 export const CORRIDOR = { floor: '#f5f6f8', trim: '#e6e8ec', pattern: 'grid' };
 
@@ -25,6 +27,7 @@ const LIGHT = { rooms: ROOMS.map((r) => ({ floor: r.floor, trim: r.trim, alt: r.
 const DARK = {
   library: ['#5a4634', null, null], dev: ['#2a2f3a', '#343a46'], research: ['#283533', '#33413e'], meeting: ['#32312d', '#3e3d38'],
   lounge: ['#3a322a', '#44403a', '#352d26'], server: ['#25332d', '#2f3f38'], mydesk: ['#283040', '#343d50'], lobby: ['#2b2f36', '#363b44'], elevator: ['#2a2d33', '#353941'],
+  cafe: ['#3a3028', '#45392f', '#342b24'], terrace: ['#3b3225', '#4a3f2f'],
 };
 export let THEME = 'light';
 export function setTheme(theme) {
@@ -101,6 +104,25 @@ add('elevator', 25, 18);
 add('bench', 20, 19, { w: 2 });
 add('plant', 19, 21);
 add('plant', 26, 21);
+// 카페 (북쪽 외벽에 창문)
+add('counter', 28, 2, { w: 3 });
+add('coffeemachine', 31, 2);
+for (const x of [28, 29, 30]) add('stool', x, 3, { solid: false });
+add('cafetable', 29, 5); add('armchair', 29, 6, { face: 'n' }); add('armchair', 30, 5, { face: 'w' });
+add('cafetable', 32, 5); add('armchair', 32, 6, { face: 'n' }); add('armchair', 33, 5, { face: 'w' });
+add('cafetable', 34, 3); add('armchair', 34, 4, { face: 'n' });
+add('plant', 35, 7);
+add('plant', 28, 7);
+// 테라스 (바깥: 데크 바닥, 난간, 파라솔)
+add('planter', 28, 10, { w: 3 });
+add('parasol', 30, 12, { w: 2, d: 2 });
+add('parasol', 33, 16, { w: 2, d: 2 });
+add('bench', 29, 19, { w: 2 });
+add('bench', 32, 19, { w: 2 });
+add('plant', 35, 10, { seed: 1 });
+add('plant', 35, 21, { seed: 1 });
+add('plant', 28, 21, { seed: 1 });
+add('plant', 28, 15);
 
 export const FURNITURE = F;
 
@@ -109,17 +131,25 @@ export const FURNITURE = F;
 // v: 타일 (x, y..y+len-1) 의 왼변. (x-1, y) ↔ (x, y) 이동을 막는다.
 // doors: 막지 않는 offset 목록. h 는 높이.
 const W = [];
-W.push({ dir: 'h', x: 1, y: 1, len: 26, doors: [], h: 1.6, outer: true });
+W.push({ dir: 'h', x: 1, y: 1, len: 35, doors: [], h: 1.6, outer: true, windows: [28, 29, 30, 31, 32, 33] }); // 카페 구간은 유리창
 W.push({ dir: 'v', x: 1, y: 1, len: 21, doors: [], h: 1.6, outer: true });
 for (const y of [8, 10, 16, 18]) {
   for (const x of [1, 10, 19]) W.push({ dir: 'h', x, y, len: 8, doors: [3, 4], h: 0.6 });
 }
 // 세로 칸막이: 방의 서쪽(x=10, 19)과 동쪽(x=9, 18). 방은 복도 쪽 가로 벽의 문으로만 드나든다.
-for (const x of [9, 10, 18, 19]) {
+for (const x of [9, 10, 18, 19, 27]) {
   W.push({ dir: 'v', x, y: 1, len: 7, doors: [], h: 0.6 });
   W.push({ dir: 'v', x, y: 10, len: 6, doors: [], h: 0.6 });
   W.push({ dir: 'v', x, y: 18, len: 4, doors: [], h: 0.6 });
 }
+// 확장 열(x 28~35): 카페는 남쪽 벽 문으로, 테라스는 북쪽 벽 문으로 드나든다
+W.push({ dir: 'h', x: 28, y: 8, len: 8, doors: [3, 4], h: 0.6 });
+W.push({ dir: 'h', x: 28, y: 10, len: 8, doors: [3, 4], h: 0.6 });
+W.push({ dir: 'v', x: 28, y: 1, len: 7, doors: [], h: 0.6 });
+W.push({ dir: 'v', x: 28, y: 10, len: 12, doors: [], h: 0.6 });
+// 테라스 난간 (동·남쪽 가장자리, 격자 밖이라 통행에는 영향 없음)
+W.push({ dir: 'v', x: 36, y: 10, len: 12, doors: [], h: 0.5, rail: true });
+W.push({ dir: 'h', x: 28, y: 22, len: 8, doors: [], h: 0.5, rail: true });
 export const WALLS = W;
 
 // 문: 가로 벽의 구멍. { x, y } 는 벽이 놓인 타일 (x, y) 의 윗변, 즉 (x, y-1) ↔ (x, y) 사이가 열려 있다.
@@ -145,6 +175,8 @@ export const SLOTS = {
   mydesk:   [[6, 19], [6, 20], [2, 20], [5, 21], [7, 20], [2, 19]],
   lobby:    [[11, 20], [13, 20], [15, 20], [12, 21], [14, 21]],
   elevator: [[24, 19], [25, 19], [23, 19], [26, 19], [24, 20], [25, 20], [22, 19]],
+  cafe:     [[28, 4], [31, 4], [31, 6], [33, 7], [30, 7], [35, 5], [34, 6], [28, 6]],
+  terrace:  [[29, 11], [33, 11], [29, 13], [33, 13], [29, 16], [32, 15], [31, 19], [34, 20], [29, 21], [33, 21]],
 };
 export const USER_SEAT = { x: 5, y: 20 };  // 의자(4,20) 옆에 서 있어 캐릭터가 가려지지 않게
 export const SPAWN = { x: 24, y: 19 };   // 서브에이전트 등장/퇴장 지점 (엘리베이터 앞)
