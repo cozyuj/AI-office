@@ -4,7 +4,8 @@
 // 서버가 꺼져 있어도 1초 안에 조용히 exit 0 → Claude 를 절대 막지 않는다.
 const http = require('http');
 
-const PORT = Number(process.env.AI_OFFICE_PORT || 4777);
+const argPort = (() => { const i = process.argv.indexOf('--port'); return i >= 0 ? Number(process.argv[i + 1]) : null; })();
+const PORT = argPort || Number(process.env.AI_OFFICE_PORT || 4777);
 const chunks = [];
 process.stdin.on('data', (c) => chunks.push(c));
 process.stdin.on('end', () => {
