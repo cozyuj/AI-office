@@ -36,6 +36,14 @@ overviewBtn.onclick = () => setOverview(!overview.visible);
 store.subscribe(syncOverviewBtn);
 syncOverviewBtn();
 
+// ---------- ⚙️ 설정 팝오버 ----------
+const settingsBtn = document.getElementById('settings-btn');
+const settingsMenu = document.getElementById('settings-menu');
+function setSettings(open) { settingsMenu.classList.toggle('hidden', !open); settingsBtn.classList.toggle('on', open); }
+const settingsOpen = () => !settingsMenu.classList.contains('hidden');
+settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(!settingsOpen()); };
+document.addEventListener('pointerdown', (e) => { if (settingsOpen() && !document.getElementById('settings-wrap').contains(e.target)) setSettings(false); });
+
 // ---------- 렌더 스케줄 ----------
 const stats = { last: 0, avg: 0, frames: 0 }; // scene.frame 소요 ms (EMA)
 let dirty = true;
@@ -92,7 +100,7 @@ const bubblesBtn = document.getElementById('bubbles-btn');
 function renderTools() {
   followBtn.classList.toggle('on', store.followCamera);
   bubblesBtn.classList.toggle('on', store.bubbleMode === 'selected');
-  bubblesBtn.textContent = store.bubbleMode === 'selected' ? '💬 말풍선: 선택만' : '💬 말풍선: 전체';
+  bubblesBtn.textContent = store.bubbleMode === 'selected' ? '💬 선택만' : '💬 전체';
 }
 followBtn.onclick = () => { store.setFollowCamera(!store.followCamera); if (store.followCamera && scene.camera.cam.zoom < 1.2) scene.camera.cam.zoom = 1.6; };
 bubblesBtn.onclick = () => store.setBubbleMode(store.bubbleMode === 'selected' ? 'all' : 'selected');
@@ -127,7 +135,7 @@ setInterval(renderTitle, 1000);
 store.subscribe((kind) => { if (kind === 'snapshot' || kind === 'select' || kind === 'update' || kind === 'remove' || kind === 'waiting-count') renderTitle(); });
 
 const demoBtn = document.getElementById('demo-btn');
-function renderDemoBtn() { demoBtn.classList.toggle('on', store.demo); demoBtn.textContent = store.demo ? '🎬 데모 끄기' : '🎬 데모'; }
+function renderDemoBtn() { demoBtn.classList.toggle('on', store.demo); demoBtn.textContent = store.demo ? '🎬 켜짐' : '🎬 꺼짐'; }
 demoBtn.onclick = async () => {
   demoBtn.disabled = true;
   try { const r = await fetch(`/api/demo/${store.demo ? 'stop' : 'start'}`, { method: 'POST' }); const j = await r.json(); store.setDemo(j.demo); } catch {}
@@ -137,7 +145,7 @@ store.subscribe((kind) => { if (kind === 'option' || kind === 'snapshot') render
 renderDemoBtn();
 
 const ambientBtn = document.getElementById('ambient-btn');
-function renderAmbientBtn() { ambientBtn.classList.toggle('on', store.ambient); }
+function renderAmbientBtn() { ambientBtn.classList.toggle('on', store.ambient); ambientBtn.textContent = store.ambient ? '✨ 켜짐' : '✨ 꺼짐'; }
 ambientBtn.onclick = () => store.setAmbient(!store.ambient);
 store.subscribe((kind) => { if (kind === 'option') renderAmbientBtn(); });
 renderAmbientBtn();
@@ -158,7 +166,7 @@ function chime() {
     }
   } catch {}
 }
-function renderSoundBtn() { soundBtn.classList.toggle('on', store.sound); soundBtn.textContent = store.sound ? '🔔 소리 켜짐' : '🔈'; }
+function renderSoundBtn() { soundBtn.classList.toggle('on', store.sound); soundBtn.textContent = store.sound ? '🔔 켜짐' : '🔈 꺼짐'; }
 soundBtn.onclick = () => { store.setSound(!store.sound); if (store.sound) chime(); };
 store.subscribe((kind, detail) => { if (kind === 'option') renderSoundBtn(); if (kind === 'waiting' && store.sound) chime(); });
 renderSoundBtn();
@@ -169,7 +177,7 @@ function renderNotifyBtn() {
   if (!canNotify()) { notifyBtn.classList.add('off'); notifyBtn.title = '이 브라우저는 알림을 지원하지 않습니다'; return; }
   notifyBtn.classList.toggle('on', Notification.permission === 'granted');
   notifyBtn.classList.toggle('off', Notification.permission === 'denied');
-  notifyBtn.textContent = Notification.permission === 'granted' ? '🔔 알림 켜짐' : '🔔 알림';
+  notifyBtn.textContent = Notification.permission === 'granted' ? '🔔 켜짐' : Notification.permission === 'denied' ? '🔔 차단됨' : '🔔 꺼짐';
 }
 notifyBtn.onclick = async () => {
   if (!canNotify()) return;
@@ -240,7 +248,7 @@ people.addEventListener('mouseleave', () => { people._hoverRow = null; tooltip.h
 
 // ---------- 외형 커스터마이즈 ----------
 const customizer = createCustomizer(store, avatars);
-document.getElementById('customize-btn').onclick = () => customizer.open();
+document.getElementById('customize-btn').onclick = () => { setSettings(false); customizer.open(); };
 
 // ---------- 키보드 단축키 ----------
 const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기';
@@ -250,6 +258,7 @@ document.addEventListener('keydown', (e) => {
   const modalOpen = !document.getElementById('customize').classList.contains('hidden');
   if (e.key === 'Escape') {
     if (modalOpen) { customizer.close(); return; }
+    if (settingsOpen()) { setSettings(false); return; }
     if (overview.visible) { setOverview(false); return; }
     if (typing) { t.blur(); if (t.id === 'log-search') { t.value = ''; store.setLogFilter({ q: '' }); } return; }
     if (store.followCamera) store.setFollowCamera(false);
@@ -312,7 +321,7 @@ function applyTheme() {
   document.documentElement.classList.toggle('auto-dark', t === 'dark');
   scene.setTheme(t);
   overview.setTheme(t);
-  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+  themeBtn.textContent = t === 'dark' ? '🌙 다크' : '☀️ 라이트';
   themeBtn.title = t === 'dark' ? '라이트 모드로' : '다크 모드로';
 }
 themeBtn.onclick = () => { try { localStorage.setItem('aiOffice.theme', currentTheme() === 'dark' ? 'light' : 'dark'); } catch {} applyTheme(); };
