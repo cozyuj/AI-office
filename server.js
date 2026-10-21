@@ -9,6 +9,7 @@ const path = require('path');
 const os = require('os');
 const { createState } = require('./lib/state');
 const { createJournal } = require('./lib/journal');
+const { readHookPort } = require('./lib/hookport');
 
 const PORT = Number(process.env.AI_OFFICE_PORT || 4777);
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -22,9 +23,15 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.csv': 'text/csv; charset=utf-8',
 };
 
 const state = createState({ me: os.userInfo().username });
+let hookPort = readHookPort(); // settings.json 의 훅 포트 (없으면 null)
+setInterval(() => { hookPort = readHookPort(); }, 30 * 1000).unref();
+function withPorts(snap) { return { ...snap, serverPort: PORT, hookPort }; }
 const clients = new Set();
 
 // 이벤트 저널: 재시작해도 최근 2시간 상태를 복원한다. --no-journal 로 끌 수 있다.
@@ -47,6 +54,7 @@ function broadcast(event, data) {
 
 state.on('update', (data) => broadcast('update', data));
 state.on('remove', (data) => broadcast('remove', data));
+state.on('floor', (data) => broadcast('floor', data));
 
 function readBody(req, limit) {
   return new Promise((resolve, reject) => {
@@ -91,7 +99,7 @@ function handleEvents(req, res) {
     'X-Accel-Buffering': 'no',
   });
   res.write(': connected\n\n');
-  sse(res, 'snapshot', state.snapshot());
+  sse(res, 'snapshot', withPorts(state.snapshot()));
   clients.add(res);
   const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 25000);
   req.on('close', () => { clearInterval(ping); clients.delete(res); });
@@ -116,7 +124,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && pathname === '/api/state') {
     // 데스크탑 앱(tauri://) 로더가 서버 준비 여부를 묻는다 — 로컬 전용 서버라 전체 허용
     res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
-    return res.end(JSON.stringify({ ...state.snapshot(), installDir: __dirname }));
+    return res.end(JSON.stringify({ ...withPorts(state.snapshot()), installDir: __dirname }));
   }
   if (req.method === 'GET') return serveStatic(req, res);
   res.writeHead(405).end();
@@ -125,6 +133,8 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`ai-office  →  http://127.0.0.1:${PORT}`);
   console.log(`hooks POST →  http://127.0.0.1:${PORT}/hook   (AI_OFFICE_PORT=${PORT})`);
+  if (hookPort === null) console.log('⚠ settings.json 에 ai-office 훅이 없습니다 → ai-office install-hooks');
+  else if (hookPort !== PORT) console.log(`⚠ 훅은 포트 ${hookPort} 로 보내는데 서버는 ${PORT} 입니다 → ai-office install-hooks --port ${PORT}`);
 });
 
 // 예약 작업(서브에이전트 퇴근, 세션 제거) 실행 + 오래 조용한 세션 정리

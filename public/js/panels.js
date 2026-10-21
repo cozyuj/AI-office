@@ -7,7 +7,19 @@ const STATUS_LABEL = { working: '작업 중', thinking: '고민 중', waiting: '
 
 function initials(name) { return (name || '?').trim().slice(0, 1).toUpperCase(); }
 
+export function renderBanner() {
+  const el = $('banner');
+  const sp = store.serverPort, hp = store.hookPort;
+  const show = (html) => { el.innerHTML = html; el.classList.remove('hidden'); document.body.classList.add('has-banner'); };
+  const hide = () => { el.classList.add('hidden'); document.body.classList.remove('has-banner'); };
+  if (!sp || !store.connected) { hide(); return; }
+  if (hp === null) { show('Claude Code 훅이 아직 등록되지 않았습니다. 터미널에서 <code>npx github:cozyuj/AI-office install-hooks</code> 를 실행하세요.'); return; }
+  if (hp !== sp) { show(`훅은 포트 <b>${hp}</b> 로 보내는데 이 서버는 <b>${sp}</b> 에 떠 있어 이벤트가 안 들어옵니다. <code>ai-office install-hooks --port ${sp}</code> 로 맞추거나 서버를 <code>--port ${hp}</code> 로 띄우세요.`); return; }
+  hide();
+}
+
 export function renderHeader() {
+  renderBanner();
   const f = store.selectedFloor();
   const s = store.selectedSession();
   $('head-badge').textContent = f ? `${f.no}F` : '–';
@@ -50,9 +62,9 @@ export function renderFloors() {
       </div>`;
     if (!selected) return `<div class="floor">${head}</div>`;
     const list = sessions.map((s) => `
-      <div class="session ${s.id === store.selectedSessionId ? 'selected' : ''} ${s.title ? '' : 'untitled'} ${s.status === 'away' || s.status === 'ended' ? 'away' : ''}" data-session="${esc(s.id)}" title="${esc(s.title || s.id)}">
+      <div class="session ${s.id === store.selectedSessionId ? 'selected' : ''} ${s.title ? '' : 'untitled'} ${s.status === 'away' || s.status === 'ended' ? 'away' : ''}" data-session="${esc(s.id)}" data-tip="${esc(s.title || s.id)}">
         <span class="dot ${s.status}"></span>
-        <span class="session-title">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span>
+        <span class="session-title ellipsis">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span>
         ${s.status === 'waiting' ? '<span class="badge-wait">답 기다림</span>' : ''}
         ${s.id === store.selectedSessionId ? '<span class="session-tag">지금 보는 중</span>' : `<span class="session-time">${timeAgo(s.lastActivity, now)}</span>`}
       </div>`).join('');
@@ -74,13 +86,13 @@ export function renderPeople() {
     count += agents.length;
     const selected = s.id === store.selectedSessionId;
     return `<div class="people-group ${selected ? 'selected' : ''}" data-session="${esc(s.id)}">
-      <div class="people-head"><span class="dot ${s.status}"></span><span class="people-title">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span><span class="muted">${STATUS_LABEL[s.status] || ''}</span></div>
+      <div class="people-head"><span class="dot ${s.status}"></span><span class="people-title ellipsis" data-tip="${esc(s.title || s.id)}">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span><span class="muted">${STATUS_LABEL[s.status] || ''}</span></div>
       ${agents.map((a) => `
       <div class="person ${selected ? 'selected' : 'dim'}" data-session="${esc(s.id)}" data-agent="${esc(a.id)}">
         <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(a.name)}</span>
         <div class="person-body">
           <div class="person-name">${esc(a.name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${ROOM_LABEL[a.room] || a.room}</span></div>
-          <div class="person-act">${a.icon || ''} ${esc(a.bubble)} <span class="ago">· ${elapsed(a.since, now)}</span></div>
+          <div class="person-act ellipsis" data-tip="${esc(a.bubble)}">${a.icon || ''} ${esc(a.bubble)} <span class="ago">· ${elapsed(a.since, now)}</span></div>
         </div>
       </div>`).join('')}
     </div>`;
@@ -91,7 +103,9 @@ export function renderPeople() {
 
 export function renderLog() {
   const items = store.logOfFloor(store.selectedFloorId);
-  $('log-count').textContent = items.length ? `${items.length}건` : '';
+  const filtered = store.logFilter.q || store.logFilter.mine;
+  $('log-count').textContent = items.total ? (filtered ? `${items.length} / ${items.total}건` : `${items.total}건`) : '';
+  $('log-mine').classList.toggle('on', store.logFilter.mine);
   let prevKey = null;
   $('log').innerHTML = items.length ? items.map((e) => {
     const s = store.sessions.get(e.sessionId);
@@ -103,13 +117,13 @@ export function renderLog() {
     return `
     <div class="log-item ${e.sessionId === store.selectedSessionId ? '' : 'dim'} ${same ? 'cont' : ''}" data-session="${esc(e.sessionId)}" style="border-left-color:${color}">
       <span class="log-time" title="${d.toLocaleString()}">${same ? '' : clock(e.t)}</span>
-      <span>${same ? '' : `<span class="log-who">${esc(e.agentName)}</span>`}${e.icon || ''} <span class="log-text">${esc(e.text)}</span></span>
+      <span class="ellipsis" data-tip="${esc(e.agentName)} · ${esc(e.text)}">${same ? '' : `<span class="log-who">${esc(e.agentName)}</span>`}${e.icon || ''} <span class="log-text">${esc(e.text)}</span></span>
     </div>`;
-  }).join('') : '<div class="muted" style="padding:6px 4px">아직 활동이 없습니다</div>';
+  }).join('') : `<div class="muted" style="padding:6px 4px">${filtered ? '조건에 맞는 로그가 없습니다' : '아직 활동이 없습니다'}</div>`;
 }
 
 export function renderLegend() {
-  $('legend').innerHTML = LEGEND.map(([k, v]) => `<span><b>${k}</b> ${v}</span>`).join('');
+  $('legend').innerHTML = LEGEND.map(([k, v]) => `<span class="ellipsis" data-tip="${k} ${v}"><b>${k}</b> ${v}</span>`).join('');
 }
 
 export function renderAll() {
@@ -129,6 +143,8 @@ export function bindPanelEvents() {
     const floor = e.target.closest('[data-floor]');
     if (floor) store.selectFloor(floor.dataset.floor);
   });
+  $('log-search').addEventListener('input', (e) => store.setLogFilter({ q: e.target.value }));
+  $('log-mine').addEventListener('click', () => store.setLogFilter({ mine: !store.logFilter.mine }));
   const pick = (e) => { const el = e.target.closest('[data-session]'); if (el) store.selectSession(el.dataset.session); };
   $('people').addEventListener('click', pick);
   $('log').addEventListener('click', pick);
