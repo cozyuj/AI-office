@@ -40,6 +40,9 @@ export function renderHeader() {
   $('resume-cmd').title = cmd ? `${cmd}  (프로젝트 폴더: ${s.cwd || store.selectedFloor()?.id || ''})` : '';
   $('resume-copy').disabled = !s;
   $('resume-copy').dataset.cmd = cmd;
+  const nameEl = $('info-name');
+  if (document.activeElement !== nameEl) { nameEl.value = s ? store.nameOf(s, null) : ''; nameEl.classList.toggle('auto', !!s && !store.names.isCustom(s.id)); }
+  nameEl.disabled = !s; $('name-roll').disabled = !s;
   $('stage-empty').classList.toggle('hidden', store.sessions.size > 0);
 }
 
@@ -100,14 +103,14 @@ export function renderPeople() {
     const selected = s.id === store.selectedSessionId;
     return `<div class="people-group ${selected ? 'selected' : ''}" data-session="${esc(s.id)}">
       <div class="people-head"><span class="dot ${s.status}"></span><span class="people-title ellipsis" data-tip="${esc(s.title || s.id)}">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span><span class="muted">${STATUS_LABEL[s.status] || ''}</span></div>
-      ${agents.map((a) => `
+      ${agents.map((a) => { const name = store.nameOf(s, a); return `
       <div class="person ${selected ? 'selected' : 'dim'}" data-session="${esc(s.id)}" data-agent="${esc(a.id)}">
-        <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(a.name)}</span>
+        <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(name)}</span>
         <div class="person-body">
-          <div class="person-name">${esc(a.name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${ROOM_LABEL[a.room] || a.room}</span></div>
+          <div class="person-name">${esc(name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${ROOM_LABEL[a.room] || a.room}</span></div>
           <div class="person-act ellipsis" data-tip="${esc(a.bubble)}">${a.icon || ''} ${esc(a.bubble)} <span class="ago">· ${elapsed(a.since, now)}</span></div>
         </div>
-      </div>`).join('')}
+      </div>`; }).join('')}
     </div>`;
   }).join('');
   $('people-count').textContent = count ? `${count}명 근무 중` : '';
@@ -124,13 +127,14 @@ export function renderLog() {
     const s = store.sessions.get(e.sessionId);
     const color = s ? store.colorOf(s, null) : '#b3b9c2';
     const key = `${e.sessionId}/${e.agentId}`;
+    const who = store.logWho(e);
     const same = key === prevKey;
     prevKey = key;
     const d = new Date(e.t);
     return `
     <div class="log-item ${e.sessionId === store.selectedSessionId ? '' : 'dim'} ${same ? 'cont' : ''}" data-session="${esc(e.sessionId)}" style="border-left-color:${color}">
       <span class="log-time" title="${d.toLocaleString()}">${same ? '' : clock(e.t)}</span>
-      <span class="ellipsis" data-tip="${esc(e.agentName)} · ${esc(e.text)}">${same ? '' : `<span class="log-who">${esc(e.agentName)}</span>`}${e.icon || ''} <span class="log-text">${esc(e.text)}</span></span>
+      <span class="ellipsis" data-tip="${esc(who)} · ${esc(e.text)}">${same ? '' : `<span class="log-who">${esc(who)}</span>`}${e.icon || ''} <span class="log-text">${esc(e.text)}</span></span>
     </div>`;
   }).join('') : `<div class="muted" style="padding:6px 4px">${filtered ? '조건에 맞는 로그가 없습니다' : '아직 활동이 없습니다'}</div>`;
 }
@@ -158,6 +162,11 @@ export function bindPanelEvents() {
   });
   $('log-search').addEventListener('input', (e) => store.setLogFilter({ q: e.target.value }));
   $('log-mine').addEventListener('click', () => store.setLogFilter({ mine: !store.logFilter.mine }));
+  // 세션 캐릭터 이름: 입력(빈 값이면 자동 별명으로) · 🎲 다른 별명
+  const nameEl = $('info-name');
+  nameEl.addEventListener('change', () => { const s = store.selectedSession(); if (s) store.setName(s.id, nameEl.value); nameEl.blur(); });
+  nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); nameEl.blur(); } e.stopPropagation(); });
+  $('name-roll').addEventListener('click', () => { const s = store.selectedSession(); if (s) store.rerollName(s.id); });
   const pick = (e) => { const el = e.target.closest('[data-session]'); if (el) store.selectSession(el.dataset.session); };
   $('people').addEventListener('click', pick);
   $('log').addEventListener('click', pick);

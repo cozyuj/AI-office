@@ -254,6 +254,7 @@ b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { fon
 :root[data-theme="dark"] .tt-v.mono, :root:not([data-theme="light"]).auto-dark .tt-v.mono { background: #2c3139; }
 :root[data-theme="dark"] .cz-preview, :root:not([data-theme="light"]).auto-dark .cz-preview { background: #232830; }
 :root[data-theme="dark"] .cz-preset, :root:not([data-theme="light"]).auto-dark .cz-preset { background: var(--panel); border-color: var(--line); }
+:root[data-theme="dark"] .name-input, :root:not([data-theme="light"]).auto-dark .name-input { background: var(--panel); color: var(--text); border-color: var(--line); }
 :root[data-theme="dark"] .banner, :root:not([data-theme="light"]).auto-dark .banner { background: #3a3220; color: #f5deab; border-color: #5a4a22; }
 /* ---------- 경고 배너 ---------- */
 .banner { position: fixed; top: 0; left: 0; right: 0; z-index: 60; height: 34px; box-sizing: border-box; background: #fff4d6; color: #6b4e00; border-bottom: 1px solid #f0d58a; padding: 8px 16px; font-size: 12px; text-align: center; }
@@ -300,4 +301,7 @@ body.has-banner #app { padding-top: 44px; }
 /* ---------- 세션 이어가기 ---------- */
 #session-card .kv .v { display: flex; align-items: center; gap: 6px; }
 .resume-cmd { font-size: 11px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name-input { width: 112px; font: inherit; font-size: 12px; font-weight: 600; padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text); }
+.name-input.auto { font-weight: 400; color: var(--muted); font-style: italic; }
+.name-input:focus { outline: none; border-color: var(--accent); color: var(--text); font-style: normal; }
 #resume-copy { padding: 2px 8px; font-size: 10px; }
