@@ -1,6 +1,7 @@
 // 가구·벽을 코드로 그린다 — 플랫 벡터 아이소메트릭 스타일. 외부 이미지 없음.
 // 좌표는 타일 단위, ctx 는 월드 변환이 걸린 상태.
 import { project, ZH } from './map.js';
+import { palette as daylight } from './daylight.js';
 
 export const FONT = "'D2Coding','NanumSquare',-apple-system,'Apple SD Gothic Neo',sans-serif";
 const labels = { me: 'me' };
@@ -379,15 +380,29 @@ export function drawWallPiece(ctx, p) {
   if (p.rail) { drawRail(ctx, p); return; }
   box(ctx, p.x, p.y, p.w, p.d, p.h, '#fbfbfc', { top: '#ffffff', left: '#e9ebf0', right: '#d8dbe2' });
   if (p.win && p.dir === 'h') {
-    // 유리창: 벽 앞면(남쪽)에 틀 + 하늘빛 유리 + 사선 하이라이트
+    // 유리창: 벽 앞면(남쪽)에 틀 + 유리 + 사선 하이라이트. 유리 색은 시간대(daylight.js)에 따라 다르다
     const y = p.y + p.d + 0.001, x0 = p.x + 0.1, x1 = p.x + 0.9, z0 = 0.45, z1 = p.h - 0.2;
     faceY(ctx, x0, x1, y, z0, z1, '#cfd6e0');
-    faceY(ctx, x0 + 0.05, x1 - 0.05, y, z0 + 0.05, z1 - 0.05, '#bfe3f7');
-    const a = project(x0 + 0.05, y, z0 + 0.05), b = project(x1 - 0.05, y, z1 - 0.05);
-    ctx.save(); ctx.beginPath();
+    const dl = daylight();
     const A = project(x0 + 0.05, y, z0 + 0.05), B = project(x1 - 0.05, y, z0 + 0.05), C = project(x1 - 0.05, y, z1 - 0.05), D = project(x0 + 0.05, y, z1 - 0.05);
+    const g = ctx.createLinearGradient(0, D.y, 0, A.y); // 위(z1) → 아래(z0)
+    dl.sky.forEach((c, i) => g.addColorStop(dl.sky.length === 1 ? 0 : i / (dl.sky.length - 1), c));
+    poly(ctx, [A, B, C, D], g);
+    ctx.save(); ctx.beginPath();
     ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.lineTo(C.x, C.y); ctx.lineTo(D.x, D.y); ctx.closePath(); ctx.clip();
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4;
+    if (dl.stars) {
+      // 밤: 작은 별 (창마다 다른 자리) + 달 (가운데 창 하나)
+      const w = B.x - A.x, h = A.y - D.y;
+      for (let i = 0; i < 4; i++) {
+        const k = (p.x * 7 + i * 13) % 11, m = (p.x * 5 + i * 17) % 7;
+        const sx = D.x + 4 + (w - 8) * (k / 10), sy = D.y + 3 + (h - 10) * (m / 6);
+        ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.85)' : 'rgba(255,245,210,0.7)';
+        ctx.fillRect(sx, sy, i % 3 ? 1 : 1.5, i % 3 ? 1 : 1.5);
+      }
+      if (p.x === 31) { ctx.fillStyle = '#f3eed6'; ctx.beginPath(); ctx.arc(D.x + w * 0.68, D.y + h * 0.28, 3.2, 0, Math.PI * 2); ctx.fill(); }
+    }
+    const a = A, b = C;
+    ctx.strokeStyle = `rgba(255,255,255,${dl.glare})`; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(a.x - 6, b.y + 18); ctx.lineTo(a.x + 14, b.y - 4); ctx.stroke();
     ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x + 4, b.y + 22); ctx.lineTo(a.x + 22, b.y + 2); ctx.stroke();
     ctx.restore();

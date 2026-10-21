@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createState, SUBAGENT_LEAVE_MS, SESSION_LEAVE_MS, SESSION_TTL_MS, AWAY_MS, GONE_CHECK_MS, GONE_MS, STAT_INTERVAL_MS } = require('../lib/state');
+const { createState, restRoomFor, REST_ROOMS, REST_BUBBLE, SUBAGENT_LEAVE_MS, SESSION_LEAVE_MS, SESSION_TTL_MS, AWAY_MS, GONE_CHECK_MS, GONE_MS, STAT_INTERVAL_MS } = require('../lib/state');
 const { describeTool } = require('../lib/normalize');
 
 const CWD = '/Users/me/proj/nccx';
@@ -130,24 +130,57 @@ test('SubagentStart 없이 agent_id 도구 호출이 오면 agent_type 이름으
   assert.equal(s().agents.a9.room, 'library');
 });
 
-test('Notification: permission_prompt → 내 자리 ask, idle_prompt → 휴게실', () => {
+test('Notification: permission_prompt → 내 자리 ask, idle_prompt → 휴식 방', () => {
   const { st, main, s } = fresh();
   st.apply(base({ hook_event_name: 'Notification', notification_type: 'permission_prompt', message: 'Claude needs your permission' }), 1000);
   assert.equal(main().room, 'mydesk');
   assert.equal(main().activity, 'ask');
   assert.equal(s().status, 'waiting');
   st.apply(base({ hook_event_name: 'Notification', notification_type: 'idle_prompt', message: 'waiting' }), 2000);
-  assert.equal(main().room, 'lounge');
+  assert.equal(main().room, restRoomFor('s1'));
+  assert.equal(main().activity, 'rest');
+  assert.equal(main().bubble, '할 일 기다리는 중');
   assert.equal(s().status, 'idle');
 });
 
-test('Stop: 휴게실에서 휴식, 마지막 메시지 로그', () => {
+test('Stop: 휴식 방(휴게실·카페·테라스)에서 휴식, 마지막 메시지 + 간 곳 로그', () => {
   const { st, main, s, updates } = fresh();
   st.apply(base({ hook_event_name: 'Stop', last_assistant_message: 'I have completed the refactoring.' }), 1000);
-  assert.equal(main().room, 'lounge');
+  assert.ok(REST_ROOMS.includes(main().room), main().room);
   assert.equal(main().activity, 'rest');
+  assert.equal(main().bubble, REST_BUBBLE[main().room]);
   assert.equal(s().status, 'idle');
-  assert.equal(updates[0].log.text, 'I have completed the refactoring.');
+  assert.match(updates[0].log.text, /^I have completed the refactoring\. → .+ (휴게실|카페|테라스)$/);
+});
+
+test('휴식 방은 세션 id 로 정해져 같은 세션은 늘 같은 방, 여러 세션은 세 방에 나뉜다', () => {
+  assert.deepEqual(REST_ROOMS, ['lounge', 'cafe', 'terrace']);
+  const ids = ['c1948d9b', 'ef13b3cc', '9f0a1c22', 'a77e2d10', 's1', 's2', 's3', 'demo0004', '7e1f0d2a-1b3c-4d5e-8f90-123456789abc'];
+  for (const id of ids) {
+    assert.ok(REST_ROOMS.includes(restRoomFor(id)), id);
+    assert.equal(restRoomFor(id), restRoomFor(id), '같은 id 는 같은 방');
+  }
+  assert.equal(new Set(ids.map(restRoomFor)).size, 3, '세 방이 모두 쓰인다');
+  assert.ok(REST_ROOMS.includes(restRoomFor(undefined)), 'id 가 없어도 깨지지 않는다');
+
+  // 같은 세션은 Stop → idle_prompt → 자리 비움 → 다시 Stop 까지 전부 같은 방 (클라이언트가 방을 옮기지 않는다)
+  const { st, main } = fresh();
+  st.apply(base({ hook_event_name: 'Stop', last_assistant_message: 'done' }), 1000);
+  const room = main().room;
+  st.apply(base({ hook_event_name: 'Notification', notification_type: 'idle_prompt', message: 'waiting' }), 2000);
+  assert.equal(main().room, room);
+  st.sweep(2000 + AWAY_MS);
+  assert.equal(main().room, room);
+  assert.equal(main().bubble, '자리 비움');
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '다음 요청' }), 2000 + AWAY_MS + 1);
+  st.apply(pre('Edit', { file_path: '/a/x.js' }), 2000 + AWAY_MS + 2);
+  assert.equal(main().room, 'dev', '새 이벤트가 오면 그 방으로');
+  st.apply(base({ hook_event_name: 'Stop', last_assistant_message: 'done again' }), 2000 + AWAY_MS + 3);
+  assert.equal(main().room, room);
+  // 다른 세션 두 개는 서로 다른 방을 받는 경우가 있다 (해시가 한 방으로 몰리지 않는다)
+  const rooms = new Set();
+  for (let i = 0; i < 30; i++) rooms.add(restRoomFor(`sess-${i}`));
+  assert.equal(rooms.size, 3);
 });
 
 test('PreCompact: 자리 유지, 기억 정리 중', () => {

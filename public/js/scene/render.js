@@ -6,6 +6,7 @@
 import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, project, roomAt, worldBounds, setTheme as setMapTheme } from './map.js';
 import * as MAP from './map.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
+import { resolve as resolveDaylight, setPeriod as setDaylightPeriod, palette as daylight, LAMPS } from './daylight.js';
 
 const EPS = 1e-3;
 
@@ -98,6 +99,69 @@ function drawCached(ctx, e, now, scale) {
 /** 테마 전환: 맵 팔레트 교체 + 캐시 무효화 */
 export function setTheme(theme) { setMapTheme(theme); floorCache = null; for (const e of STATIC) e._sprite = null; }
 
+// ---------- 시간대 조명 (FE-33) ----------
+// 바닥·스프라이트 캐시는 그대로 두고, 시간대가 바뀔 때만 창문 스프라이트를 다시 그린다. 틴트·조명 점은 매 프레임 가볍게 올린다.
+/** mode: 'auto' | 'off' | 'morning' | 'day' | 'evening' | 'night'. 적용된 시간대를 돌려준다 */
+export function setDaylight(mode, date = new Date()) {
+  const p = resolveDaylight(mode, date);
+  if (setDaylightPeriod(p)) for (const e of STATIC) if (e.win) e._sprite = null;
+  return p;
+}
+
+const TERRACE_POLY = (() => {
+  const r = MAP.roomById('terrace');
+  if (!r) return null;
+  return [project(r.x0, r.y0), project(r.x1 + 1, r.y0), project(r.x1 + 1, r.y1 + 1), project(r.x0, r.y1 + 1)];
+})();
+
+/** 바닥 위 테라스 틴트 (월드 공간, drawFloor 뒤·엔티티 앞) */
+export function drawDaylightFloor(ctx) {
+  const c = daylight().terrace;
+  if (!c || !TERRACE_POLY) return;
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.moveTo(TERRACE_POLY[0].x, TERRACE_POLY[0].y);
+  for (let i = 1; i < 4; i++) ctx.lineTo(TERRACE_POLY[i].x, TERRACE_POLY[i].y);
+  ctx.closePath(); ctx.fill();
+}
+
+let glowSprite = null; // 글로우는 한 번만 그려 두고 이미지로 찍는다
+const GLOW_R = 22;
+function glow() {
+  if (glowSprite || typeof document === 'undefined') return glowSprite;
+  const c = makeLayer(GLOW_R * 4, GLOW_R * 4);
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(GLOW_R * 2, GLOW_R * 2, 1, GLOW_R * 2, GLOW_R * 2, GLOW_R * 2);
+  grad.addColorStop(0, 'rgba(255,214,120,0.55)');
+  grad.addColorStop(0.45, 'rgba(255,200,100,0.16)');
+  grad.addColorStop(1, 'rgba(255,190,90,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+  return (glowSprite = c);
+}
+
+/** 테라스 조명 점: 노란 원 + 은은한 글로우 (월드 공간, 엔티티 뒤에 올린다) */
+export function drawDaylightLamps(ctx) {
+  const k = daylight().lamp;
+  if (!k) return;
+  const sp = glow();
+  for (const l of LAMPS) {
+    const p = project(l.x, l.y, l.z);
+    if (sp) { ctx.globalAlpha = k; ctx.drawImage(sp, p.x - GLOW_R, p.y - GLOW_R, GLOW_R * 2, GLOW_R * 2); ctx.globalAlpha = 1; }
+    ctx.fillStyle = `rgba(255,224,140,${0.5 + 0.5 * k})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,250,220,${k})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 1, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+/** 장면 전체 틴트 (화면 공간, 이름표 앞에) */
+export function drawDaylightTint(ctx, width, height) {
+  const c = daylight().scene;
+  if (!c) return;
+  ctx.fillStyle = c;
+  ctx.fillRect(0, 0, width, height);
+}
+
 // ---------- 엔티티 ----------
 /** 3D AABB → 월드 화면 bbox (8 꼭짓점 투영) */
 export function screenBox(b) {
@@ -136,7 +200,7 @@ const HEIGHT = {
   cafetable: 0.78, stool: 0.62, coffeemachine: 1.5, planter: 0.95, parasol: 2.2,
 };
 
-const STATIC = [];
+export const STATIC = [];
 for (const f of FURNITURE) {
   const w = f.w || 1, d = f.d || 1;
   // 얇은 소품은 footprint 를 타일 안쪽으로 줄여 이웃 타일과의 불필요한 관계를 피한다
@@ -149,7 +213,7 @@ for (const f of FURNITURE) {
 }
 for (const w of WALLS) {
   for (const p of wallPieces(w)) {
-    STATIC.push(makeEntity({ x0: p.x, y0: p.y, x1: p.x + p.w, y1: p.y + p.d, z0: 0, z1: p.h }, (ctx) => drawWallPiece(ctx, p), { label: 'wall' }));
+    STATIC.push(makeEntity({ x0: p.x, y0: p.y, x1: p.x + p.w, y1: p.y + p.d, z0: 0, z1: p.h }, (ctx) => drawWallPiece(ctx, p), { label: 'wall', win: p.win }));
   }
 }
 
