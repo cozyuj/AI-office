@@ -12,14 +12,24 @@ import { createCustomizer } from './customize.js';
 import { createOverview } from './overview.js';
 import { createFloorStyleBook } from './scene/floorStyle.js';
 import { createFloorStylePicker } from './floorStylePicker.js';
+import { layoutOfPreset } from './scene/map.js';
+import { buildLayout, roomLabelIn } from './scene/layouts.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
 const avatars = createAvatarStore();
-const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
-const floorStyles = createFloorStyleBook(); // 층별 인테리어 프리셋 (FE-34): 직접 고른 것 > id 해시 자동 배정
+
+// ---------- 🎨 층 인테리어 (프리셋 = 색 + 사무실 구조) ----------
+const floorStyles = createFloorStyleBook(); // 층별 인테리어 프리셋 (FE-34/35): 직접 고른 것 > id 해시 자동 배정
 const styleOfFloor = (f) => floorStyles.resolve(f, store.floorsByNo());
+function applyFloorStyle() { scene.setFloorStyle(styleOfFloor(store.selectedFloor())); }
+// 캐릭터(createActors)보다 먼저 구독한다: 층이 바뀌면 레이아웃부터 바꾼 뒤 캐릭터를 그 레이아웃의 자리에 배치해야 한다
+store.subscribe((kind) => { if (kind === 'select' || kind === 'snapshot' || kind === 'update' || kind === 'remove') applyFloorStyle(); });
+applyFloorStyle();
+store.roomLabelResolver = (room, floorId) => roomLabelIn(buildLayout(layoutOfPreset(styleOfFloor(store.floors.get(floorId)))), room);
+
+const actors = createActors(store, scene, avatars);
 
 // ---------- 전체 보기 (건물 단면) ----------
 const stage = document.getElementById('stage');
@@ -40,11 +50,8 @@ overviewBtn.onclick = () => setOverview(!overview.visible);
 store.subscribe(syncOverviewBtn);
 syncOverviewBtn();
 
-// ---------- 🎨 층 인테리어 ----------
-function applyFloorStyle() { scene.setFloorStyle(styleOfFloor(store.selectedFloor())); }
-store.subscribe((kind) => { if (kind === 'select' || kind === 'snapshot' || kind === 'update' || kind === 'remove') applyFloorStyle(); });
-const floorStylePicker = createFloorStylePicker(store, floorStyles, { onChange: () => { applyFloorStyle(); dirty = true; } });
-applyFloorStyle();
+// 🎨 팝오버: 프리셋을 바꾸면 레이아웃이 바뀔 수 있으니 캐릭터를 새 자리에 다시 놓는다
+const floorStylePicker = createFloorStylePicker(store, floorStyles, { onChange: () => { applyFloorStyle(); actors.sync(true); dirty = true; } });
 
 // ---------- ⚙️ 설정 팝오버 ----------
 const settingsBtn = document.getElementById('settings-btn');

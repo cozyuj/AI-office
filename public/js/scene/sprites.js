@@ -346,6 +346,196 @@ const DRAW = {
     legs(ctx, [[f.x + 0.15, f.y + 0.62], [f.x + w - 0.25, f.y + 0.62]], 0.4, '#b08d63');
     box(ctx, f.x + 0.1, f.y + 0.3, w - 0.2, 0.4, 0.08, WOOD(), { z0: 0.4, top: shade(WOOD(), 1.05) });
   },
+  // ---------- FE-35 편의시설 가구 ----------
+  treadmill(ctx, f) {
+    const d = f.d || 2;
+    shadow(ctx, f.x + 0.5, f.y + d / 2, 0.4, 0.5, 0.12);
+    box(ctx, f.x + 0.12, f.y + 0.15, 0.76, d - 0.3, 0.18, '#3a4050', { top: '#4a5264', left: '#2f3542', right: '#262b36' });
+    box(ctx, f.x + 0.2, f.y + 0.45, 0.6, d - 0.7, 0.03, '#2b2f3a', { z0: 0.18, top: '#20242c' });
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+    for (let k = 0.6; k < d - 0.3; k += 0.25) { const a = project(f.x + 0.22, f.y + k, 0.21), b = project(f.x + 0.78, f.y + k, 0.21); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    box(ctx, f.x + 0.14, f.y + 0.15, 0.08, 0.1, 1.1, '#b9c3d1', { z0: 0.18 }); box(ctx, f.x + 0.78, f.y + 0.15, 0.08, 0.1, 1.1, '#b9c3d1', { z0: 0.18 });
+    box(ctx, f.x + 0.14, f.y + 0.12, 0.72, 0.16, 0.08, '#d9dce2', { z0: 1.28 });
+    box(ctx, f.x + 0.3, f.y + 0.1, 0.4, 0.08, 0.3, DARK, { z0: 1.3, top: '#3a4050' });
+    faceY(ctx, f.x + 0.33, f.x + 0.67, f.y + 0.19, 1.36, 1.56, '#5fb4ff');
+  },
+  dumbbells(ctx, f) {
+    const d = f.d || 2;
+    shadow(ctx, f.x + 0.5, f.y + d / 2, 0.36, 0.5, 0.12);
+    for (const z0 of [0, 0.55, 1.0]) box(ctx, f.x + 0.15, f.y + 0.1, 0.7, d - 0.2, 0.08, '#3a4050', { z0, top: '#4a5264' });
+    const cols = ['#e76f51', '#2a9d8f', '#e9c46a', '#457b9d'];
+    for (const [k, z0] of [[0, 0.08], [1, 0.63], [2, 1.08]]) for (let i = 0; i < 4; i++) {
+      const cy = f.y + 0.3 + i * ((d - 0.5) / 3), c = cols[(i + k) % 4];
+      box(ctx, f.x + 0.22, cy - 0.1, 0.18, 0.2, 0.2, c, { z0 }); box(ctx, f.x + 0.6, cy - 0.1, 0.18, 0.2, 0.2, c, { z0 });
+      box(ctx, f.x + 0.4, cy - 0.03, 0.2, 0.06, 0.06, '#b9c3d1', { z0: z0 + 0.07 });
+    }
+  },
+  mat(ctx, f) {
+    const w = f.w || 2, c = f.color || ACCENT.sofa;
+    box(ctx, f.x + 0.15, f.y + 0.2, w - 0.3, 0.6, 0.04, c, { top: shade(c, 1.1) });
+  },
+  cooler(ctx, f) {
+    shadow(ctx, f.x + 0.5, f.y + 0.5, 0.3, 0.15, 0.12);
+    box(ctx, f.x + 0.25, f.y + 0.25, 0.5, 0.5, 1.1, '#ffffff', { left: '#eceef2', right: '#dcdfe5' });
+    faceY(ctx, f.x + 0.35, f.x + 0.65, f.y + 0.76, 0.5, 0.9, '#5fb4ff');
+    box(ctx, f.x + 0.32, f.y + 0.32, 0.36, 0.36, 0.45, '#9fd3ff', { z0: 1.1, top: '#bfe3f7', left: '#8ac6f5', right: '#7ab8ea' });
+  },
+  flowerbed(ctx, f) {
+    const w = f.w || 3, d = f.d || 2;
+    box(ctx, f.x + 0.08, f.y + 0.08, w - 0.16, d - 0.16, 0.3, '#a88b6a', { top: '#5a4330', left: '#9a7d5e', right: '#86694c' });
+    const cols = ['#e76f51', '#f4a261', '#d1495b', '#e9c46a', '#f28ca8', '#9b6bd6'];
+    for (let i = 0; i < w * d * 3; i++) {
+      const cx = f.x + 0.3 + ((i * 7) % (w * 10)) / 10 * ((w - 0.6) / w), cy = f.y + 0.3 + ((i * 3) % (d * 10)) / 10 * ((d - 0.6) / d);
+      const t = project(cx, cy, 0.3);
+      ctx.fillStyle = LEAF()[i % 4]; ctx.beginPath(); ctx.ellipse(t.x, t.y - 5, 5, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = cols[i % cols.length]; ctx.beginPath(); ctx.arc(t.x, t.y - 10, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  },
+  pond(ctx, f) {
+    const w = f.w || 3, d = f.d || 2, rx = (w + d) * 13, ry = (w + d) * 6.5;
+    const c = project(f.x + w / 2, f.y + d / 2, 0);
+    ctx.save(); ctx.translate(c.x, c.y);
+    ctx.fillStyle = '#b8b0a2'; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7fc3e8'; ctx.beginPath(); ctx.ellipse(0, -2, rx - 6, ry - 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.ellipse(-rx * 0.3, -8, rx * 0.25, ry * 0.2, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#5fae6a';
+    for (const [dx, dy] of [[rx * 0.35, 2], [-rx * 0.2, 8], [rx * 0.05, -9]]) { ctx.beginPath(); ctx.ellipse(dx, dy, 6, 3.5, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#f28c38'; ctx.beginPath(); ctx.ellipse(rx * 0.15, 5, 4, 2, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+  buffet(ctx, f) {
+    const w = f.w || 4;
+    shadow(ctx, f.x + w / 2, f.y + 0.5, 0.5 * w, 0.24, 0.12);
+    box(ctx, f.x + 0.05, f.y + 0.1, w - 0.1, 0.8, 0.9, '#ffffff', { left: '#eceef2', right: '#dcdfe5' });
+    const foods = ['#e9c46a', '#8ab17d', '#e76f51', '#f4a261', '#d1495b', '#2a9d8f'];
+    for (let i = 0; i < w * 2; i++) { box(ctx, f.x + 0.12 + i * 0.5, f.y + 0.2, 0.36, 0.5, 0.1, '#d9dce2', { z0: 0.9 }); box(ctx, f.x + 0.16 + i * 0.5, f.y + 0.25, 0.28, 0.4, 0.1, foods[i % foods.length], { z0: 1.0 }); }
+    for (const dx of [0.1, w / 2, w - 0.1]) box(ctx, f.x + dx - 0.03, f.y + 0.12, 0.06, 0.06, 0.65, '#b9c3d1', { z0: 0.9 });
+    faceY(ctx, f.x + 0.1, f.x + w - 0.1, f.y + 0.15, 1.15, 1.55, 'rgba(191,227,247,0.5)');
+  },
+  fridge(ctx, f) {
+    shadow(ctx, f.x + 0.5, f.y + 0.5, 0.34, 0.17, 0.14);
+    box(ctx, f.x + 0.12, f.y + 0.12, 0.76, 0.76, 2.0, '#e6e8ee', { top: '#f3f4f7', left: '#dfe2e8', right: '#cfd3db' });
+    faceY(ctx, f.x + 0.2, f.x + 0.8, f.y + 0.89, 0.1, 1.2, '#d5d8de');
+    faceY(ctx, f.x + 0.2, f.x + 0.8, f.y + 0.89, 1.28, 1.9, '#d5d8de');
+    faceY(ctx, f.x + 0.68, f.x + 0.74, f.y + 0.9, 0.4, 1.0, '#8a919b');
+    faceY(ctx, f.x + 0.68, f.x + 0.74, f.y + 0.9, 1.4, 1.8, '#8a919b');
+  },
+  bed(ctx, f) {
+    const d = f.d || 2, c = f.color || ACCENT.sofa;
+    shadow(ctx, f.x + 0.5, f.y + d / 2, 0.4, 0.5, 0.12);
+    box(ctx, f.x + 0.08, f.y + 0.08, 0.84, d - 0.16, 0.35, '#d9b98f', { top: '#e8d9c0', left: '#c9a76f', right: '#b8955e' });
+    box(ctx, f.x + 0.12, f.y + 0.12, 0.76, d - 0.24, 0.12, '#ffffff', { z0: 0.35, left: '#eceef2', right: '#dcdfe5' });
+    box(ctx, f.x + 0.2, f.y + 0.18, 0.6, 0.35, 0.12, '#f6f2ea', { z0: 0.47, left: '#ece6da', right: '#ddd6c8' });
+    box(ctx, f.x + 0.12, f.y + 0.65, 0.76, d - 0.77, 0.08, c, { z0: 0.47, top: shade(c, 1.1), left: shade(c, 0.9), right: shade(c, 0.8) });
+  },
+  partition(ctx, f) {
+    const d = f.d || 2;
+    box(ctx, f.x + 0.45, f.y + 0.05, 0.1, d - 0.1, 1.5, '#cfd6e0', { top: '#e3e8ef', left: '#dfe5ed', right: '#bfc8d4' });
+  },
+  floorlamp(ctx, f) {
+    const cx = f.x + 0.5, cy = f.y + 0.5;
+    ellipse(ctx, cx, cy, 0.02, 8, 4, '#4a515e');
+    post(ctx, cx, cy, 1.55, '#4a515e');
+    const p = project(cx, cy, 1.55), g = project(cx, cy, 1.85);
+    poly(ctx, [{ x: p.x - 14, y: p.y }, { x: p.x + 14, y: p.y }, { x: g.x + 8, y: g.y }, { x: g.x - 8, y: g.y }], '#f4d9a6');
+    ctx.fillStyle = 'rgba(255,220,140,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+  },
+  pooltable(ctx, f) {
+    const w = f.w || 3, d = f.d || 2;
+    shadow(ctx, f.x + w / 2, f.y + d / 2, 0.5 * w, 0.25 * d, 0.14);
+    legs(ctx, [[f.x + 0.15, f.y + d - 0.25], [f.x + w - 0.25, f.y + d - 0.25], [f.x + w - 0.25, f.y + 0.15]], 0.6, '#5a4330');
+    box(ctx, f.x + 0.1, f.y + 0.1, w - 0.2, d - 0.2, 0.18, '#6b4e3d', { z0: 0.6, top: '#2f8f5b', left: '#5a4330', right: '#4a3627' });
+    box(ctx, f.x + 0.1, f.y + 0.1, w - 0.2, 0.12, 0.06, '#6b4e3d', { z0: 0.78 }); box(ctx, f.x + 0.1, f.y + d - 0.22, w - 0.2, 0.12, 0.06, '#6b4e3d', { z0: 0.78 });
+    box(ctx, f.x + 0.1, f.y + 0.1, 0.12, d - 0.2, 0.06, '#6b4e3d', { z0: 0.78 }); box(ctx, f.x + w - 0.22, f.y + 0.1, 0.12, d - 0.2, 0.06, '#6b4e3d', { z0: 0.78 });
+    for (const [bx, by, c] of [[1.2, 0.8, '#ffffff'], [1.7, 1.1, '#e76f51'], [1.9, 0.7, '#e9c46a'], [0.8, 1.3, '#457b9d']]) circle(ctx, f.x + bx, f.y + by, 0.82, 2.5, c);
+  },
+  arcade(ctx, f) {
+    shadow(ctx, f.x + 0.5, f.y + 0.5, 0.32, 0.16, 0.14);
+    box(ctx, f.x + 0.15, f.y + 0.15, 0.7, 0.7, 1.7, PURPLE, { top: '#9a86e0', left: '#8a6fd8', right: '#6a4fb8' });
+    faceY(ctx, f.x + 0.22, f.x + 0.78, f.y + 0.86, 0.95, 1.45, '#1f3b66');
+    faceY(ctx, f.x + 0.28, f.x + 0.72, f.y + 0.87, 1.0, 1.4, ['#5fb4ff', '#f28ca8', '#8fd49e'][(f.x + f.y) % 3]);
+    faceY(ctx, f.x + 0.22, f.x + 0.78, f.y + 0.86, 1.5, 1.68, '#ffd27a');
+    box(ctx, f.x + 0.2, f.y + 0.7, 0.6, 0.2, 0.06, '#3a4050', { z0: 0.9 });
+    circle(ctx, f.x + 0.35, f.y + 0.8, 0.98, 2, '#e76f51'); circle(ctx, f.x + 0.5, f.y + 0.8, 0.98, 2, '#e9c46a'); circle(ctx, f.x + 0.65, f.y + 0.8, 0.98, 2, '#2a9d8f');
+  },
+  beanbag(ctx, f) {
+    const c = f.color || ACCENT.sofa, p = project(f.x + 0.5, f.y + 0.5, 0);
+    shadow(ctx, f.x + 0.5, f.y + 0.5, 0.34, 0.17, 0.12);
+    ctx.fillStyle = shade(c, 0.85); ctx.beginPath(); ctx.ellipse(p.x, p.y - 4, 20, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(p.x, p.y - 10, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = shade(c, 1.12); ctx.beginPath(); ctx.ellipse(p.x - 4, p.y - 13, 7, 4, -0.3, 0, Math.PI * 2); ctx.fill();
+  },
+  pingpong(ctx, f) {
+    const w = f.w || 3, d = f.d || 2;
+    shadow(ctx, f.x + w / 2, f.y + d / 2, 0.5 * w, 0.25 * d, 0.12);
+    legs(ctx, [[f.x + 0.2, f.y + d - 0.3], [f.x + w - 0.3, f.y + d - 0.3], [f.x + w - 0.3, f.y + 0.2]], 0.7, '#4a515e');
+    box(ctx, f.x + 0.1, f.y + 0.15, w - 0.2, d - 0.3, 0.06, '#2f6fb0', { z0: 0.7, top: '#3b7fc4', left: '#285f98', right: '#214f80' });
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2;
+    const a = project(f.x + 0.1, f.y + d / 2, 0.76), b = project(f.x + w - 0.1, f.y + d / 2, 0.76);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    faceX(ctx, f.x + w / 2, f.y + 0.1, f.y + d - 0.1, 0.76, 0.92, 'rgba(240,244,250,0.85)');
+    circle(ctx, f.x + 0.8, f.y + 0.6, 0.8, 2, '#f28c38');
+  },
+  lowshelf(ctx, f) {
+    box(ctx, f.x + 0.05, f.y + 0.1, 0.9, 0.8, 1.0, CREAM.top, { left: CREAM.left, right: CREAM.right });
+    const seed = f.seed || 0;
+    for (let row = 0; row < 2; row++) {
+      const z0 = 0.15 + row * 0.42;
+      let u = 0.1, i = 0;
+      while (u < 0.86) { const bw = 0.09 + ((seed * 7 + row * 3 + i) % 3) * 0.03; faceY(ctx, f.x + u, f.x + u + bw, f.y + 0.92, z0, z0 + 0.3, BOOK[(seed + i * 3 + row) % BOOK.length]); u += bw + 0.015; i++; }
+      faceY(ctx, f.x + 0.05, f.x + 0.95, f.y + 0.92, z0 - 0.03, z0, '#d9d2c5');
+    }
+  },
+  rug(ctx, f) {
+    const w = f.w || 3, d = f.d || 2, c = f.color || ACCENT.sofa;
+    poly(ctx, [project(f.x + 0.1, f.y + 0.1), project(f.x + w - 0.1, f.y + 0.1), project(f.x + w - 0.1, f.y + d - 0.1), project(f.x + 0.1, f.y + d - 0.1)], shade(c, 1.25));
+    poly(ctx, [project(f.x + 0.35, f.y + 0.35), project(f.x + w - 0.35, f.y + 0.35), project(f.x + w - 0.35, f.y + d - 0.35), project(f.x + 0.35, f.y + d - 0.35)], shade(c, 1.4));
+  },
+  booth(ctx, f) {
+    const w = f.w || 2, d = f.d || 2;
+    shadow(ctx, f.x + w / 2, f.y + d / 2, 0.5 * w, 0.25 * d, 0.12);
+    box(ctx, f.x + 0.1, f.y + 0.1, w - 0.2, d - 0.2, 0.1, '#3a4050', { top: '#4a5264' });
+    post(ctx, f.x + 0.5, f.y + d - 0.4, 1.0, '#8a919b');
+    circle(ctx, f.x + 0.5, f.y + d - 0.4, 1.05, 4, '#2b2f3a');
+    box(ctx, f.x + 0.1, f.y + 0.1, w - 0.2, d - 0.2, 1.9, 'rgba(191,227,247,0.35)', { z0: 0.1, top: 'rgba(230,240,250,0.5)', left: 'rgba(191,227,247,0.4)', right: 'rgba(170,210,235,0.45)' });
+    for (const [px, py] of [[f.x + 0.12, f.y + 0.12], [f.x + w - 0.12, f.y + 0.12], [f.x + 0.12, f.y + d - 0.12], [f.x + w - 0.12, f.y + d - 0.12]]) post(ctx, px, py, 2.0, '#3a4050');
+    faceY(ctx, f.x + 0.3, f.x + w - 0.3, f.y + d - 0.08, 1.6, 1.78, '#e05252');
+  },
+  camera(ctx, f) {
+    const cx = f.x + 0.5, cy = f.y + 0.5;
+    ctx.strokeStyle = '#4a515e'; ctx.lineWidth = 2;
+    for (const [dx, dy] of [[-0.25, 0.2], [0.25, 0.2], [0, -0.28]]) { const a = project(cx + dx, cy + dy, 0), b = project(cx, cy, 1.1); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    box(ctx, cx - 0.2, cy - 0.15, 0.4, 0.3, 0.28, DARK, { z0: 1.1, top: '#3a4050' });
+    box(ctx, cx - 0.1, cy + 0.15, 0.2, 0.2, 0.2, '#4a515e', { z0: 1.14 });
+    circle(ctx, cx, cy + 0.35, 1.24, 3, '#5fb4ff');
+    circle(ctx, cx - 0.12, cy - 0.1, 1.42, 1.6, '#e05252');
+  },
+  lightstand(ctx, f) {
+    const cx = f.x + 0.5, cy = f.y + 0.5;
+    ellipse(ctx, cx, cy, 0.02, 9, 4.5, '#4a515e');
+    post(ctx, cx, cy, 1.5, '#4a515e');
+    box(ctx, cx - 0.3, cy - 0.08, 0.6, 0.16, 0.5, '#f3f4f7', { z0: 1.45, top: '#ffffff', left: '#e3e6ea', right: '#d5d8de' });
+    const p = project(cx, cy + 0.1, 1.7); ctx.fillStyle = 'rgba(255,245,210,0.45)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+  },
+  mic(ctx, f) {
+    const cx = f.x + 0.5, cy = f.y + 0.5;
+    ellipse(ctx, cx, cy, 0.02, 7, 3.5, '#4a515e');
+    post(ctx, cx, cy, 1.25, '#4a515e');
+    box(ctx, cx - 0.06, cy - 0.06, 0.12, 0.12, 0.2, '#2b2f3a', { z0: 1.25, top: '#8a919b' });
+  },
+  podium(ctx, f) {
+    const wood = WOOD();
+    shadow(ctx, f.x + 0.5, f.y + 0.5, 0.3, 0.15, 0.12);
+    box(ctx, f.x + 0.2, f.y + 0.2, 0.6, 0.6, 1.0, wood, { top: shade(wood, 1.05), left: shade(wood, 0.9), right: shade(wood, 0.8) });
+    box(ctx, f.x + 0.15, f.y + 0.15, 0.7, 0.7, 0.1, shade(wood, 0.85), { z0: 1.0, top: shade(wood, 0.95) });
+    box(ctx, f.x + 0.3, f.y + 0.3, 0.4, 0.3, 0.03, '#ffffff', { z0: 1.1 });
+  },
+  seat(ctx, f) {
+    const cx = f.x + 0.5, cy = f.y + 0.5, c = f.color || ACCENT.sofa;
+    legs(ctx, [[cx - 0.2, cy - 0.2], [cx + 0.14, cy - 0.2], [cx - 0.2, cy + 0.14], [cx + 0.14, cy + 0.14]], 0.4, '#4a515e');
+    box(ctx, cx - 0.24, cy - 0.24, 0.48, 0.48, 0.07, c, { z0: 0.4, top: shade(c, 1.1) });
+    box(ctx, cx - 0.24, cy - 0.26, 0.48, 0.07, 0.42, c, { z0: 0.47, top: shade(c, 1.1) });
+  },
   elevator(ctx, f) {
     box(ctx, f.x, f.y, 1, 0.5, 2.3, '#e6e8ee', { top: '#f3f4f7', left: '#dfe2e8', right: '#cfd3db' });
     const y = f.y + 0.5;

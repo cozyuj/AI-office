@@ -9,20 +9,22 @@ const HEX = /^#[0-9a-f]{6}$/;
 const memStorage = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), _m: m }; };
 const floorsOf = (n, prefix = '/Users/me/proj') => Array.from({ length: n }, (_, i) => ({ id: `${prefix}-${i}`, name: `proj-${i}`, no: i + 1 }));
 
-test('모든 프리셋이 ROOMS 전부 + 복도 + 강조색을 제공한다 (라이트·다크)', async () => {
+test('모든 프리셋이 모든 레이아웃의 방 전부 + 복도 + 강조색을 제공한다 (라이트·다크)', async () => {
   const { PRESETS, palette, ROOM_IDS } = await styleP;
-  const { ROOMS } = await mapP;
+  const { LAYOUT_IDS, buildLayout } = await import('../public/js/scene/layouts.js');
   assert.ok(PRESETS.length >= 4 && PRESETS.length <= 6, '프리셋 4~6개');
-  assert.deepEqual([...ROOM_IDS].sort(), ROOMS.map((r) => r.id).sort(), 'floorStyle.ROOM_IDS 와 map.ROOMS 가 같은 방 목록');
+  const allRooms = new Set();
+  for (const id of LAYOUT_IDS) for (const r of buildLayout(id).rooms) allRooms.add(r.id);
+  for (const id of allRooms) assert.ok(ROOM_IDS.includes(id), `floorStyle.ROOM_IDS 에 ${id} 가 없다`);
   for (const p of PRESETS) {
     for (const theme of ['light', 'dark']) {
       const pal = palette(p.id, theme);
-      for (const r of ROOMS) {
-        const c = pal.rooms[r.id];
-        assert.ok(c && HEX.test(c.floor), `${p.id}/${theme}: ${r.id} 바닥색`);
-        assert.ok(HEX.test(c.alt), `${p.id}/${theme}: ${r.id} alt`);
-        if (r.id === 'library') assert.equal(c.trim, null, '자료실(우드)은 격자선 없음');
-        else assert.ok(HEX.test(c.trim), `${p.id}/${theme}: ${r.id} trim`);
+      for (const id of allRooms) {
+        const c = pal.rooms[id];
+        assert.ok(c && HEX.test(c.floor), `${p.id}/${theme}: ${id} 바닥색`);
+        assert.ok(HEX.test(c.alt), `${p.id}/${theme}: ${id} alt`);
+        if (id === 'library' || id === 'booklounge') assert.equal(c.trim, null, '우드 바닥은 격자선 없음');
+        else assert.ok(HEX.test(c.trim), `${p.id}/${theme}: ${id} trim`);
       }
       assert.ok(HEX.test(pal.corridor.floor) && HEX.test(pal.corridor.trim), `${p.id}/${theme}: 복도`);
       assert.equal(pal.accent.leaf.length, 4);
@@ -48,7 +50,7 @@ test('다크 팔레트는 라이트보다 어둡고 프리셋마다 색이 다�
   assert.equal(sofas.size, PRESETS.length, '소파 강조색이 프리셋마다 다르다');
 });
 
-test('층 → 프리셋 배정: 결정적이고, 이웃 층끼리 안 겹치고, 데모 층은 파스텔 고정', async () => {
+test('층 → 프리셋 배정: 결정적이고, 이웃 층끼리 안 겹치고, 데모 층은 파스텔을 포함한 전체에서 고른다', async () => {
   const { assignPresets, autoPresetFor, AUTO_PRESETS, DEMO_PRESET, PRESET_IDS } = await styleP;
   const floors = floorsOf(30);
   const a = assignPresets(floors), b = assignPresets([...floors].reverse());
@@ -59,11 +61,13 @@ test('층 → 프리셋 배정: 결정적이고, 이웃 층끼리 안 겹치고,
   // 같은 층은 다른 층 목록에서도 같은 프리셋 (이웃 충돌 보정만 예외)
   assert.equal(autoPresetFor(floors[3], floors), a.get(floors[3].id));
   assert.equal(autoPresetFor(floors[3], [floors[3]]), autoPresetFor(floors[3], [floors[3]]));
-  // 데모
-  const demo = [{ id: '/demo/a', name: 'a (데모)', no: 1 }, { id: '/demo/b', name: 'b (데모)', no: 2 }, floors[0]];
+  // 데모 층: 파스텔 포함 전체 프리셋에서, 이웃끼리 다르게
+  const demo = Array.from({ length: 12 }, (_, i) => ({ id: `/demo/p${i}`, name: `p${i} (데모)`, no: i + 1 }));
   const d = assignPresets(demo);
-  assert.equal(d.get('/demo/a'), DEMO_PRESET); assert.equal(d.get('/demo/b'), DEMO_PRESET);
-  assert.ok(PRESET_IDS.includes(DEMO_PRESET) && !AUTO_PRESETS.includes(DEMO_PRESET), '파스텔은 자동 배정 후보가 아니다');
+  for (let i = 1; i < demo.length; i++) assert.notEqual(d.get(demo[i].id), d.get(demo[i - 1].id), '데모 이웃 층이 다른 프리셋');
+  assert.ok([...d.values()].every((p) => PRESET_IDS.includes(p)));
+  assert.ok(new Set(d.values()).size >= 4, '데모 층도 여러 프리셋(구조)을 쓴다');
+  assert.ok(PRESET_IDS.includes(DEMO_PRESET) && !AUTO_PRESETS.includes(DEMO_PRESET), '파스텔은 실제 층의 자동 배정 후보가 아니다');
 });
 
 test('직접 선택 저장: localStorage aiOffice.floorStyle.<floorId>, 빈 값이면 자동으로 복귀, 모르는 값은 무시', async () => {
@@ -86,14 +90,14 @@ test('직접 선택 저장: localStorage aiOffice.floorStyle.<floorId>, 빈 값�
   assert.equal(book.resolve(null, floors), DEFAULT_PRESET);
 });
 
-test('map.setFloorStyle 이 ROOMS/CORRIDOR/ACCENT 를 바꾸고, 테마를 바꿔도 프리셋이 유지된다. 레이아웃은 그대로', async () => {
+test('map.setFloorStyle 이 ROOMS/CORRIDOR/ACCENT 를 바꾸고, 테마를 바꿔도 프리셋이 유지된다', async () => {
   const M = await mapP;
   const { palette } = await styleP;
-  const layout = M.ROOMS.map((r) => [r.id, r.x0, r.y0, r.x1, r.y1, r.pattern]);
   M.setTheme('light'); M.setFloorStyle('warm');
+  const layout = M.ROOMS.map((r) => [r.id, r.x0, r.y0, r.x1, r.y1, r.pattern]);
   const warmDev = M.ROOMS.find((r) => r.id === 'dev').floor;
-  assert.equal(M.setFloorStyle('warm'), false, '같은 프리셋이면 false');
-  assert.equal(M.setFloorStyle('mint'), true);
+  assert.equal(M.setFloorStyle('warm'), 0, '같은 프리셋이면 0');
+  assert.ok(M.setFloorStyle('mint') > 0);
   assert.equal(M.STYLE, 'mint');
   assert.equal(M.ROOMS.find((r) => r.id === 'dev').floor, palette('mint', 'light').rooms.dev.floor);
   assert.notEqual(M.ROOMS.find((r) => r.id === 'dev').floor, warmDev);
@@ -104,8 +108,8 @@ test('map.setFloorStyle 이 ROOMS/CORRIDOR/ACCENT 를 바꾸고, 테마를 바�
   assert.equal(M.STYLE, 'mint', '테마 전환 후에도 프리셋 유지');
   assert.equal(M.ROOMS.find((r) => r.id === 'dev').floor, palette('mint', 'dark').rooms.dev.floor);
   assert.equal(M.LABEL.text, '#c9cfd8');
-  assert.equal(M.setFloorStyle('unknown'), true, '모르는 id 는 기본 프리셋으로');
+  assert.ok(M.setFloorStyle('unknown') > 0, '모르는 id 는 기본 프리셋으로');
   assert.equal(M.STYLE, 'warm');
   M.setTheme('light');
-  assert.deepEqual(M.ROOMS.map((r) => [r.id, r.x0, r.y0, r.x1, r.y1, r.pattern]), layout, '방 위치·패턴은 안 바뀐다');
+  assert.deepEqual(M.ROOMS.map((r) => [r.id, r.x0, r.y0, r.x1, r.y1, r.pattern]), layout, '같은 프리셋으로 돌아오면 방 위치·패턴도 그대로');
 });

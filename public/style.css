@@ -48,7 +48,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .floor-style { border: 0; background: transparent; cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 4px; border-radius: 6px; opacity: .6; }
 .floor-style:hover { opacity: 1; background: rgba(0, 0, 0, .06); }
 /* 🎨 층 인테리어 팝오버 (FE-34) */
-.style-pop { position: fixed; z-index: 40; width: 196px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(20,24,30,.16); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.style-pop { position: fixed; z-index: 40; width: 236px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(20,24,30,.16); padding: 6px; display: flex; flex-direction: column; gap: 2px; }
 .style-pop.hidden { display: none; }
 .style-pop-head { font-size: 11px; font-weight: 700; color: var(--muted); padding: 4px 8px 6px; }
 .style-opt { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; background: transparent; color: var(--text); border-radius: 8px; padding: 5px 8px; font-size: 12px; cursor: pointer; text-align: left; }
@@ -56,7 +56,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .style-opt.on { border-color: var(--accent); background: var(--accent-soft, #fdf1ea); font-weight: 600; }
 .style-chips { display: inline-flex; gap: 2px; flex: none; }
 .style-chips i { width: 10px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.08); }
-.style-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.style-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: column; line-height: 1.25; }
+.style-layout { font-size: 10px; font-weight: 400; color: var(--muted); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); flex: none; }
 .dot.working { background: var(--green); box-shadow: 0 0 0 3px rgba(53, 179, 107, .18); }
 .dot.thinking { background: var(--amber); }

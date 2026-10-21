@@ -23,7 +23,7 @@ export function createTooltip() {
     if (s.cwd) rows.push(['경로', `<span class="tt-v mono">${esc(s.cwd)}</span>`]);
     return `
       <div class="tt-name"><span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : esc((store.nameOf(s, a) || '?')[0])}</span>${esc(store.nameOf(s, a))}${a.kind === 'sub' ? '<span class="sub">서브에이전트</span>' : ''}</div>
-      <div class="tt-where">${f ? `${f.no}F ${esc(f.name)}` : ''} · ${ROOM_LABEL[a.room] || a.room} · ${esc(s.title || s.id.slice(0, 8))}</div>
+      <div class="tt-where">${f ? `${f.no}F ${esc(f.name)}` : ''} · ${esc(store.roomLabel(a.room, s.floorId))} · ${esc(s.title || s.id.slice(0, 8))}</div>
       ${rows.map(([k, v]) => `<div class="tt-row"><span class="tt-k">${k}</span><span class="tt-v">${v}</span></div>`).join('')}
       <div class="tt-foot">세션 시작 ${timeAgo(s.startedAt, now)} · 마지막 활동 ${timeAgo(s.lastActivity, now)} · ${s.id.slice(0, 8)}</div>
       <div class="tt-foot">이어가기: <code>claude --resume ${s.id.slice(0, 8)}…</code> — 클릭해 선택하면 우측 세션 카드에서 복사</div>`;
