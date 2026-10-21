@@ -197,7 +197,8 @@ pub fn run() {
             }
             let spawn_check_menu = spawn_check.clone();
             let tray = TrayIconBuilder::with_id("main")
-                .icon(app.default_window_icon().cloned().expect("icon"))
+                // 메뉴바용 단색 템플릿 아이콘 (창문·문이 투명한 건물). 컬러 앱 아이콘을 템플릿으로 쓰면 흰 네모로 뭉개진다
+                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray@2x.png")).expect("tray icon"))
                 .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
