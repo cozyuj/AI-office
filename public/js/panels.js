@@ -4,6 +4,17 @@ import { store, ROOM_LABEL, LEGEND, timeAgo, elapsed, clock, shortPath } from '.
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const STATUS_LABEL = { working: '작업 중', thinking: '고민 중', waiting: '답 기다리는 중', idle: '대기', away: '자리 비움', ended: '퇴근' };
+/** 진행 중(working/thinking/waiting)이 아닌 세션만 목록에서 치울 수 있다 */
+export const canDismiss = (s) => !!s && (s.status === 'ended' || s.status === 'away' || s.status === 'idle');
+const dismissing = new Set();
+/** 서버에서 세션을 제거 → SSE 'remove' 가 모든 브라우저의 store 를 갱신한다 */
+export async function dismissSession(id) {
+  if (!id || dismissing.has(id)) return false;
+  dismissing.add(id);
+  try { const r = await fetch(`/api/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }); return r.ok; }
+  catch { return false; }
+  finally { dismissing.delete(id); }
+}
 
 function initials(name) { return (name || '?').trim().slice(0, 1).toUpperCase(); }
 
@@ -40,6 +51,10 @@ export function renderHeader() {
   $('resume-cmd').title = cmd ? `${cmd}  (프로젝트 폴더: ${s.cwd || store.selectedFloor()?.id || ''})` : '';
   $('resume-copy').disabled = !s;
   $('resume-copy').dataset.cmd = cmd;
+  const dismissBtn = $('session-dismiss');
+  dismissBtn.classList.toggle('hidden', !canDismiss(s));
+  dismissBtn.dataset.dismiss = s ? s.id : '';
+  dismissBtn.title = s ? `${STATUS_LABEL[s.status] || s.status} 세션을 목록에서 치우기 (TTL 을 기다리지 않음)` : '';
   const nameEl = $('info-name');
   if (document.activeElement !== nameEl) { nameEl.value = s ? store.nameOf(s, null) : ''; nameEl.classList.toggle('auto', !!s && !store.names.isCustom(s.id)); }
   nameEl.disabled = !s; $('name-roll').disabled = !s;
@@ -77,6 +92,7 @@ export function renderFloors() {
           <span class="session-line">
             <span class="session-title ellipsis">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span>
             ${s.id === store.selectedSessionId ? '<span class="session-tag">지금 보는 중</span>' : `<span class="session-time">${timeAgo(s.lastActivity, now)}</span>`}
+            ${canDismiss(s) ? `<button class="session-dismiss" data-dismiss="${esc(s.id)}" title="${STATUS_LABEL[s.status]} 세션을 목록에서 치우기">✕</button>` : ''}
           </span>
           ${s.branch || s.status === 'waiting' ? `<span class="session-line">
             ${s.branch ? `<span class="branch" title="${esc(s.worktree ? `worktree ${s.worktree}` : s.branch)}">⎇ ${esc(s.branch)}</span>` : ''}
@@ -155,6 +171,8 @@ export function bindPanelEvents() {
     const follow = e.target.closest('#auto-follow');
     if (follow) { store.setAutoFollow(follow.checked); return; }
     if (e.target.closest('.follow')) return;
+    const dismiss = e.target.closest('[data-dismiss]');
+    if (dismiss) { e.stopPropagation(); dismissSession(dismiss.dataset.dismiss); return; }
     const sess = e.target.closest('[data-session]');
     if (sess) { store.selectSession(sess.dataset.session); return; }
     const floor = e.target.closest('[data-floor]');
@@ -167,6 +185,7 @@ export function bindPanelEvents() {
   nameEl.addEventListener('change', () => { const s = store.selectedSession(); if (s) store.setName(s.id, nameEl.value); nameEl.blur(); });
   nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); nameEl.blur(); } e.stopPropagation(); });
   $('name-roll').addEventListener('click', () => { const s = store.selectedSession(); if (s) store.rerollName(s.id); });
+  $('session-dismiss').addEventListener('click', (e) => { const s = store.selectedSession(); if (canDismiss(s)) dismissSession(s.id); });
   const pick = (e) => { const el = e.target.closest('[data-session]'); if (el) store.selectSession(el.dataset.session); };
   $('people').addEventListener('click', pick);
   $('log').addEventListener('click', pick);

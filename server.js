@@ -12,7 +12,7 @@ const { createJournal } = require('./lib/journal');
 const { readHookPort } = require('./lib/hookport');
 const { spawn } = require('child_process');
 
-const PORT = Number(process.env.AI_OFFICE_PORT || 4777);
+let PORT = Number(process.env.AI_OFFICE_PORT || 4777); // 0 이면 빈 포트 (테스트용), listen 후 실제 포트로 바뀐다
 const VERSION = require('./package.json').version;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MAX_BODY = 2 * 1024 * 1024; // 2MB
@@ -142,6 +142,15 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && pathname === '/events') return handleEvents(req, res);
   if (req.method === 'POST' && pathname === '/api/demo/start') { startDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: true })); }
   if (req.method === 'POST' && pathname === '/api/demo/stop') { const removed = stopDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: false, removed })); }
+  // 끝난/자리 비운 세션을 목록에서 치운다 (TTL 을 기다리지 않고). state.remove → SSE 'remove' 로 모든 브라우저에 전파
+  const del = /^\/api\/sessions\/([^/]+)$/.exec(pathname);
+  if (del && req.method === 'DELETE') {
+    const id = decodeURIComponent(del[1]);
+    const found = !!state.get(id);
+    if (found) state.remove(id);
+    res.writeHead(found ? 200 : 404, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
+    return res.end(JSON.stringify({ removed: found, sessionId: id }));
+  }
   if (req.method === 'GET' && pathname === '/api/state') {
     // 데스크탑 앱(tauri://) 로더가 서버 준비 여부를 묻는다 — 로컬 전용 서버라 전체 허용
     res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
@@ -152,6 +161,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
+  if (!PORT) PORT = server.address().port;
   console.log(`ai-office v${VERSION}  →  http://127.0.0.1:${PORT}`);
   console.log(`hooks POST →  http://127.0.0.1:${PORT}/hook   (AI_OFFICE_PORT=${PORT})`);
   if (hookPort === null) console.log('⚠ settings.json 에 ai-office 훅이 없습니다 → ai-office install-hooks');

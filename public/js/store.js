@@ -12,6 +12,12 @@ export const LEGEND = [
   ['🙋 내 자리', '질문 · 허락 요청'], ['🛗 엘리베이터', '서브에이전트 출퇴근'],
 ];
 
+const ls = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { if (v === null || v === undefined) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch {} },
+};
+const isDemoFloor = (floorId) => typeof floorId === 'string' && floorId.startsWith('/demo/');
+
 const PALETTE = ['#e8683a', '#3b6fd6', '#2fa36b', '#9b59b6', '#e0a526', '#1fa2b5', '#d9507a', '#6b7fd6'];
 
 function hashColor(key) {
@@ -28,10 +34,12 @@ class Store {
     this.log = [];
     this.selectedFloorId = null;
     this.selectedSessionId = null;
-    this.autoFollow = true;
+    this.autoFollow = ls.get('aiOffice.autoFollow') !== 'off'; // 직접 층/세션을 고르면 꺼지고, 그 상태도 기억한다
+    this.booted = false;           // 첫 스냅샷에서만 마지막 선택을 복원
     this.followCamera = false;   // 선택 세션 캐릭터를 카메라가 따라감
     this.bubbleMode = 'all';     // 'all' | 'selected'
     this.sound = (() => { try { return localStorage.getItem('aiOffice.sound') === 'on'; } catch { return false; } })(); // 대기 알림 소리
+    this.soundScope = ls.get('aiOffice.soundScope') === 'all' ? 'all' : 'waiting'; // 'waiting' 답 기다림만 | 'all' 실패·종료도
     this.ambient = (() => { try { return localStorage.getItem('aiOffice.ambient') !== 'off'; } catch { return true; } })(); // 쉬는 캐릭터 자율 행동
     this.connected = false;
     this.listeners = new Set();
@@ -55,12 +63,14 @@ class Store {
     this.floors = new Map(snap.floors.map((f) => [f.id, f]));
     this.sessions = new Map(snap.sessions.map((s) => [s.id, s]));
     this.log = snap.log || [];
+    if (!this.booted) { this.booted = true; this.restoreSelection(); }
     this.reconcileSelection();
     this.prevWaiting = new Set(this.waitingSessions().map((s) => s.id)); // 첫 로드는 알리지 않는다
     this.emit('snapshot');
   }
 
   applyUpdate({ session, floor, log }) {
+    const prev = this.sessions.get(session.id);
     this.floors.set(floor.id, floor);
     this.sessions.set(session.id, session);
     if (log) { this.log.push(log); if (this.log.length > 500) this.log.splice(0, this.log.length - 500); }
@@ -70,6 +80,9 @@ class Store {
     }
     this.reconcileSelection();
     this.emit('update', { session, floor, log });
+    // 도구 실패 / 세션 종료 전이 — 알림 소리 범위 'all' 에서 쓴다 (첫 등장부터 ended 인 세션은 전이가 아니므로 제외)
+    if (log && log.icon === '❌') this.emit('failure', { session, floor, log });
+    if (prev && prev.status !== 'ended' && session.status === 'ended') this.emit('ended', { session, floor, log });
     this.detectWaiting();
   }
 
@@ -91,6 +104,7 @@ class Store {
   setBubbleMode(v) { this.bubbleMode = v; this.emit('option'); }
   setDemo(v) { this.demo = !!v; this.emit('option'); }
   setSound(v) { this.sound = !!v; try { localStorage.setItem('aiOffice.sound', v ? 'on' : 'off'); } catch {} this.emit('option'); }
+  setSoundScope(v) { this.soundScope = v === 'all' ? 'all' : 'waiting'; ls.set('aiOffice.soundScope', this.soundScope); this.emit('option'); }
   setAmbient(v) { this.ambient = !!v; try { localStorage.setItem('aiOffice.ambient', v ? 'on' : 'off'); } catch {} this.emit('option'); }
 
   setConnected(v) { if (this.connected !== v) { this.connected = v; this.emit('conn'); } }
@@ -111,29 +125,55 @@ class Store {
   }
 
   selectFloor(id) {
-    this.autoFollow = false;
+    this.setAutoFollowFlag(false);
     this.selectedFloorId = id;
     this.selectedSessionId = null;
     this.reconcileSelection();
+    this.rememberSelection();
     this.emit('select');
   }
 
   selectSession(id) {
     const s = this.sessions.get(id);
     if (!s) return;
-    this.autoFollow = false;
+    this.setAutoFollowFlag(false);
     this.selectedFloorId = s.floorId;
     this.selectedSessionId = id;
+    this.rememberSelection();
     this.emit('select');
   }
 
   setAutoFollow(v) {
-    this.autoFollow = v;
+    this.setAutoFollowFlag(v);
     if (v) {
       const latest = this.sessionsSorted()[0];
       if (latest) { this.selectedFloorId = latest.floorId; this.selectedSessionId = latest.id; }
     }
     this.emit('select');
+  }
+
+  /** autoFollow 값과 저장. 켜면 마지막 선택 기억은 지운다 (다음에 열 때 자동 따라가기가 우선) */
+  setAutoFollowFlag(v) {
+    this.autoFollow = !!v;
+    ls.set('aiOffice.autoFollow', v ? null : 'off');
+    if (v) { ls.set('aiOffice.selectedFloor', null); ls.set('aiOffice.selectedSession', null); }
+  }
+
+  /** 마지막에 보던 층·세션을 브라우저에 기억 (데모 층은 제외) */
+  rememberSelection() {
+    if (isDemoFloor(this.selectedFloorId)) return;
+    ls.set('aiOffice.selectedFloor', this.selectedFloorId);
+    ls.set('aiOffice.selectedSession', this.selectedSessionId);
+  }
+
+  /** 첫 스냅샷: 기억한 층/세션이 아직 있으면 거기부터. 자동 따라가기가 켜져 있으면 그쪽이 우선 */
+  restoreSelection() {
+    if (this.autoFollow) return;
+    const floorId = ls.get('aiOffice.selectedFloor');
+    const sessionId = ls.get('aiOffice.selectedSession');
+    const s = sessionId ? this.sessions.get(sessionId) : null;
+    if (s && !isDemoFloor(s.floorId)) { this.selectedFloorId = s.floorId; this.selectedSessionId = s.id; return; }
+    if (floorId && this.floors.has(floorId) && !isDemoFloor(floorId)) { this.selectedFloorId = floorId; this.selectedSessionId = null; }
   }
 
   /** 비대기 → 대기 로 바뀐 세션을 'waiting' 이벤트로 알린다 */

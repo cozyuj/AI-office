@@ -307,3 +307,25 @@ body.has-banner #app { padding-top: 44px; }
 .name-input.auto { font-weight: 400; color: var(--muted); font-style: italic; }
 .name-input:focus { outline: none; border-color: var(--accent); color: var(--text); font-style: normal; }
 #resume-copy { padding: 2px 8px; font-size: 10px; }
+
+/* ---------- FE-32: 단축키 모달 · 소리 범위 · 끝난 세션 치우기 ---------- */
+.keys-card { width: min(420px, calc(100vw - 40px)); }
+.keys-table { border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.keys-table td { padding: 5px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.keys-table tr:last-child td { border-bottom: 0; }
+.keys-table td:first-child { white-space: nowrap; width: 130px; }
+.keys-table kbd { font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; font-family: inherit; background: #f6f7f9; }
+:root[data-theme="dark"] .keys-table kbd, :root:not([data-theme="light"]).auto-dark .keys-table kbd { background: #262b33; }
+.settings-row.sub { padding-top: 0; margin-top: -4px; }
+.settings-row.sub .settings-label { color: var(--muted); padding-left: 10px; }
+.seg-mini { display: inline-flex; gap: 0; }
+.head-tools.seg .settings-menu .seg-mini .tool { min-width: 0; padding: 2px 8px; font-size: 10px; border-radius: 0; margin-left: -1px; }
+.head-tools.seg .settings-menu .seg-mini .tool:first-child { border-radius: 999px 0 0 999px; margin-left: 0; }
+.head-tools.seg .settings-menu .seg-mini .tool:last-child { border-radius: 0 999px 999px 0; }
+.settings-row.sub.disabled { opacity: .5; }
+.session-dismiss { flex: none; border: 0; background: transparent; color: var(--muted); font-size: 12px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.session:hover .session-dismiss, .session.selected .session-dismiss, .session.away .session-dismiss { opacity: 1; }
+.session-dismiss:hover { background: #fde8e8; color: #c0392b; }
+:root[data-theme="dark"] .session-dismiss:hover, :root:not([data-theme="light"]).auto-dark .session-dismiss:hover { background: #3a2626; color: #ff8a80; }
+#session-dismiss { padding: 1px 8px; font-size: 10px; }
+#session-dismiss:hover { background: #fde8e8; color: #c0392b; border-color: #f2b0b0; }
