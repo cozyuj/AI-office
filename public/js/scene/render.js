@@ -3,7 +3,8 @@
 // 깊이 정렬: 각 엔티티는 3D AABB {x0,y0,x1,y1,z0,z1} 를 가진다. 화면에서 겹치는 두 상자 A, B 에 대해
 //   A.x1 <= B.x0  또는  A.y1 <= B.y0  또는  A.z1 <= B.z0  이면 A 가 뒤(먼저 그림).
 // 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
-import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, project, roomAt } from './map.js';
+import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, project, roomAt, setTheme as setMapTheme } from './map.js';
+import * as MAP from './map.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
 
 const EPS = 1e-3;
@@ -36,6 +37,9 @@ export function drawFloor(ctx) {
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.stroke();
   }
 }
+
+/** 테마 전환: 맵 팔레트 교체 */
+export function setTheme(theme) { setMapTheme(theme); }
 
 // ---------- 엔티티 ----------
 /** 3D AABB → 월드 화면 bbox (8 꼭짓점 투영) */
@@ -182,12 +186,13 @@ export function drawLabels(ctx, camera) {
     const text = r.label;
     const w = ctx.measureText(text).width + 16;
     const x = s.x, y = s.y - 6;
-    ctx.fillStyle = 'rgba(255,255,255,0.86)';
-    ctx.strokeStyle = r.trim;
+    const dark = MAP.THEME === 'dark';
+    ctx.fillStyle = dark ? 'rgba(30,34,41,0.9)' : 'rgba(255,255,255,0.86)';
+    ctx.strokeStyle = dark ? '#3a4049' : (r.trim || '#ddd');
     ctx.lineWidth = 1;
     roundRect(ctx, x - w / 2, y - 10, w, 20, 10);
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#4a515a';
+    ctx.fillStyle = dark ? '#c9cfd8' : '#4a515a';
     ctx.fillText(text, x, y + 0.5);
   }
   ctx.restore();

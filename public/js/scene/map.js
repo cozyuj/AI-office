@@ -20,6 +20,22 @@ export const ROOMS = [
 ];
 export const CORRIDOR = { floor: '#f5f6f8', trim: '#e6e8ec', pattern: 'grid' };
 
+// ---------- 테마 ----------
+const LIGHT = { rooms: ROOMS.map((r) => ({ floor: r.floor, trim: r.trim, alt: r.alt })), corridor: { ...CORRIDOR } };
+const DARK = {
+  library: ['#5a4634', null, null], dev: ['#2a2f3a', '#343a46'], research: ['#283533', '#33413e'], meeting: ['#32312d', '#3e3d38'],
+  lounge: ['#3a322a', '#44403a', '#352d26'], server: ['#25332d', '#2f3f38'], mydesk: ['#283040', '#343d50'], lobby: ['#2b2f36', '#363b44'], elevator: ['#2a2d33', '#353941'],
+};
+export let THEME = 'light';
+export function setTheme(theme) {
+  THEME = theme === 'dark' ? 'dark' : 'light';
+  ROOMS.forEach((r, i) => {
+    if (THEME === 'dark') { const d = DARK[r.id]; r.floor = d[0]; r.trim = d[1]; if (d[2]) r.alt = d[2]; }
+    else { r.floor = LIGHT.rooms[i].floor; r.trim = LIGHT.rooms[i].trim; r.alt = LIGHT.rooms[i].alt; }
+  });
+  Object.assign(CORRIDOR, THEME === 'dark' ? { floor: '#262a31', trim: '#30353e' } : LIGHT.corridor);
+}
+
 // ---------- 가구 ----------
 // { type, x, y, w, d, solid(기본 true) } 좌표는 타일 단위. 캐릭터는 solid 타일을 지나지 못한다.
 const F = [];

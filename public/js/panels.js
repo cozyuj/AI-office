@@ -91,7 +91,9 @@ export function renderPeople() {
 
 export function renderLog() {
   const items = store.logOfFloor(store.selectedFloorId);
-  $('log-count').textContent = items.length ? `${items.length}건` : '';
+  const filtered = store.logFilter.q || store.logFilter.mine;
+  $('log-count').textContent = items.total ? (filtered ? `${items.length} / ${items.total}건` : `${items.total}건`) : '';
+  $('log-mine').classList.toggle('on', store.logFilter.mine);
   let prevKey = null;
   $('log').innerHTML = items.length ? items.map((e) => {
     const s = store.sessions.get(e.sessionId);
@@ -105,7 +107,7 @@ export function renderLog() {
       <span class="log-time" title="${d.toLocaleString()}">${same ? '' : clock(e.t)}</span>
       <span>${same ? '' : `<span class="log-who">${esc(e.agentName)}</span>`}${e.icon || ''} <span class="log-text">${esc(e.text)}</span></span>
     </div>`;
-  }).join('') : '<div class="muted" style="padding:6px 4px">아직 활동이 없습니다</div>';
+  }).join('') : `<div class="muted" style="padding:6px 4px">${filtered ? '조건에 맞는 로그가 없습니다' : '아직 활동이 없습니다'}</div>`;
 }
 
 export function renderLegend() {
@@ -129,6 +131,8 @@ export function bindPanelEvents() {
     const floor = e.target.closest('[data-floor]');
     if (floor) store.selectFloor(floor.dataset.floor);
   });
+  $('log-search').addEventListener('input', (e) => store.setLogFilter({ q: e.target.value }));
+  $('log-mine').addEventListener('click', () => store.setLogFilter({ mine: !store.logFilter.mine }));
   const pick = (e) => { const el = e.target.closest('[data-session]'); if (el) store.selectSession(el.dataset.session); };
   $('people').addEventListener('click', pick);
   $('log').addEventListener('click', pick);

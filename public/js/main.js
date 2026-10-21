@@ -170,4 +170,24 @@ if (copyBtn) copyBtn.onclick = async () => {
 };
 fetch('/api/state').then((r) => r.json()).then((st) => { if (st.installDir) document.getElementById('install-dir').textContent = st.installDir; }).catch(() => {});
 
-window.aiOffice = { store, scene, actors, tooltip, avatars, customizer }; // 디버그용
+// ---------- 다크 모드 ----------
+const themeBtn = document.getElementById('theme-btn');
+const mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function currentTheme() {
+  let saved = null; try { saved = localStorage.getItem('aiOffice.theme'); } catch {}
+  if (saved === 'dark' || saved === 'light') return saved;
+  return mql && mql.matches ? 'dark' : 'light';
+}
+function applyTheme() {
+  const t = currentTheme();
+  document.documentElement.dataset.theme = t;
+  document.documentElement.classList.toggle('auto-dark', t === 'dark');
+  scene.setTheme(t);
+  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+  themeBtn.title = t === 'dark' ? '라이트 모드로' : '다크 모드로';
+}
+themeBtn.onclick = () => { try { localStorage.setItem('aiOffice.theme', currentTheme() === 'dark' ? 'light' : 'dark'); } catch {} applyTheme(); };
+if (mql) mql.addEventListener('change', applyTheme);
+applyTheme();
+
+window.aiOffice = { store, scene, actors, tooltip, avatars, customizer, applyTheme }; // 디버그용

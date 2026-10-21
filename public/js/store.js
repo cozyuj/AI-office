@@ -35,6 +35,7 @@ class Store {
     this.colorCache = new Map();
     this.prevWaiting = new Set(); // 대기 전이 감지용
     this.orderCache = new Map();  // floorId → { t, ids }  목록 순서를 5초마다만 바꾼다
+    this.logFilter = { q: '', mine: false };
   }
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -164,13 +165,23 @@ class Store {
     return out;
   }
 
-  logOfFloor(floorId, limit = 80) {
+  logOfFloor(floorId, limit = 80, filter = this.logFilter) {
+    const q = (filter?.q || '').trim().toLowerCase();
+    const mine = !!filter?.mine;
     const out = [];
-    for (let i = this.log.length - 1; i >= 0 && out.length < limit; i--) {
-      if (this.log[i].floorId === floorId) out.push(this.log[i]);
+    let total = 0;
+    for (let i = this.log.length - 1; i >= 0; i--) {
+      const e = this.log[i];
+      if (e.floorId !== floorId) continue;
+      total++;
+      if (mine && e.sessionId !== this.selectedSessionId) continue;
+      if (q && !(`${e.text} ${e.agentName}`.toLowerCase().includes(q))) continue;
+      if (out.length < limit) out.push(e);
     }
+    out.total = total;
     return out;
   }
+  setLogFilter(patch) { this.logFilter = { ...this.logFilter, ...patch }; this.emit('option'); }
 
   floorStatus(floorId) {
     const sessions = this.sessionsOfFloor(floorId);
