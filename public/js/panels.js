@@ -30,6 +30,7 @@ export function renderHeader() {
   const live = $('live');
   live.classList.toggle('off', !store.connected);
   live.querySelector('b').textContent = store.connected ? 'LIVE' : 'OFFLINE';
+  live.title = store.version ? `AI Office v${store.version}` : '';
   $('info-project').textContent = f ? shortPath(f.id) : '–';
   $('info-project').title = f ? f.id : '';
   $('info-session').textContent = s ? s.id.slice(0, 8) : '–';
@@ -74,7 +75,7 @@ export function renderFloors() {
         ${list}
       </div></div>`;
   }).join('');
-  $('left-foot').textContent = `프로젝트 ${floors.length}개 · 세션 ${store.sessions.size}개`;
+  $('left-foot').textContent = `프로젝트 ${floors.length}개 · 세션 ${store.sessions.size}개${store.version ? ` · v${store.version}` : ''}`;
 }
 
 export function renderPeople() {

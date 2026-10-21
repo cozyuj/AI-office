@@ -86,7 +86,7 @@ pub fn run() {
                 .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .tooltip("AI Office")
+                .tooltip(format!("AI Office v{}", env!("CARGO_PKG_VERSION")))
                 .on_menu_event(move |app, ev| match ev.id().as_ref() {
                     "open" => show_main(app),
                     "hide" => { if let Some(w) = app.get_webview_window("main") { let _ = w.hide(); } }

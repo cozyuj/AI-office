@@ -45,6 +45,7 @@ class Store {
   applySnapshot(snap) {
     this.me = snap.me || this.me;
     this.serverPort = snap.serverPort || null;
+    this.version = snap.version || '';
     this.hookPort = snap.hookPort === undefined ? null : snap.hookPort;
     this.floors = new Map(snap.floors.map((f) => [f.id, f]));
     this.sessions = new Map(snap.sessions.map((s) => [s.id, s]));
