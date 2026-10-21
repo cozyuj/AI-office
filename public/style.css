@@ -260,3 +260,13 @@ body.has-banner #app { padding-top: 44px; }
   #people { max-height: 22vh; }
   #session-card .kv { line-height: 1.4; }
 }
+
+/* ---------- FE-19 fix: 높이가 줄어도 항목이 찌그러지지 않고 목록이 스크롤되게 ---------- */
+#floors > .floor, .floor-sessions > *, .list > *, .people-group > * { flex-shrink: 0; }
+#floors { overflow-y: auto; }
+#people { flex-shrink: 1; }
+#right { overflow-y: auto; }                       /* 아주 작은 창에서는 우측 패널 자체가 스크롤 (잘림 방지) */
+#right > .card { flex-shrink: 0; }
+#right > .card.grow { flex: 1 1 160px; min-height: 160px; }
+#right > #session-card { flex-shrink: 0; }
+#left { overflow: hidden; }
