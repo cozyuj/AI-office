@@ -201,6 +201,39 @@ people.addEventListener('mouseleave', () => { people._hoverRow = null; tooltip.h
 const customizer = createCustomizer(store, avatars);
 document.getElementById('customize-btn').onclick = () => customizer.open();
 
+// ---------- 키보드 단축키 ----------
+const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · B 말풍선 · T 테마 · / 로그 검색 · Esc 닫기';
+document.addEventListener('keydown', (e) => {
+  const t = e.target;
+  const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  const modalOpen = !document.getElementById('customize').classList.contains('hidden');
+  if (e.key === 'Escape') {
+    if (modalOpen) { customizer.close(); return; }
+    if (typing) { t.blur(); if (t.id === 'log-search') { t.value = ''; store.setLogFilter({ q: '' }); } return; }
+    if (store.followCamera) store.setFollowCamera(false);
+    return;
+  }
+  if (typing || modalOpen || e.metaKey || e.ctrlKey || e.altKey) return;
+  const floors = store.floorsByNo();
+  const idx = floors.findIndex((f) => f.id === store.selectedFloorId);
+  if (/^[1-9]$/.test(e.key)) { const f = floors[Number(e.key) - 1]; if (f) store.selectFloor(f.id); return; }
+  switch (e.key) {
+    case 'ArrowLeft': case 'ArrowUp': if (floors.length) store.selectFloor(floors[(idx - 1 + floors.length) % floors.length].id); break;
+    case 'ArrowRight': case 'ArrowDown': if (floors.length) store.selectFloor(floors[(idx + 1) % floors.length].id); break;
+    case 'f': case 'F': followBtn.click(); break;
+    case 'a': case 'A': store.setAutoFollow(!store.autoFollow); break;
+    case 'd': case 'D': demoBtn.click(); break;
+    case 'b': case 'B': bubblesBtn.click(); break;
+    case 't': case 'T': themeBtn.click(); break;
+    case '/': e.preventDefault(); document.getElementById('log-search').focus(); break;
+    case '?': alert(KEYS_HELP); break;
+    default: return;
+  }
+  e.preventDefault();
+});
+document.getElementById('stage-hint').textContent += ' · ? 단축키';
+document.getElementById('stage-hint').title = KEYS_HELP;
+
 // ---------- 세션 이어가기 명령 복사 ----------
 const resumeBtn = document.getElementById('resume-copy');
 resumeBtn.onclick = async () => {
