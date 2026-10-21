@@ -45,3 +45,12 @@ test('깨진 저장값·저장소 없음도 동작', async () => {
   assert.ok(NAME_POOL.includes(createNameBook(st2).nameOf('z')));
   assert.ok(NAME_POOL.includes(createNameBook(null).nameOf('z')));
 });
+
+test('풀에 없는 옛 자동 별명(한글 풀)은 새 풀의 이름으로 다시 배정된다', async () => {
+  const { createNameBook, NAME_POOL } = await namesP;
+  const st = memStorage(); st.setItem('aiOffice.names.v1', JSON.stringify({ custom: { b: '하늘' }, auto: { a: '하늘', c: 'Mia' } }));
+  const book = createNameBook(st);
+  assert.ok(NAME_POOL.includes(book.nameOf('a')));
+  assert.equal(book.nameOf('b'), '하늘', '직접 지은 이름은 그대로');
+  assert.equal(book.nameOf('c'), 'Mia');
+});

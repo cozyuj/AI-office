@@ -1,6 +1,6 @@
 // 세션별 캐릭터 이름. 직접 지은 이름(custom) > 자동 별명(auto: 처음 본 순서대로, 지금까지 가장 덜 쓰인 별명).
 // 뷰어 설정이므로 localStorage(aiOffice.names.v1) 에 둔다. 서버의 agent.name('Claude') 은 그대로 두고 화면에서만 바꾼다.
-export const NAME_POOL = ['하늘', '바다', '구름', '별이', '달이', '숲이', '강이', '노을', '새벽', '바람', '이슬', '보리', '콩이', '감자', '두부', '호두', '모모', '코코', '루나', '토리', '보니', '밤이', '솔이', '유자'];
+export const NAME_POOL = ['Alex', 'Sam', 'Max', 'Leo', 'Mia', 'Zoe', 'Noah', 'Emma', 'Liam', 'Ava', 'Ivy', 'Finn', 'Luna', 'Milo', 'Nora', 'Owen', 'Ruby', 'Theo', 'Jude', 'Cleo', 'Remy', 'Nico', 'Elsie', 'Kai'];
 const KEY = 'aiOffice.names.v1';
 const MAX_AUTO = 200; // 오래된 자동 별명은 버린다
 export const NAME_MAX = 20;
@@ -32,7 +32,7 @@ export function createNameBook(storage = defaultStorage()) {
   }
   function nameOf(sessionId) {
     if (data.custom[sessionId]) return data.custom[sessionId];
-    if (!data.auto[sessionId]) { data.auto[sessionId] = pick(); trim(); save(); }
+    if (!NAME_POOL.includes(data.auto[sessionId])) { data.auto[sessionId] = pick(); trim(); save(); } // 없거나 옛 풀(한글)의 이름이면 다시 배정
     return data.auto[sessionId];
   }
   /** 빈 문자열이면 직접 지은 이름을 지우고 자동 별명으로 돌아간다 */
