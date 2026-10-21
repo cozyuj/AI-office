@@ -83,7 +83,7 @@ test('방 사이 이동은 반드시 문 타일을 지난다 (자료실→개발
     }
     assert.ok(ch.length >= 2, `${from}→${to}: 방을 나갔다 들어와야 한다`);
   }
-  assert.equal(DOORS.length, 24, '문 2타일 × 12개 벽');
+  assert.equal(DOORS.length, 28, '문 2타일 × 14개 벽 (카페·테라스 포함)');
 });
 
 test('방의 네 변은 문을 제외하고 모두 막혀 있다', async () => {

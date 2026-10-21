@@ -39,6 +39,12 @@ const AMBIENT_SPOTS = [
   { tile: [26, 2], bubble: '창밖 구경', icon: '🪟', stay: [5000, 9000] },
   { tile: [13, 20], bubble: '로비 산책', icon: '🚶', stay: [3000, 6000] },
   { tile: [21, 19], bubble: '벤치에서 한숨', icon: '🪑', stay: [6000, 10000] },
+  { tile: [28, 4], bubble: '카페에서 라떼', icon: '☕', stay: [7000, 12000] },
+  { tile: [31, 4], bubble: '창가 자리', icon: '🪟', stay: [6000, 11000] },
+  { tile: [34, 6], bubble: '카페에서 수다', icon: '🥐', stay: [5000, 9000] },
+  { tile: [29, 13], bubble: '바람 쐬는 중', icon: '🌤️', stay: [7000, 12000] },
+  { tile: [32, 15], bubble: '테라스 산책', icon: '🌿', stay: [5000, 9000] },
+  { tile: [31, 19], bubble: '벤치에서 햇볕', icon: '☀️', stay: [7000, 12000] },
 ].filter((s) => isWalkable(s.tile[0], s.tile[1]));
 
 // ---------- 캐릭터 ----------

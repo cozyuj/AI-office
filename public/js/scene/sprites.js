@@ -287,6 +287,53 @@ const DRAW = {
     post(ctx, f.x + 0.5, f.y + 0.5, 0.9, '#e4d2b0');
     box(ctx, f.x + 0.22, f.y + 0.44, 0.56, 0.1, 0.42, '#2f5bd8', { z0: 0.9, top: '#4a74e6' });
   },
+  cafetable(ctx, f) { roundTable(ctx, f.x + 0.5, f.y + 0.5, 0.36, 0.74, '#f4efe6'); },
+  stool(ctx, f) {
+    shadow(ctx, f.x + 0.5, f.y + 0.5, 0.2, 0.1, 0.1);
+    post(ctx, f.x + 0.5, f.y + 0.5, 0.55, '#8a6a48');
+    ellipse(ctx, f.x + 0.5, f.y + 0.5, 0.56, 9, 4.5, '#b58f66');
+    ellipse(ctx, f.x + 0.5, f.y + 0.5, 0.6, 9, 4.5, '#d9b98f');
+  },
+  coffeemachine(ctx, f) {
+    shadow(ctx, f.x + 0.5, f.y + 0.5, 0.34, 0.17, 0.12);
+    box(ctx, f.x + 0.05, f.y + 0.1, 0.9, 0.8, 0.9, '#ffffff', { left: '#eceef2', right: '#dcdfe5' });
+    box(ctx, f.x + 0.25, f.y + 0.3, 0.5, 0.45, 0.55, '#3a4050', { z0: 0.9, top: '#4a5264', left: '#2f3542', right: '#262b36' });
+    box(ctx, f.x + 0.3, f.y + 0.3, 0.4, 0.1, 0.25, '#c0392b', { z0: 1.2, top: '#e74c3c' });
+    circle(ctx, f.x + 0.5, f.y + 0.82, 1.0, 3, '#e8d9c0');
+  },
+  planter(ctx, f) {
+    const w = f.w || 1;
+    shadow(ctx, f.x + w / 2, f.y + 0.5, 0.5 * w, 0.22, 0.12);
+    box(ctx, f.x + 0.08, f.y + 0.2, w - 0.16, 0.6, 0.5, '#a88b6a', { top: '#5a4330', left: '#9a7d5e', right: '#86694c' });
+    for (let i = 0; i < w * 3; i++) {
+      const cx = f.x + 0.2 + (i + 0.5) * ((w - 0.4) / (w * 3)), cy = f.y + 0.5 + ((i % 2) ? 0.12 : -0.12);
+      const t = project(cx, cy, 0.5);
+      ctx.fillStyle = LEAF[i % 4];
+      ctx.beginPath(); ctx.ellipse(t.x, t.y - 8, 7, 11, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  },
+  parasol(ctx, f) {
+    const cx = f.x + 1, cy = f.y + 1;
+    shadow(ctx, cx, cy, 0.9, 0.45, 0.14);
+    roundTable(ctx, cx, cy, 0.5, 0.72, '#f4efe6');
+    for (const [dx, dy] of [[-0.62, 0], [0.62, 0], [0, -0.62], [0, 0.62]]) {
+      const t = project(cx + dx, cy + dy, 0.45);
+      ctx.fillStyle = '#d9b98f'; ctx.beginPath(); ctx.ellipse(t.x, t.y, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+      post(ctx, cx + dx, cy + dy, 0.45, '#8a6a48');
+    }
+    post(ctx, cx, cy, 2.1, '#8a6a48');
+    const top = project(cx, cy, 2.1), rim = project(cx, cy, 1.65);
+    ctx.fillStyle = '#e8785a';
+    ctx.beginPath(); ctx.ellipse(rim.x, rim.y, 60, 30, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f2a08a';
+    for (let i = 0; i < 6; i += 2) {
+      const a0 = i / 6 * Math.PI * 2, a1 = (i + 1) / 6 * Math.PI * 2;
+      ctx.beginPath(); ctx.moveTo(rim.x, rim.y); ctx.ellipse(rim.x, rim.y, 60, 30, 0, a0, a1); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = '#d2654a'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(rim.x + Math.cos(a) * 60, rim.y + Math.sin(a) * 30); ctx.stroke(); }
+    circle(ctx, cx, cy, 2.15, 3, '#d2654a');
+  },
   bench(ctx, f) {
     const w = f.w || 1;
     shadow(ctx, f.x + w / 2, f.y + 0.5, 0.45 * w, 0.2, 0.1);
@@ -320,15 +367,53 @@ export function wallPieces(w) {
     if (w.doors.includes(i)) continue;
     const first = i === 0 || w.doors.includes(i - 1);
     const last = i === w.len - 1 || w.doors.includes(i + 1);
+    const win = !!(w.windows && w.windows.includes(i));
     out.push(w.dir === 'h'
-      ? { wall: w, x: w.x + i, y: w.y - th / 2, w: 1, d: th, h: w.h, first, last }
-      : { wall: w, x: w.x - th / 2, y: w.y + i, w: th, d: 1, h: w.h, first, last });
+      ? { wall: w, x: w.x + i, y: w.y - th / 2, w: 1, d: th, h: w.h, first, last, win, rail: !!w.rail, dir: 'h' }
+      : { wall: w, x: w.x - th / 2, y: w.y + i, w: th, d: 1, h: w.h, first, last, win, rail: !!w.rail, dir: 'v' });
   }
   return out;
 }
 
 export function drawWallPiece(ctx, p) {
+  if (p.rail) { drawRail(ctx, p); return; }
   box(ctx, p.x, p.y, p.w, p.d, p.h, '#fbfbfc', { top: '#ffffff', left: '#e9ebf0', right: '#d8dbe2' });
+  if (p.win && p.dir === 'h') {
+    // 유리창: 벽 앞면(남쪽)에 틀 + 하늘빛 유리 + 사선 하이라이트
+    const y = p.y + p.d + 0.001, x0 = p.x + 0.1, x1 = p.x + 0.9, z0 = 0.45, z1 = p.h - 0.2;
+    faceY(ctx, x0, x1, y, z0, z1, '#cfd6e0');
+    faceY(ctx, x0 + 0.05, x1 - 0.05, y, z0 + 0.05, z1 - 0.05, '#bfe3f7');
+    const a = project(x0 + 0.05, y, z0 + 0.05), b = project(x1 - 0.05, y, z1 - 0.05);
+    ctx.save(); ctx.beginPath();
+    const A = project(x0 + 0.05, y, z0 + 0.05), B = project(x1 - 0.05, y, z0 + 0.05), C = project(x1 - 0.05, y, z1 - 0.05), D = project(x0 + 0.05, y, z1 - 0.05);
+    ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.lineTo(C.x, C.y); ctx.lineTo(D.x, D.y); ctx.closePath(); ctx.clip();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(a.x - 6, b.y + 18); ctx.lineTo(a.x + 14, b.y - 4); ctx.stroke();
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(a.x + 4, b.y + 22); ctx.lineTo(a.x + 22, b.y + 2); ctx.stroke();
+    ctx.restore();
+    // 창살
+    const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+    faceY(ctx, mx - 0.015, mx + 0.015, y + 0.001, z0, z1, '#cfd6e0');
+    faceY(ctx, x0 + 0.05, x1 - 0.05, y + 0.001, mz - 0.012, mz + 0.012, '#cfd6e0');
+  }
+}
+
+/** 난간: 기둥 + 가로대 두 줄 (테라스 가장자리) */
+function drawRail(ctx, p) {
+  const c = '#8a6a48', top = '#b58f66';
+  if (p.dir === 'h') {
+    const y = p.y + p.d / 2;
+    box(ctx, p.x + 0.04, y - 0.03, 0.06, 0.06, p.h, c, { top });
+    box(ctx, p.x, y - 0.015, 1, 0.03, 0.035, c, { z0: p.h - 0.035, top });
+    box(ctx, p.x, y - 0.015, 1, 0.03, 0.03, c, { z0: p.h * 0.5, top });
+    if (p.last) box(ctx, p.x + 0.9, y - 0.03, 0.06, 0.06, p.h, c, { top });
+  } else {
+    const x = p.x + p.w / 2;
+    box(ctx, x - 0.03, p.y + 0.04, 0.06, 0.06, p.h, c, { top });
+    box(ctx, x - 0.015, p.y, 0.03, 1, 0.035, c, { z0: p.h - 0.035, top });
+    box(ctx, x - 0.015, p.y, 0.03, 1, 0.03, c, { z0: p.h * 0.5, top });
+    if (p.last) box(ctx, x - 0.03, p.y + 0.9, 0.06, 0.06, p.h, c, { top });
+  }
 }
 
 /** 문매트: 문이 있는 변을 가로지르는 얇은 띠 (바닥 위에 그린다) */
