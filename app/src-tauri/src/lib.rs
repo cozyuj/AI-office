@@ -7,6 +7,8 @@ use std::time::Duration;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WindowEvent};
+use tauri_plugin_updater::UpdaterExt;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const PORT: u16 = 4777;
 
@@ -17,17 +19,20 @@ fn port_open(port: u16) -> bool {
 
 use std::path::{Path, PathBuf};
 
-fn home_dir() -> Option<PathBuf> { std::env::var("HOME").ok().map(PathBuf::from) }
+fn home_dir() -> Option<PathBuf> { std::env::var("HOME").ok().or_else(|| std::env::var("USERPROFILE").ok()).map(PathBuf::from) }
+const NODE_BIN: &str = if cfg!(windows) { "node.exe" } else { "node" };
+
+/// 실행 파일 옆의 번들 Node 사이드카 (맥: Contents/MacOS/node, Windows: node.exe)
+fn sidecar_node() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let side = exe.parent()?.join(NODE_BIN);
+    if side.exists() { Some(side) } else { None }
+}
 fn install_dir() -> Option<PathBuf> { Some(home_dir()?.join(".ai-office").join("app")) }
 
-/// 번들된 Node 사이드카 (Contents/MacOS/node). 없으면 시스템 node
+/// 번들된 Node 사이드카. 없으면(개발 실행) 시스템 node
 fn node_path() -> String {
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            let side = dir.join("node");
-            if side.exists() { return side.to_string_lossy().to_string(); }
-        }
-    }
+    if let Some(side) = sidecar_node() { return side.to_string_lossy().to_string(); }
     for p in ["/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"] {
         if Path::new(p).exists() { return p.to_string(); }
     }
@@ -38,10 +43,9 @@ fn node_path() -> String {
 /// 그래서 ~/.ai-office/node 로 복사해 두고(크기가 다를 때만) 그 경로를 등록한다. 번들이 없으면(개발 실행) 시스템 node.
 fn hook_node_path() -> String {
     let bundled = node_path();
-    let is_bundle = bundled.contains("/Contents/MacOS/");
-    if let (true, Some(home)) = (is_bundle, home_dir()) {
-        let dest = home.join(".ai-office").join("node");
-        let src = Path::new(&bundled);
+    if let (Some(src), Some(home)) = (sidecar_node(), home_dir()) {
+        let dest = home.join(".ai-office").join(NODE_BIN);
+        let src = src.as_path();
         let same = match (std::fs::metadata(&dest), std::fs::metadata(src)) { (Ok(a), Ok(b)) => a.len() == b.len(), _ => false };
         if same { return dest.to_string_lossy().to_string(); }
         if let Some(parent) = dest.parent() { let _ = std::fs::create_dir_all(parent); }
@@ -123,6 +127,16 @@ fn waiting_count() -> Option<usize> {
     Some(v["sessions"].as_array()?.iter().filter(|s| s["status"] == "waiting").count())
 }
 
+/// 업데이트 확인: 있으면 내려받아 설치해 두고(다음 재시작 때 적용) 트레이에 알린다. 돌려주는 값: 새 버전 문자열
+async fn check_update(app: AppHandle, ready: Arc<AtomicBool>) -> Option<String> {
+    let updater = app.updater().ok()?;
+    let update = updater.check().await.ok()??;
+    let version = update.version.clone();
+    update.download_and_install(|_, _| {}, || {}).await.ok()?;
+    ready.store(true, Ordering::Relaxed);
+    Some(version)
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
@@ -137,6 +151,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             // 1) 서버 기동 (이미 떠 있으면 재사용)
             *child.lock().unwrap() = spawn_server(&app.handle().clone());
@@ -146,9 +161,41 @@ pub fn run() {
             let hide = MenuItem::with_id(app, "hide", "창 숨기기", true, None::<&str>)?;
             let top = CheckMenuItem::with_id(app, "top", "항상 위에", true, false, None::<&str>)?;
             let reinstall = MenuItem::with_id(app, "reinstall", "훅 다시 설치", true, None::<&str>)?;
+            let check = MenuItem::with_id(app, "check", "업데이트 확인", true, None::<&str>)?;
+            let apply = MenuItem::with_id(app, "apply", "업데이트 적용 (다시 시작)", false, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "종료 (서버도 함께)", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &hide, &top, &reinstall, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &hide, &top, &reinstall, &check, &apply, &quit])?;
             let top_item = top.clone();
+            // 업데이트: 시작 10초 뒤 한 번, 그 뒤 6시간마다. 받아 두면 '업데이트 적용' 메뉴가 켜지고 트레이 제목에 ⬆ 가 붙는다
+            let update_ready = Arc::new(AtomicBool::new(false));
+            let apply_item = apply.clone();
+            let check_item = check.clone();
+            let spawn_check = {
+                let ready = update_ready.clone();
+                let apply_item = apply_item.clone();
+                let check_item = check_item.clone();
+                move |app: AppHandle| {
+                    let ready = ready.clone();
+                    let apply_item = apply_item.clone();
+                    let check_item = check_item.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = check_item.set_text("업데이트 확인 중…");
+                        match check_update(app, ready).await {
+                            Some(v) => { let _ = apply_item.set_text(format!("v{v} 업데이트 적용 (다시 시작)")); let _ = apply_item.set_enabled(true); let _ = check_item.set_text("업데이트 확인"); }
+                            None => { let _ = check_item.set_text("업데이트 확인 (최신)"); }
+                        }
+                    });
+                }
+            };
+            {
+                let handle = app.handle().clone();
+                let spawn_check = spawn_check.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(10));
+                    loop { spawn_check(handle.clone()); std::thread::sleep(Duration::from_secs(6 * 60 * 60)); }
+                });
+            }
+            let spawn_check_menu = spawn_check.clone();
             let tray = TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().expect("icon"))
                 .icon_as_template(true)
@@ -165,6 +212,8 @@ pub fn run() {
                         }
                     }
                     "reinstall" => { let _ = ensure_installed(app); }
+                    "check" => spawn_check_menu(app.clone()),
+                    "apply" => app.restart(),
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -175,10 +224,15 @@ pub fn run() {
 
             // 3) 대기 세션 수를 메뉴바 제목으로 (5초마다)
             let handle = app.handle().clone();
+            let ready_for_title = update_ready.clone();
             std::thread::spawn(move || loop {
                 let n = waiting_count().unwrap_or(0);
                 if let Some(t) = handle.tray_by_id("main") {
-                    let _ = t.set_title(if n > 0 { Some(format!("🙋 {n}")) } else { None::<String> });
+                    let mut title = String::new();
+                    if ready_for_title.load(Ordering::Relaxed) { title.push_str("⬆ "); }
+                    if n > 0 { title.push_str(&format!("🙋 {n}")); }
+                    let title = title.trim().to_string();
+                    let _ = t.set_title(if title.is_empty() { None::<String> } else { Some(title) });
                 }
                 let _ = &tray;
                 std::thread::sleep(Duration::from_secs(5));
