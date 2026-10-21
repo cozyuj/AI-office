@@ -3,7 +3,7 @@
 // 깊이 정렬: 각 엔티티는 3D AABB {x0,y0,x1,y1,z0,z1} 를 가진다. 화면에서 겹치는 두 상자 A, B 에 대해
 //   A.x1 <= B.x0  또는  A.y1 <= B.y0  또는  A.z1 <= B.z0  이면 A 가 뒤(먼저 그림).
 // 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
-import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, project, roomAt, worldBounds, setTheme as setMapTheme } from './map.js';
+import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, LABEL, project, roomAt, worldBounds, setTheme as setMapTheme, setFloorStyle as setMapFloorStyle } from './map.js';
 import * as MAP from './map.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
 import { resolve as resolveDaylight, setPeriod as setDaylightPeriod, palette as daylight, LAMPS } from './daylight.js';
@@ -96,8 +96,18 @@ function drawCached(ctx, e, now, scale) {
   ctx.drawImage(sp.canvas, sp.x0, sp.y0, sp.w, sp.h);
 }
 
+function invalidateCaches() { floorCache = null; for (const e of STATIC) e._sprite = null; }
 /** 테마 전환: 맵 팔레트 교체 + 캐시 무효화 */
-export function setTheme(theme) { setMapTheme(theme); floorCache = null; for (const e of STATIC) e._sprite = null; }
+export function setTheme(theme) { setMapTheme(theme); invalidateCaches(); }
+/** 층 인테리어 프리셋 전환 (FE-34): 실제로 바뀐 경우에만 캐시를 비운다 */
+export function setFloorStyle(presetId) { if (setMapFloorStyle(presetId)) invalidateCaches(); }
+/** 잠시 다른 프리셋으로 그린다 (전체 보기 미니 사무실 캐시용). 끝나면 원래 프리셋으로 되돌린다 */
+export function withFloorStyle(presetId, fn) {
+  const prev = MAP.STYLE;
+  const changed = setMapFloorStyle(presetId);
+  if (changed) invalidateCaches();
+  try { return fn(); } finally { if (changed) { setMapFloorStyle(prev); invalidateCaches(); } }
+}
 
 // ---------- 시간대 조명 (FE-33) ----------
 // 바닥·스프라이트 캐시는 그대로 두고, 시간대가 바뀔 때만 창문 스프라이트를 다시 그린다. 틴트·조명 점은 매 프레임 가볍게 올린다.
@@ -310,12 +320,12 @@ export function drawLabels(ctx, camera) {
     const w = ctx.measureText(text).width + 16;
     const x = s.x, y = s.y - 6;
     const dark = MAP.THEME === 'dark';
-    ctx.fillStyle = dark ? 'rgba(30,34,41,0.9)' : 'rgba(255,255,255,0.86)';
-    ctx.strokeStyle = dark ? '#3a4049' : (r.trim || '#ddd');
+    ctx.fillStyle = LABEL.bg;
+    ctx.strokeStyle = dark ? LABEL.border : (r.trim || LABEL.border);
     ctx.lineWidth = 1;
     roundRect(ctx, x - w / 2, y - 10, w, 20, 10);
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = dark ? '#c9cfd8' : '#4a515a';
+    ctx.fillStyle = LABEL.text;
     ctx.fillText(text, x, y + 0.5);
   }
   ctx.restore();

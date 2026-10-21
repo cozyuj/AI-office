@@ -1,6 +1,8 @@
 // 사무실 맵 정의: 타일 격자, 방, 가구, 벽, 서 있는 자리(slot), 통행 규칙, 투영.
 // 유효 타일은 x 1..35, y 1..21. (x 28~35 는 카페·테라스 확장 열) x 가 커지면 화면 오른쪽 아래, y 가 커지면 왼쪽 아래.
 
+import { palette, presetById, DEFAULT_PRESET } from './floorStyle.js';
+
 export const TW = 64;  // 타일 가로 (월드 px)
 export const TH = 32;  // 타일 세로
 export const ZH = 26;  // 높이 1 단위
@@ -22,22 +24,33 @@ export const ROOMS = [
 ];
 export const CORRIDOR = { floor: '#f5f6f8', trim: '#e6e8ec', pattern: 'grid' };
 
-// ---------- 테마 ----------
-const LIGHT = { rooms: ROOMS.map((r) => ({ floor: r.floor, trim: r.trim, alt: r.alt })), corridor: { ...CORRIDOR } };
-const DARK = {
-  library: ['#5a4634', null, null], dev: ['#2a2f3a', '#343a46'], research: ['#283533', '#33413e'], meeting: ['#32312d', '#3e3d38'],
-  lounge: ['#3a322a', '#44403a', '#352d26'], server: ['#25332d', '#2f3f38'], mydesk: ['#283040', '#343d50'], lobby: ['#2b2f36', '#363b44'], elevator: ['#2a2d33', '#353941'],
-  cafe: ['#3a3028', '#45392f', '#342b24'], terrace: ['#3b3225', '#4a3f2f'],
-};
+// ---------- 테마 · 층 스타일 ----------
+// 색은 floorStyle.js 의 프리셋(층별 인테리어) + 테마(라이트/다크)로 정해진다. 위 ROOMS 의 색은 초기값일 뿐이고
+// applyPalette() 가 덮어쓴다. ACCENT(소품 강조색)·LABEL(방 이름표 색조)은 sprites.js / render.js 가 읽는다.
 export let THEME = 'light';
+export let STYLE = DEFAULT_PRESET;
+export const ACCENT = { leaf: ['#4e9a55', '#5fae6a', '#3f8a49', '#6bbd77'], sofa: '#f28c38', parasol: '#e8785a', wood: '#d9b382', text: '#4a515a' };
+export const LABEL = { text: '#4a515a', bg: 'rgba(255,255,255,0.86)', border: '#e4e7ec' };
+function applyPalette() {
+  const pal = palette(STYLE, THEME);
+  for (const r of ROOMS) { const c = pal.rooms[r.id]; if (!c) continue; r.floor = c.floor; r.trim = c.trim; if (r.pattern === 'checker') r.alt = c.alt; }
+  Object.assign(CORRIDOR, pal.corridor);
+  Object.assign(ACCENT, pal.accent);
+  Object.assign(LABEL, pal.label);
+}
 export function setTheme(theme) {
   THEME = theme === 'dark' ? 'dark' : 'light';
-  ROOMS.forEach((r, i) => {
-    if (THEME === 'dark') { const d = DARK[r.id]; r.floor = d[0]; r.trim = d[1]; if (d[2]) r.alt = d[2]; }
-    else { r.floor = LIGHT.rooms[i].floor; r.trim = LIGHT.rooms[i].trim; r.alt = LIGHT.rooms[i].alt; }
-  });
-  Object.assign(CORRIDOR, THEME === 'dark' ? { floor: '#262a31', trim: '#30353e' } : LIGHT.corridor);
+  applyPalette();
 }
+/** 층 인테리어 프리셋 교체. 실제로 바뀌었으면 true (호출자가 캐시를 비운다) */
+export function setFloorStyle(presetId) {
+  const id = presetById(presetId) ? presetId : DEFAULT_PRESET;
+  if (id === STYLE) return false;
+  STYLE = id;
+  applyPalette();
+  return true;
+}
+applyPalette();
 
 // ---------- 가구 ----------
 // { type, x, y, w, d, solid(기본 true) } 좌표는 타일 단위. 캐릭터는 solid 타일을 지나지 못한다.

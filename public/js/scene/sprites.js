@@ -1,6 +1,6 @@
 // 가구·벽을 코드로 그린다 — 플랫 벡터 아이소메트릭 스타일. 외부 이미지 없음.
 // 좌표는 타일 단위, ctx 는 월드 변환이 걸린 상태.
-import { project, ZH } from './map.js';
+import { project, ZH, ACCENT } from './map.js';
 import { palette as daylight } from './daylight.js';
 
 export const FONT = "'D2Coding','NanumSquare',-apple-system,'Apple SD Gothic Neo',sans-serif";
@@ -66,12 +66,13 @@ function post(ctx, x, y, h, color) { box(ctx, x - 0.04, y - 0.04, 0.08, 0.08, h,
 
 // ---------- 팔레트 ----------
 const CREAM = { top: '#f6f2ea', left: '#ece6da', right: '#ddd6c8' };
-const WOOD = '#d9b382';
+// 층 스타일(FE-34)에 따라 바뀌는 강조색은 map.js 의 ACCENT 에서 매번 읽는다: 목재(테이블·벤치), 식물 잎, 소파·카페 의자, 파라솔.
+const WOOD = () => ACCENT.wood;
+const LEAF = () => ACCENT.leaf;
+const SOFA = () => ACCENT.sofa;
 const DARK = '#2b2f3a';
 const PURPLE = '#7d5fcf';
-const ORANGE = '#f28c38';
 const BOOK = ['#e76f51', '#f4a261', '#2a9d8f', '#264653', '#8ab17d', '#e9c46a', '#6d597a', '#457b9d', '#d1495b'];
-const LEAF = ['#4e9a55', '#5fae6a', '#3f8a49', '#6bbd77'];
 
 // ---------- 부품 ----------
 function monitor(ctx, mx, my) {
@@ -109,9 +110,9 @@ function palm(ctx, cx, cy, big) {
     ctx.beginPath(); ctx.moveTo(top.x, top.y);
     ctx.quadraticCurveTo(top.x + dx * len * 0.5 + nx * wdt, top.y + dy * len * 0.5 + ny * wdt, tip.x, tip.y);
     ctx.quadraticCurveTo(top.x + dx * len * 0.5 - nx * wdt, top.y + dy * len * 0.5 - ny * wdt, top.x, top.y);
-    ctx.fillStyle = LEAF[i % 4]; ctx.fill();
+    ctx.fillStyle = LEAF()[i % 4]; ctx.fill();
   }
-  circle(ctx, cx, cy, z + 0.02, 4, '#3f8a49');
+  circle(ctx, cx, cy, z + 0.02, 4, LEAF()[2]);
 }
 
 function officeChair(ctx, cx, cy, face = 'n') {
@@ -133,13 +134,14 @@ function officeChair(ctx, cx, cy, face = 'n') {
 
 function cafeChair(ctx, cx, cy, face = 'n') {
   shadow(ctx, cx, cy, 0.26, 0.13, 0.12);
-  legs(ctx, [[cx - 0.2, cy - 0.2], [cx + 0.14, cy - 0.2], [cx - 0.2, cy + 0.14], [cx + 0.14, cy + 0.14]], 0.42, '#c76a2a');
-  box(ctx, cx - 0.22, cy - 0.22, 0.44, 0.44, 0.07, ORANGE, { z0: 0.42, top: '#f8a05a' });
+  const c = SOFA(), top = shade(c, 1.1);
+  legs(ctx, [[cx - 0.2, cy - 0.2], [cx + 0.14, cy - 0.2], [cx - 0.2, cy + 0.14], [cx + 0.14, cy + 0.14]], 0.42, shade(c, 0.78));
+  box(ctx, cx - 0.22, cy - 0.22, 0.44, 0.44, 0.07, c, { z0: 0.42, top });
   const back = { n: [cx - 0.22, cy - 0.24, 0.44, 0.06], s: [cx - 0.22, cy + 0.18, 0.44, 0.06], e: [cx + 0.18, cy - 0.22, 0.06, 0.44], w: [cx - 0.24, cy - 0.22, 0.06, 0.44] }[face] || [cx - 0.22, cy - 0.24, 0.44, 0.06];
-  box(ctx, back[0], back[1], back[2], back[3], 0.5, ORANGE, { z0: 0.49, top: '#f8a05a' });
+  box(ctx, back[0], back[1], back[2], back[3], 0.5, c, { z0: 0.49, top });
 }
 
-function roundTable(ctx, cx, cy, r = 0.42, h = 0.72, color = WOOD) {
+function roundTable(ctx, cx, cy, r = 0.42, h = 0.72, color = WOOD()) {
   shadow(ctx, cx, cy, r, r * 0.5, 0.12);
   box(ctx, cx - 0.05, cy - 0.05, 0.1, 0.1, h - 0.05, '#8b6a4a');
   ellipse(ctx, cx, cy, h - 0.04, r * 64, r * 32, shade(color, 0.85));
@@ -200,7 +202,8 @@ const DRAW = {
     const w = f.w || 1, d = f.d || 1;
     shadow(ctx, f.x + w / 2, f.y + d / 2, 0.5 * w, 0.25 * d, 0.12);
     legs(ctx, [[f.x + 0.12, f.y + d - 0.2], [f.x + w - 0.2, f.y + d - 0.2], [f.x + w - 0.2, f.y + 0.12]], 0.66, '#b08d63');
-    box(ctx, f.x + 0.08, f.y + 0.08, w - 0.16, d - 0.16, 0.08, WOOD, { z0: 0.66, top: '#e2c08f', left: shade(WOOD, 0.9), right: shade(WOOD, 0.8) });
+    const wood = WOOD();
+    box(ctx, f.x + 0.08, f.y + 0.08, w - 0.16, d - 0.16, 0.08, wood, { z0: 0.66, top: shade(wood, 1.05), left: shade(wood, 0.9), right: shade(wood, 0.8) });
   },
   roundtable(ctx, f) { roundTable(ctx, f.x + (f.w || 1) / 2, f.y + (f.d || 1) / 2, 0.46, 0.72); },
   coffeetable(ctx, f) {
@@ -213,10 +216,11 @@ const DRAW = {
   sofa(ctx, f) {
     const w = f.w || 1;
     shadow(ctx, f.x + w / 2, f.y + 0.5, 0.5 * w, 0.24, 0.13);
-    box(ctx, f.x + 0.05, f.y + 0.15, w - 0.1, 0.8, 0.46, ORANGE, { top: '#f8a05a', left: '#e07a2d', right: '#c96a24' });
-    box(ctx, f.x + 0.05, f.y + 0.05, w - 0.1, 0.22, 0.86, ORANGE, { top: '#f8a05a', left: '#e07a2d', right: '#c96a24' });
-    box(ctx, f.x + 0.05, f.y + 0.05, 0.16, 0.9, 0.66, '#e07a2d', { top: '#f28c38' });
-    box(ctx, f.x + w - 0.21, f.y + 0.05, 0.16, 0.9, 0.66, '#e07a2d', { top: '#f28c38' });
+    const c = SOFA(), sides = { top: shade(c, 1.1), left: shade(c, 0.9), right: shade(c, 0.8) };
+    box(ctx, f.x + 0.05, f.y + 0.15, w - 0.1, 0.8, 0.46, c, sides);
+    box(ctx, f.x + 0.05, f.y + 0.05, w - 0.1, 0.22, 0.86, c, sides);
+    box(ctx, f.x + 0.05, f.y + 0.05, 0.16, 0.9, 0.66, shade(c, 0.9), { top: c });
+    box(ctx, f.x + w - 0.21, f.y + 0.05, 0.16, 0.9, 0.66, shade(c, 0.9), { top: c });
   },
   counter(ctx, f) {
     const w = f.w || 1;
@@ -309,7 +313,7 @@ const DRAW = {
     for (let i = 0; i < w * 3; i++) {
       const cx = f.x + 0.2 + (i + 0.5) * ((w - 0.4) / (w * 3)), cy = f.y + 0.5 + ((i % 2) ? 0.12 : -0.12);
       const t = project(cx, cy, 0.5);
-      ctx.fillStyle = LEAF[i % 4];
+      ctx.fillStyle = LEAF()[i % 4];
       ctx.beginPath(); ctx.ellipse(t.x, t.y - 8, 7, 11, 0, 0, Math.PI * 2); ctx.fill();
     }
   },
@@ -324,22 +328,23 @@ const DRAW = {
     }
     post(ctx, cx, cy, 2.1, '#8a6a48');
     const top = project(cx, cy, 2.1), rim = project(cx, cy, 1.65);
-    ctx.fillStyle = '#e8785a';
+    const pc = ACCENT.parasol;
+    ctx.fillStyle = pc;
     ctx.beginPath(); ctx.ellipse(rim.x, rim.y, 60, 30, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#f2a08a';
+    ctx.fillStyle = shade(pc, 1.18);
     for (let i = 0; i < 6; i += 2) {
       const a0 = i / 6 * Math.PI * 2, a1 = (i + 1) / 6 * Math.PI * 2;
       ctx.beginPath(); ctx.moveTo(rim.x, rim.y); ctx.ellipse(rim.x, rim.y, 60, 30, 0, a0, a1); ctx.closePath(); ctx.fill();
     }
-    ctx.strokeStyle = '#d2654a'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = shade(pc, 0.85); ctx.lineWidth = 1.5;
     for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(rim.x + Math.cos(a) * 60, rim.y + Math.sin(a) * 30); ctx.stroke(); }
-    circle(ctx, cx, cy, 2.15, 3, '#d2654a');
+    circle(ctx, cx, cy, 2.15, 3, shade(pc, 0.85));
   },
   bench(ctx, f) {
     const w = f.w || 1;
     shadow(ctx, f.x + w / 2, f.y + 0.5, 0.45 * w, 0.2, 0.1);
     legs(ctx, [[f.x + 0.15, f.y + 0.62], [f.x + w - 0.25, f.y + 0.62]], 0.4, '#b08d63');
-    box(ctx, f.x + 0.1, f.y + 0.3, w - 0.2, 0.4, 0.08, WOOD, { z0: 0.4, top: '#e2c08f' });
+    box(ctx, f.x + 0.1, f.y + 0.3, w - 0.2, 0.4, 0.08, WOOD(), { z0: 0.4, top: shade(WOOD(), 1.05) });
   },
   elevator(ctx, f) {
     box(ctx, f.x, f.y, 1, 0.5, 2.3, '#e6e8ee', { top: '#f3f4f7', left: '#dfe2e8', right: '#cfd3db' });
