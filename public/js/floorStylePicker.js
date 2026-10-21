@@ -13,7 +13,7 @@ export function createFloorStylePicker(store, book, { onChange } = {}) {
   function render() {
     const floor = store.floors.get(floorId);
     if (!floor) { close(); return; }
-    const chosen = book.get(floorId);
+    const chosen = book.get(floorId, floor);
     const auto = book.auto(floor, store.floorsByNo());
     const autoP = presetById(auto);
     pop.innerHTML = `
@@ -38,9 +38,17 @@ export function createFloorStylePicker(store, book, { onChange } = {}) {
   pop.addEventListener('click', (e) => {
     const opt = e.target.closest('[data-preset]');
     if (!opt || !floorId) return;
-    book.set(floorId, opt.dataset.preset || null);
-    if (onChange) onChange(floorId);
+    const id = floorId, preset = opt.dataset.preset || null;
+    book.set(id, preset);
+    // 서버가 층 프리셋을 관리하면(FE-36) 먼저 낙관적으로 반영하고 API 로 저장 → 서버가 'floor' 이벤트로 모든 브라우저에 전파
+    const f = store.floors.get(id);
+    if (f && 'style' in f) { f.styleOverride = preset; f.style = preset || book.auto(f, store.floorsByNo()); }
+    if (onChange) onChange(id);
     render();
+    fetch('/api/floors/style', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, style: preset }) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j && j.floor && store.floors.has(j.floor.id)) store.applyFloor(j.floor); })
+      .catch(() => {});
   });
   document.addEventListener('pointerdown', (e) => { if (isOpen() && !pop.contains(e.target) && !e.target.closest('.floor-style')) close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isOpen()) { close(); e.stopPropagation(); } }, true);

@@ -139,13 +139,22 @@ export function createFloorStyleBook(storage) {
   const st = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
   const read = (k) => { try { return st ? st.getItem(k) : null; } catch { return null; } };
   const write = (k, v) => { try { if (!st) return; if (v == null) st.removeItem(k); else st.setItem(k, v); } catch {} };
+  // 서버(FE-36)가 층마다 style/styleAuto/styleOverride 를 보내 주면 그 값이 우선이다 (모든 브라우저가 같은 층을 본다).
+  // localStorage 는 그 값이 없는 옛 서버용 fallback.
   return {
     /** 직접 고른 프리셋 id, 없으면 null */
-    get(floorId) { const v = read(STORAGE_PREFIX + floorId); return v && presetById(v) ? v : null; },
-    /** presetId 가 null/'' 이면 자동으로 되돌린다 */
+    get(floorId, floor) {
+      if (floor && 'styleOverride' in floor) return floor.styleOverride && presetById(floor.styleOverride) ? floor.styleOverride : null;
+      const v = read(STORAGE_PREFIX + floorId); return v && presetById(v) ? v : null;
+    },
+    /** presetId 가 null/'' 이면 자동으로 되돌린다 (브라우저 저장; 서버 저장은 floorStylePicker 가 API 로) */
     set(floorId, presetId) { write(STORAGE_PREFIX + floorId, presetId && presetById(presetId) ? presetId : null); },
-    auto(floor, floors) { return autoPresetFor(floor, floors); },
-    /** 직접 선택 > 자동 배정 */
-    resolve(floor, floors) { if (!floor) return DEFAULT_PRESET; return this.get(floor.id) || autoPresetFor(floor, floors); },
+    auto(floor, floors) { return (floor && floor.styleAuto && presetById(floor.styleAuto)) ? floor.styleAuto : autoPresetFor(floor, floors); },
+    /** 서버가 정한 style > 직접 선택 > 자동 배정 */
+    resolve(floor, floors) {
+      if (!floor) return DEFAULT_PRESET;
+      if (floor.style && presetById(floor.style)) return floor.style;
+      return this.get(floor.id, floor) || autoPresetFor(floor, floors);
+    },
   };
 }

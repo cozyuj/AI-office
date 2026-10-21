@@ -1,6 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const FS = require('../lib/floorStyle');
 const { createState, restRoomFor, REST_ROOMS, REST_BUBBLE, SUBAGENT_LEAVE_MS, SESSION_LEAVE_MS, SESSION_TTL_MS, AWAY_MS, GONE_CHECK_MS, GONE_MS, STAT_INTERVAL_MS } = require('../lib/state');
 const { describeTool } = require('../lib/normalize');
 
@@ -148,9 +149,43 @@ test('Stop: 휴식 방(휴게실·카페·테라스)에서 휴식, 마지막 메
   st.apply(base({ hook_event_name: 'Stop', last_assistant_message: 'I have completed the refactoring.' }), 1000);
   assert.ok(REST_ROOMS.includes(main().room), main().room);
   assert.equal(main().activity, 'rest');
-  assert.equal(main().bubble, REST_BUBBLE[main().room]);
+  const info = FS.restInfo(st.snapshot().floors[0].style, main().room);
+  assert.equal(main().bubble, info.bubble, '말풍선은 층 편의시설 기준');
+  assert.equal(main().icon, info.icon);
   assert.equal(s().status, 'idle');
-  assert.match(updates[0].log.text, /^I have completed the refactoring\. → .+ (휴게실|카페|테라스)$/);
+  assert.equal(updates[0].log.text, `I have completed the refactoring. → ${info.icon} ${info.label}`);
+});
+
+test('층 프리셋(FE-36): 층마다 style 이 결정적으로 붙고, 직접 선택하면 floor 이벤트 + 휴식 말풍선·로그 문구가 그 층 편의시설로 바뀐다', () => {
+  const { st, main, updates } = fresh();
+  const floorsEv = [];
+  st.on('floor', (f) => floorsEv.push(f));
+  st.apply(base({ hook_event_name: 'SessionStart', source: 'startup' }), 1000);
+  const f0 = st.snapshot().floors[0];
+  assert.ok(FS.AUTO_PRESETS.includes(f0.style) && f0.styleAuto === f0.style && f0.styleOverride === null, JSON.stringify(f0));
+  assert.equal(f0.style, FS.assignPresets([{ id: CWD, no: 1 }]).get(CWD), '클라이언트와 같은 해시 배정');
+  // 두 번째 층(다른 세션) → 이웃 규칙으로 둘이 다르다
+  st.apply({ session_id: 's2', cwd: '/Users/me/proj/other', transcript_path: '/y', hook_event_name: 'SessionStart', source: 'startup' }, 1100);
+  const [a, b] = st.snapshot().floors;
+  assert.notEqual(a.style, b.style);
+  // 직접 선택: mint(헬스장·옥상정원) → 휴식 방 cafe/terrace 가 헬스장/옥상정원으로
+  const r = st.setFloorStyle(CWD, 'mint');
+  assert.equal(r.style, 'mint'); assert.equal(r.styleOverride, 'mint');
+  assert.ok(floorsEv.some((f) => f.id === CWD && f.style === 'mint'), '선택이 floor 이벤트로 전파');
+  st.apply(base({ hook_event_name: 'Stop', last_assistant_message: 'done' }), 2000);
+  const room = main().room, info = FS.restInfo('mint', room);
+  assert.equal(main().bubble, info.bubble);
+  assert.equal(main().icon, info.icon);
+  assert.equal(updates.at(-1).log.text, `done → ${info.icon} ${info.label}`);
+  if (room === 'cafe') assert.equal(info.label, '헬스장');
+  if (room === 'terrace') assert.equal(info.label, '옥상정원');
+  // 자동으로 되돌리기 · 모르는 프리셋은 무시
+  assert.equal(st.setFloorStyle(CWD, null).styleOverride, null);
+  assert.equal(st.setFloorStyle(CWD, 'nope').style, f0.styleAuto);
+  // 아직 없는 층도 선택은 저장된다 (나중에 층이 생기면 적용)
+  assert.equal(st.setFloorStyle('/Users/me/later', 'sand').style, 'sand');
+  st.apply({ session_id: 's3', cwd: '/Users/me/later', transcript_path: '/z', hook_event_name: 'SessionStart', source: 'startup' }, 3000);
+  assert.equal(st.snapshot().floors.find((f) => f.id === '/Users/me/later').style, 'sand');
 });
 
 test('휴식 방은 세션 id 로 정해져 같은 세션은 늘 같은 방, 여러 세션은 세 방에 나뉜다', () => {
