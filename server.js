@@ -111,10 +111,13 @@ async function handleHook(req, res) {
   }
   // 훅 호출 쪽은 응답을 기다리지 않으므로 먼저 응답하고 처리한다.
   res.writeHead(204).end();
+  // 데모가 꺼진 뒤 늦게 도착한 데모 이벤트는 버린다 (세션이 되살아나 층이 남던 원인). 데모는 저널에도 남기지 않는다 (재시작 때 복원 금지)
+  const isDemo = typeof payload.cwd === 'string' && payload.cwd.startsWith('/demo/');
+  if (isDemo && !demoRunning()) return;
   try {
     const now = Date.now();
     state.apply(payload, now);
-    journal.append(now, payload);
+    if (!isDemo) journal.append(now, payload);
   } catch (e) {
     console.error('[hook] apply failed:', e && e.message);
   }
@@ -183,5 +186,12 @@ server.listen(PORT, '127.0.0.1', () => {
 // 예약 작업(서브에이전트 퇴근, 세션 제거) 실행 + 오래 조용한 세션 정리
 setInterval(() => state.sweep(Date.now()), 1000).unref();
 
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { if (demoRunning()) { try { demoChild.kill(); } catch {} } journal.close(); process.exit(0); });
+function shutdown() { if (demoRunning()) { try { demoChild.kill(); } catch {} } journal.close(); process.exit(0); }
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, shutdown);
+// 앱·CLI 가 띄운 서버(AI_OFFICE_WATCH_PARENT): 부모가 강제 종료돼 사라지면(ppid 가 바뀌면) 스스로 끝난다. 직접 띄운 서버는 감시하지 않는다
+if (process.env.AI_OFFICE_WATCH_PARENT) {
+  const parent = process.ppid;
+  const alive = () => { try { process.kill(parent, 0); return process.ppid === parent; } catch { return false; } };
+  setInterval(() => { if (!alive()) { console.log('부모 프로세스가 사라져 서버를 내립니다'); shutdown(); } }, 2000).unref();
+}
 process.on('exit', () => journal.close());

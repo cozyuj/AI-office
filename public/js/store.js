@@ -109,7 +109,17 @@ class Store {
 
   setFollowCamera(v) { this.followCamera = v; this.emit('option'); }
   setBubbleMode(v) { this.bubbleMode = v; this.emit('option'); }
-  setDemo(v) { this.demo = !!v; this.emit('option'); }
+  setDemo(v) {
+    this.demo = !!v;
+    if (!this.demo) { // 데모 꺼짐: 늦게 도착한 이벤트로 남은 데모 층·세션·로그를 정리한다
+      for (const [id, f] of this.floors) if (id.startsWith('/demo/')) this.floors.delete(id);
+      for (const [id, s] of this.sessions) if (String(s.floorId || '').startsWith('/demo/')) this.sessions.delete(id);
+      this.log = this.log.filter((e) => !String(e.floorId || '').startsWith('/demo/'));
+      this.reconcileSelection();
+      this.emit('remove', { sessionId: null, floorId: null });
+    }
+    this.emit('option');
+  }
   setSound(v) { this.sound = !!v; try { localStorage.setItem('aiOffice.sound', v ? 'on' : 'off'); } catch {} this.emit('option'); }
   setSoundScope(v) { this.soundScope = v === 'all' ? 'all' : 'waiting'; ls.set('aiOffice.soundScope', this.soundScope); this.emit('option'); }
   setAmbient(v) { this.ambient = !!v; try { localStorage.setItem('aiOffice.ambient', v ? 'on' : 'off'); } catch {} this.emit('option'); }
