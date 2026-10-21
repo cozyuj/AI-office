@@ -51,6 +51,7 @@ function broadcast(event, data) {
 
 state.on('update', (data) => broadcast('update', data));
 state.on('remove', (data) => broadcast('remove', data));
+state.on('floor', (data) => broadcast('floor', data));
 
 function readBody(req, limit) {
   return new Promise((resolve, reject) => {

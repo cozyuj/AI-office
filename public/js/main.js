@@ -45,6 +45,7 @@ function connect() {
   es.addEventListener('snapshot', (e) => { store.applySnapshot(JSON.parse(e.data)); store.setConnected(true); });
   es.addEventListener('update', (e) => store.applyUpdate(JSON.parse(e.data)));
   es.addEventListener('remove', (e) => store.applyRemove(JSON.parse(e.data)));
+  es.addEventListener('floor', (e) => store.applyFloor(JSON.parse(e.data)));
   es.onopen = () => store.setConnected(true);
   es.onerror = () => { store.setConnected(false); renderHeader(); }; // EventSource 가 알아서 재접속한다
 }
