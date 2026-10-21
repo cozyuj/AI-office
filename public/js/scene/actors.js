@@ -160,7 +160,7 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
     ctx.font = `8px ${FONT}`;
     let text = amb ? `${amb.icon} ${amb.bubble}` : `${a.icon ? a.icon + ' ' : ''}${a.bubble}`;
     if (text.length > 30) text = text.slice(0, 29) + '…';
-    const ago = elapsed(a.since, now);
+    const ago = elapsed(a.since, Date.now()); // now 는 rAF 시각(페이지 로드 기준)이라 epoch 인 since 와 빼면 안 된다
     const full = `${text} · ${ago}`;
     const bw = Math.min(240, ctx.measureText(full).width + 16), bh = 17, r = 8.5;
     const headTop = s.y - 62 * z;
@@ -280,7 +280,7 @@ export function createActors(store, scene, avatars) {
     for (const [key, a] of ordered) {
       a.update(dt);
       ambientStep(a, now, key);
-      if (a.dead && (!a.walking || now - a.deadAt > LEAVE_TIMEOUT)) { actors.delete(key); continue; }
+      if (a.dead && (!a.walking || Date.now() - a.deadAt > LEAVE_TIMEOUT)) { actors.delete(key); continue; }
       out.push(entityOf(a));
     }
     out.push(entityOf(user));
