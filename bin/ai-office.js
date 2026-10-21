@@ -15,6 +15,7 @@ const path = require('path');
 const os = require('os');
 const net = require('net');
 const { spawn, execFileSync } = require('child_process');
+const { readHookPort } = require('../lib/hookport');
 
 const SRC = path.join(__dirname, '..');
 const HOME = process.env.AI_OFFICE_HOME || path.join(os.homedir(), '.ai-office');
@@ -117,13 +118,16 @@ async function doctor() {
   } catch { log(`settings  ${settings} ✗ 읽을 수 없음`); }
   log(`app       ${installedVersion() ? `${installedVersion()} @ ${APP} ✓` : '미설치 (ai-office install)'}`);
   log(`port      ${PORT} ${(await portInUse(PORT)) ? '사용 중 (서버 떠 있음)' : '비어 있음'}`);
+  const hp = readHookPort(settings);
+  if (hp === null) log('hook port 훅 없음 ✗ → ai-office install-hooks');
+  else log(`hook port ${hp} ${hp === PORT ? '✓' : `✗ 서버 포트 ${PORT} 와 다름 → ai-office install-hooks --port ${PORT}`}`);
 }
 
 (async () => {
   switch (cmd) {
     case 'up': { const app = install(); runScript(app, 'install-hooks.js', ['--app-dir', app]); await start(app); break; }
     case 'install': install({ force: flag('force') }); break;
-    case 'install-hooks': { const app = installedVersion() ? APP : install(); runScript(app, 'install-hooks.js', ['--app-dir', app]); break; }
+    case 'install-hooks': { const app = installedVersion() ? APP : install(); runScript(app, 'install-hooks.js', ['--app-dir', app, '--port', String(PORT)]); break; }
     case 'uninstall-hooks': runScript(installedVersion() ? APP : SRC, 'install-hooks.js', ['--remove']); break;
     case 'start': await start(installedVersion() ? APP : SRC); break;
     case 'demo': execFileSync(process.execPath, [path.join(installedVersion() ? APP : SRC, 'scripts', 'demo.js')], { stdio: 'inherit', env: { ...process.env, AI_OFFICE_PORT: String(PORT) } }); break;
