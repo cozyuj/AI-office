@@ -109,21 +109,24 @@ export function hashStr(s) {
 }
 
 /**
- * 층 목록 전체에 프리셋을 배정한다 (Map floorId → presetId). 층 id 해시로 고르되, 번호가 바로 아래인 층과
- * 같은 프리셋이면 한 칸 민다. 실제 층은 파스텔을 제외한 후보에서, 데모 층은 파스텔을 포함한 전체에서 고른다
+ * 층 목록 전체에 프리셋을 배정한다 (Map floorId → presetId). 층 id 해시로 고르되, 아직 안 쓰인 프리셋이 남아 있으면
+ * 그중에서 고르고(층이 적어도 편의시설이 다 다르게), 다 쓰였으면 번호가 바로 아래인 층과 같은 프리셋일 때 한 칸 민다. 실제 층은 파스텔을 제외한 후보에서, 데모 층은 파스텔을 포함한 전체에서 고른다
  * (데모 층끼리도 구조가 달라 보이게). 입력이 같으면 결과도 같다.
  */
 export function assignPresets(floors) {
   const out = new Map();
   const sorted = [...floors].filter(Boolean).sort((a, b) => (a.no || 0) - (b.no || 0) || String(a.id).localeCompare(String(b.id)));
   let prev = null; // { no, preset } 바로 아래 층
+  const used = new Set(); // 지금까지 배정된 프리셋 — 층이 프리셋 수 이하면 전부 다르게
   for (const f of sorted) {
     const pool = isDemoFloor(f) ? PRESET_IDS : AUTO_PRESETS;
     const n = pool.length;
     let idx = hashStr(f.id) % n;
-    if (prev && prev.preset === pool[idx] && prev.no === (f.no || 0) - 1) idx = (idx + 1 + (f.no || 0) % (n - 1)) % n;
+    if (used.size < n) { for (let k = 0; k < n && used.has(pool[idx]); k++) idx = (idx + 1) % n; }
+    else if (prev && prev.preset === pool[idx] && prev.no === (f.no || 0) - 1) idx = (idx + 1 + (f.no || 0) % (n - 1)) % n;
     const preset = pool[idx];
     out.set(f.id, preset);
+    used.add(preset);
     prev = { no: f.no || 0, preset };
   }
   return out;

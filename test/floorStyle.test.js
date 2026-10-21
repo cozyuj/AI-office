@@ -58,6 +58,16 @@ test('층 → 프리셋 배정: 결정적이고, 이웃 층끼리 안 겹치고,
   for (const f of floors) assert.ok(AUTO_PRESETS.includes(a.get(f.id)), `${f.id} 는 자동 후보 중 하나`);
   for (let i = 1; i < floors.length; i++) assert.notEqual(a.get(floors[i].id), a.get(floors[i - 1].id), `${i}F 와 ${i + 1}F 가 다른 프리셋`);
   assert.ok(new Set(a.values()).size >= 3, '프리셋이 여러 개 쓰인다');
+  // 층이 프리셋 수 이하면 전부 다른 프리셋 (헬스장·게임룸 … 이 빠지지 않게)
+  for (let n = 2; n <= AUTO_PRESETS.length; n++) {
+    const few = assignPresets(floorsOf(n, '/Users/me/small'));
+    assert.equal(new Set(few.values()).size, n, `${n}개 층이면 ${n}개 프리셋`);
+  }
+  const five = assignPresets([{ id: '/Users/me/a', no: 1 }, { id: '/Users/me/b', no: 3 }, { id: '/Users/me/c', no: 9 }]);
+  assert.equal(new Set(five.values()).size, 3, '번호가 띄엄띄엄이어도 전부 다르다');
+  // 위층이 생겨도 아래층 배정은 그대로
+  const base = floorsOf(3, '/Users/me/grow'), more = [...base, { id: '/Users/me/grow-9', name: 'x', no: 4 }];
+  for (const f of base) assert.equal(assignPresets(more).get(f.id), assignPresets(base).get(f.id), '기존 층 유지');
   // 같은 층은 다른 층 목록에서도 같은 프리셋 (이웃 충돌 보정만 예외)
   assert.equal(autoPresetFor(floors[3], floors), a.get(floors[3].id));
   assert.equal(autoPresetFor(floors[3], [floors[3]]), autoPresetFor(floors[3], [floors[3]]));
