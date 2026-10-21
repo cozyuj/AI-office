@@ -9,12 +9,32 @@ import { createTooltip } from './tooltip.js';
 import { initTextTips } from './texttip.js';
 import { createAvatarStore } from './avatarStore.js';
 import { createCustomizer } from './customize.js';
+import { createOverview } from './overview.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
 const avatars = createAvatarStore();
 const actors = createActors(store, scene, avatars);
 const tooltip = createTooltip();
+
+// ---------- 전체 보기 (건물 단면) ----------
+const stage = document.getElementById('stage');
+const overviewBtn = document.getElementById('overview-btn');
+const overview = createOverview(document.getElementById('overview'), store, { onPick: () => setOverview(false) });
+function setOverview(v) {
+  if (v) overview.show(); else overview.hide();
+  stage.classList.toggle('overview', overview.visible);
+  overviewBtn.classList.toggle('on', overview.visible);
+  overviewBtn.textContent = overview.visible ? '🏢 사무실로' : '🏢 전체 보기';
+}
+function syncOverviewBtn() {
+  const many = store.floors.size > 1;
+  overviewBtn.classList.toggle('hidden', !many);
+  if (!many && overview.visible) setOverview(false);
+}
+overviewBtn.onclick = () => setOverview(!overview.visible);
+store.subscribe(syncOverviewBtn);
+syncOverviewBtn();
 
 // ---------- 렌더 스케줄 ----------
 const stats = { last: 0, avg: 0, frames: 0 }; // scene.frame 소요 ms (EMA)
@@ -33,7 +53,7 @@ function frame(now) {
     }
   }
   const t0 = performance.now();
-  scene.frame(now);
+  if (overview.visible) overview.frame(now); else scene.frame(now);
   stats.last = performance.now() - t0;
   stats.avg = stats.avg ? stats.avg * 0.95 + stats.last * 0.05 : stats.last;
   stats.frames++;
@@ -223,13 +243,14 @@ const customizer = createCustomizer(store, avatars);
 document.getElementById('customize-btn').onclick = () => customizer.open();
 
 // ---------- 키보드 단축키 ----------
-const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기';
+const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기';
 document.addEventListener('keydown', (e) => {
   const t = e.target;
   const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
   const modalOpen = !document.getElementById('customize').classList.contains('hidden');
   if (e.key === 'Escape') {
     if (modalOpen) { customizer.close(); return; }
+    if (overview.visible) { setOverview(false); return; }
     if (typing) { t.blur(); if (t.id === 'log-search') { t.value = ''; store.setLogFilter({ q: '' }); } return; }
     if (store.followCamera) store.setFollowCamera(false);
     return;
@@ -244,6 +265,7 @@ document.addEventListener('keydown', (e) => {
     case 'f': case 'F': followBtn.click(); break;
     case 'a': case 'A': store.setAutoFollow(!store.autoFollow); break;
     case 'd': case 'D': demoBtn.click(); break;
+    case 'o': case 'O': if (!overviewBtn.classList.contains('hidden')) overviewBtn.click(); break;
     case 'b': case 'B': bubblesBtn.click(); break;
     case 's': case 'S': soundBtn.click(); break;
     case 't': case 'T': themeBtn.click(); break;
@@ -289,6 +311,7 @@ function applyTheme() {
   document.documentElement.dataset.theme = t;
   document.documentElement.classList.toggle('auto-dark', t === 'dark');
   scene.setTheme(t);
+  overview.setTheme(t);
   themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
   themeBtn.title = t === 'dark' ? '라이트 모드로' : '다크 모드로';
 }
