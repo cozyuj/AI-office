@@ -150,7 +150,7 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 
 웹 버전을 그대로 창에 담은 상주 앱입니다. 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 메뉴바 아이콘에서 열기/숨기기/항상 위/종료를 합니다. 답을 기다리는 세션이 있으면 메뉴바에 `🙋 n` 이 뜹니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다. 앱에는 Node 가 내장되어 있고, 첫 실행 때 서버 파일을 `~/.ai-office/app` 에 복사하고 훅을 등록합니다.
 
-> **웹 버전이 최신입니다.** [Releases](https://github.com/cozyuj/AI-office/releases) 의 `.dmg` 는 v0.3.0 이 마지막이라 설정 메뉴·전체 보기·카페·외형 등 이후 기능이 없습니다. 지금 기능을 쓰려면 위의 `npx` 한 줄을 쓰거나 아래처럼 직접 빌드하세요. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니, 앱을 **우클릭 → 열기** 로 한 번 허용하면 됩니다.
+> **다운로드**: [Releases](https://github.com/cozyuj/AI-office/releases/latest) 에서 `AI Office_<버전>_aarch64.dmg` (Apple Silicon) 를 받아 `AI Office.app` 을 응용 프로그램 폴더에 넣으세요. 코드 서명이 없어 처음엔 "확인되지 않은 개발자" 경고가 뜨니, 앱을 **우클릭 → 열기** 로 한 번 허용하면 됩니다. Intel 맥·Windows 는 아직 빌드하지 않으니 위의 `npx` 한 줄로 웹 버전을 쓰세요. 직접 빌드하려면:
 
 ```bash
 npm run app:dev      # 개발 실행 (Rust 툴체인 + Xcode CLT 필요, 첫 빌드 수 분)
