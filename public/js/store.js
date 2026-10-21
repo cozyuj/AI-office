@@ -30,6 +30,7 @@ class Store {
     this.autoFollow = true;
     this.followCamera = false;   // 선택 세션 캐릭터를 카메라가 따라감
     this.bubbleMode = 'all';     // 'all' | 'selected'
+    this.sound = (() => { try { return localStorage.getItem('aiOffice.sound') === 'on'; } catch { return false; } })(); // 대기 알림 소리
     this.ambient = (() => { try { return localStorage.getItem('aiOffice.ambient') !== 'off'; } catch { return true; } })(); // 쉬는 캐릭터 자율 행동
     this.connected = false;
     this.listeners = new Set();
@@ -87,6 +88,7 @@ class Store {
   setFollowCamera(v) { this.followCamera = v; this.emit('option'); }
   setBubbleMode(v) { this.bubbleMode = v; this.emit('option'); }
   setDemo(v) { this.demo = !!v; this.emit('option'); }
+  setSound(v) { this.sound = !!v; try { localStorage.setItem('aiOffice.sound', v ? 'on' : 'off'); } catch {} this.emit('option'); }
   setAmbient(v) { this.ambient = !!v; try { localStorage.setItem('aiOffice.ambient', v ? 'on' : 'off'); } catch {} this.emit('option'); }
 
   setConnected(v) { if (this.connected !== v) { this.connected = v; this.emit('conn'); } }

@@ -122,6 +122,27 @@ ambientBtn.onclick = () => store.setAmbient(!store.ambient);
 store.subscribe((kind) => { if (kind === 'option') renderAmbientBtn(); });
 renderAmbientBtn();
 
+// ---------- 대기 알림 소리 (Web Audio 로 생성, 파일 없음) ----------
+const soundBtn = document.getElementById('sound-btn');
+let audioCtx = null;
+function chime() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    for (const [i, freq] of [[0, 880], [0.14, 1174.7]]) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0 + i); g.gain.exponentialRampToValueAtTime(0.18, t0 + i + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + i + 0.35);
+      o.connect(g).connect(audioCtx.destination); o.start(t0 + i); o.stop(t0 + i + 0.4);
+    }
+  } catch {}
+}
+function renderSoundBtn() { soundBtn.classList.toggle('on', store.sound); soundBtn.textContent = store.sound ? '🔔 소리 켜짐' : '🔈'; }
+soundBtn.onclick = () => { store.setSound(!store.sound); if (store.sound) chime(); };
+store.subscribe((kind, detail) => { if (kind === 'option') renderSoundBtn(); if (kind === 'waiting' && store.sound) chime(); });
+renderSoundBtn();
+
 const notifyBtn = document.getElementById('notify-btn');
 const canNotify = () => typeof Notification !== 'undefined';
 function renderNotifyBtn() {
@@ -202,7 +223,7 @@ const customizer = createCustomizer(store, avatars);
 document.getElementById('customize-btn').onclick = () => customizer.open();
 
 // ---------- 키보드 단축키 ----------
-const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · B 말풍선 · T 테마 · / 로그 검색 · Esc 닫기';
+const KEYS_HELP = '1~9 층 이동 · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기';
 document.addEventListener('keydown', (e) => {
   const t = e.target;
   const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
@@ -224,6 +245,7 @@ document.addEventListener('keydown', (e) => {
     case 'a': case 'A': store.setAutoFollow(!store.autoFollow); break;
     case 'd': case 'D': demoBtn.click(); break;
     case 'b': case 'B': bubblesBtn.click(); break;
+    case 's': case 'S': soundBtn.click(); break;
     case 't': case 'T': themeBtn.click(); break;
     case '/': e.preventDefault(); document.getElementById('log-search').focus(); break;
     case '?': alert(KEYS_HELP); break;
