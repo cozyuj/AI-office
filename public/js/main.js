@@ -62,12 +62,19 @@ settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(!settingsOpen())
 document.addEventListener('pointerdown', (e) => { if (settingsOpen() && !document.getElementById('settings-wrap').contains(e.target)) setSettings(false); });
 
 // ---------- 렌더 스케줄 ----------
-const stats = { last: 0, avg: 0, frames: 0 }; // scene.frame 소요 ms (EMA)
+const stats = { last: 0, avg: 0, frames: 0, mode: 'active' }; // scene.frame 소요 ms (EMA), mode: active(60fps)|idle(20fps)
 let dirty = true;
 store.subscribe((kind) => { dirty = true; if (kind === 'snapshot') setLabels({ me: store.me }); });
 
+const IDLE_FRAME_MS = 1000 / 20; // 움직임이 없을 때 프레임 간격 (숨쉬기·깜빡임은 20fps 로 충분)
+let lastDraw = 0;
 function frame(now) {
   if (dirty) { renderAll(); dirty = false; }
+  // 적응형 프레임(FE-39): 캐릭터 이동·카메라 조작·따라가기가 없으면 20fps 로 쉰다
+  const busy = store.followCamera || scene.camera.active || actors.anyMoving();
+  if (!busy && now - lastDraw < IDLE_FRAME_MS) { requestAnimationFrame(frame); return; }
+  lastDraw = now;
+  stats.mode = busy ? 'active' : 'idle';
   if (store.followCamera) {
     const a = actors.selectedActor();
     if (a) {

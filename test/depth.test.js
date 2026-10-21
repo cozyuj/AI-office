@@ -58,3 +58,18 @@ test('sortEntities: 소파 앞 캐릭터는 소파 다음, 책장 앞 캐릭터�
   // 전체 개수 보존
   assert.equal(order.length, order2.length);
 });
+
+test('공유 스프라이트(FE-39): 같은 키의 정적 엔티티는 기준점 대비 오프셋·크기가 같다 (평행이동 불변)', async () => {
+  const { STATIC, sortEntities } = await import('../public/js/scene/render.js');
+  const groups = new Map();
+  for (const e of STATIC) {
+    if (!e.key) continue;
+    assert.ok(e.anchor && Number.isFinite(e.anchor.x), `${e.label} 에 anchor 없음`);
+    const sig = [e.sb.x0 - e.anchor.x, e.sb.y0 - e.anchor.y, e.sb.x1 - e.sb.x0, e.sb.y1 - e.sb.y0].map((v) => v.toFixed(3)).join(',');
+    const g = groups.get(e.key);
+    if (g) assert.equal(sig, g, `${e.key}: 같은 키인데 오프셋이 다름`); else groups.set(e.key, sig);
+  }
+  const keyed = STATIC.filter((e) => e.key).length;
+  assert.ok(keyed > 0 && groups.size < keyed / 3, `고유 스프라이트 ${groups.size}개 / 엔티티 ${keyed}개 — 공유가 거의 안 됨`);
+  assert.ok(sortEntities([]).every((e) => e.dynamic || e.key), '동적이 아닌 정적 엔티티는 모두 키가 있어야 한다');
+});
