@@ -29,6 +29,21 @@ test('emit.js: 서버가 있으면 stdin 을 그대로 POST 한다', async () =>
   assert.deepEqual(got, [{ hook_event_name: 'Stop', session_id: 'x' }]);
 });
 
+test('emit.js: --port 인자가 env 보다 우선한다', async () => {
+  const got = [];
+  const srv = http.createServer((req, res) => { got.push(req.url); res.writeHead(204).end(); });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const port = srv.address().port;
+  const status = await new Promise((resolve) => {
+    const c = spawn(process.execPath, [path.join(ROOT, 'hooks', 'emit.js'), '--port', String(port)], { env: { ...process.env, AI_OFFICE_PORT: '1' } });
+    c.on('exit', resolve);
+    c.stdin.end('{"hook_event_name":"Stop"}');
+  });
+  srv.close();
+  assert.equal(status, 0);
+  assert.deepEqual(got, ['/hook']);
+});
+
 test('emit.js: 서버가 없으면 1.5초 안에 exit 0, 빈 입력도 exit 0', () => {
   const t0 = Date.now();
   const r = spawnSync(process.execPath, [path.join(ROOT, 'hooks', 'emit.js')], { input: '{"a":1}', env: { ...process.env, AI_OFFICE_PORT: '1' } });
@@ -70,7 +85,14 @@ test('CLI: install 이 AI_OFFICE_HOME/app 에 복사하고 doctor 가 동작한�
   assert.match(out, /설치 →/);
   for (const f of ['server.js', 'hooks/emit.js', 'lib/state.js', 'public/index.html', 'scripts/install-hooks.js']) assert.ok(fs.existsSync(path.join(home, 'app', f)), f);
   const again = execFileSync(process.execPath, [path.join(ROOT, 'bin', 'ai-office.js'), 'install'], { env, encoding: 'utf8' });
-  assert.match(again, /이미 설치됨/);
+  assert.match(again, /이미 최신/);
+  // 소스가 바뀌면(설치본의 지문과 다르면) 버전이 같아도 다시 복사한다
+  const marker = path.join(home, 'app', 'public', 'index.html');
+  fs.writeFileSync(path.join(home, 'app', '.fingerprint'), 'stale\n');
+  fs.writeFileSync(marker, 'OLD');
+  const refreshed = execFileSync(process.execPath, [path.join(ROOT, 'bin', 'ai-office.js'), 'install'], { env, encoding: 'utf8' });
+  assert.match(refreshed, /갱신/);
+  assert.notEqual(fs.readFileSync(marker, 'utf8'), 'OLD');
   execFileSync(process.execPath, [path.join(ROOT, 'bin', 'ai-office.js'), 'install-hooks'], { env, encoding: 'utf8' });
   const h = JSON.parse(fs.readFileSync(path.join(home, 'settings.json'), 'utf8')).hooks;
   assert.ok(h.PreToolUse[0].hooks[0].command.includes(path.join(home, 'app', 'hooks', 'emit.js')));

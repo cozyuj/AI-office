@@ -19,7 +19,7 @@ Node 18 이상만 있으면 됩니다. Windows · macOS · Linux 공통 한 줄:
 npx github:cozyuj/AI-office
 ```
 
-이 한 줄이 (1) 앱을 `~/.ai-office/app` 에 복사하고 (2) `~/.claude/settings.json` 에 훅을 등록한 뒤 (3) 서버를 띄우고 브라우저를 엽니다. 다음부터는 같은 명령으로 서버만 다시 띄우면 됩니다. 훅은 **새로 시작하는** Claude Code 세션부터 적용됩니다.
+이 한 줄이 (1) 앱을 `~/.ai-office/app` 에 복사하고 (2) `~/.claude/settings.json` 에 훅을 등록한 뒤 (3) 서버를 띄우고 브라우저를 엽니다. 다음부터는 같은 명령으로 서버만 다시 띄우면 되고, 코드가 바뀌었으면 자동으로 설치본을 갱신합니다(업데이트도 같은 명령). 훅은 **새로 시작하는** Claude Code 세션부터 적용됩니다.
 
 다른 명령:
 
