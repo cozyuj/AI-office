@@ -19,6 +19,8 @@ export function createTooltip() {
     const prompt = s.lastPrompt || s.firstPrompt || s.title;
     if (prompt) rows.push(['요청', `<span class="tt-prompt tt-prompt-wrap">"${esc(prompt.length > 160 ? prompt.slice(0, 159) + '…' : prompt)}"</span>`]);
     if (a.kind === 'sub' && a.type) rows.push(['종류', esc(a.type)]);
+    if (s.branch) rows.push(['브랜치', `⎇ ${esc(s.branch)}${s.worktree ? ` <span class="muted">(worktree ${esc(s.worktree)})</span>` : ''}`]);
+    if (s.cwd) rows.push(['경로', `<span class="tt-v mono">${esc(s.cwd)}</span>`]);
     return `
       <div class="tt-name"><span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : esc((a.name || '?')[0])}</span>${esc(a.name)}${a.kind === 'sub' ? '<span class="sub">서브에이전트</span>' : ''}</div>
       <div class="tt-where">${f ? `${f.no}F ${esc(f.name)}` : ''} · ${ROOM_LABEL[a.room] || a.room} · ${esc(s.title || s.id.slice(0, 8))}</div>

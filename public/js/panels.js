@@ -66,6 +66,7 @@ export function renderFloors() {
       <div class="session ${s.id === store.selectedSessionId ? 'selected' : ''} ${s.title ? '' : 'untitled'} ${s.status === 'away' || s.status === 'ended' ? 'away' : ''}" data-session="${esc(s.id)}" data-tip="${esc(s.title || s.id)}">
         <span class="dot ${s.status}"></span>
         <span class="session-title ellipsis">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span>
+        ${s.branch ? `<span class="branch" title="${esc(s.worktree ? `worktree ${s.worktree}` : s.branch)}">⎇ ${esc(s.branch)}</span>` : ''}
         ${s.status === 'waiting' ? '<span class="badge-wait">답 기다림</span>' : ''}
         ${s.id === store.selectedSessionId ? '<span class="session-tag">지금 보는 중</span>' : `<span class="session-time">${timeAgo(s.lastActivity, now)}</span>`}
       </div>`).join('');

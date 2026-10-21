@@ -270,3 +270,7 @@ body.has-banner #app { padding-top: 44px; }
 #right > .card.grow { flex: 1 1 160px; min-height: 160px; }
 #right > #session-card { flex-shrink: 0; }
 #left { overflow: hidden; }
+
+/* ---------- 세션 브랜치 ---------- */
+.session .branch { flex: none; max-width: 90px; font-size: 10px; color: var(--muted); background: #f1f3f5; padding: 0 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'D2Coding', ui-monospace, monospace; }
+:root[data-theme="dark"] .session .branch, :root:not([data-theme="light"]).auto-dark .session .branch { background: #2c3139; }
