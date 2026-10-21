@@ -23,6 +23,9 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.csv': 'text/csv; charset=utf-8',
 };
 
 const state = createState({ me: os.userInfo().username });
