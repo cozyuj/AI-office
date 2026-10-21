@@ -30,7 +30,7 @@ const MIME = {
   '.csv': 'text/csv; charset=utf-8',
 };
 
-const state = createState({ me: os.userInfo().username });
+const state = createState({ me: os.userInfo().username, styleFile: path.join(process.env.AI_OFFICE_HOME || path.join(os.homedir(), '.ai-office'), 'floor-styles.json') }); // 층 🎨 선택은 서버에 저장 (FE-36)
 let hookPort = readHookPort(); // settings.json 의 훅 포트 (없으면 null)
 setInterval(() => { hookPort = readHookPort(); }, 30 * 1000).unref();
 let demoChild = null;
@@ -89,6 +89,17 @@ function readBody(req, limit) {
   });
 }
 
+/** 층 인테리어 프리셋 직접 선택 (FE-36): { id, style|null } → 저장 + 모든 브라우저에 'floor' 전파 */
+async function handleFloorStyle(req, res) {
+  let body;
+  try { body = JSON.parse(await readBody(req, MAX_BODY)); } catch { res.writeHead(400).end(); return; }
+  const id = typeof body.id === 'string' ? body.id : '';
+  if (!id) { res.writeHead(400).end(); return; }
+  const floor = state.setFloorStyle(id, typeof body.style === 'string' ? body.style : null);
+  res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
+  res.end(JSON.stringify({ floor }));
+}
+
 async function handleHook(req, res) {
   let payload;
   try {
@@ -140,6 +151,7 @@ const server = http.createServer((req, res) => {
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/hook') return handleHook(req, res);
   if (req.method === 'GET' && pathname === '/events') return handleEvents(req, res);
+  if (req.method === 'POST' && pathname === '/api/floors/style') return handleFloorStyle(req, res);
   if (req.method === 'POST' && pathname === '/api/demo/start') { startDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: true })); }
   if (req.method === 'POST' && pathname === '/api/demo/stop') { const removed = stopDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: false, removed })); }
   // 끝난/자리 비운 세션을 목록에서 치운다 (TTL 을 기다리지 않고). state.remove → SSE 'remove' 로 모든 브라우저에 전파
