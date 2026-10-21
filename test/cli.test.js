@@ -109,3 +109,19 @@ test('install-hooks --node: 지정한 node 경로로 훅 명령을 만든다', (
   const h = JSON.parse(fs.readFileSync(settings, 'utf8')).hooks;
   assert.equal(h.Stop[0].hooks[0].command, `"/Applications/AI Office.app/Contents/MacOS/node" "${path.join(ROOT, 'hooks', 'emit.js')}"`);
 });
+
+test('ai-office compact: 오래된 저널 줄을 버리고 최근 것만 남긴다', async () => {
+  const os = require('os');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-compact-'));
+  const now = Date.now();
+  const line = (t) => JSON.stringify({ t, p: { event: 'SessionStart', sessionId: 's' + t, cwd: '/tmp' } }) + '\n';
+  fs.writeFileSync(path.join(home, 'events.jsonl'), line(now - 5 * 60 * 60 * 1000) + line(now - 4 * 60 * 60 * 1000) + line(now - 60 * 1000));
+  const out = await new Promise((resolve) => {
+    const c = spawn(process.execPath, [path.join(ROOT, 'bin', 'ai-office.js'), 'compact'], { env: { ...process.env, AI_OFFICE_HOME: home } });
+    let s = ''; c.stdout.on('data', (d) => { s += d; }); c.on('close', () => resolve(s));
+  });
+  assert.match(out, /3건 .* → 1건/);
+  const left = fs.readFileSync(path.join(home, 'events.jsonl'), 'utf8').split('\n').filter(Boolean);
+  assert.equal(left.length, 1);
+  fs.rmSync(home, { recursive: true, force: true });
+});

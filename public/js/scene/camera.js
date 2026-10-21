@@ -40,29 +40,72 @@ export function createCamera(canvas, { onClick, onHover } = {}) {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
+  // 터치: 손가락(포인터)들을 추적해 두 개면 핀치 줌 + 두 손가락 이동
+  const touches = new Map();   // pointerId → {x, y}
+  let pinch = null;            // { d0, zoom0, cx, cy, wx, wy }  cx,cy: 화면 중심, wx,wy: 그 아래 월드 좌표
+  function startPinch() {
+    const [a, b] = [...touches.values()];
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const w = screenToWorld(cx, cy);
+    pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom0: cam.zoom, cx, cy, wx: w.x, wy: w.y };
+    drag = null;
+  }
+  function movePinch() {
+    const [a, b] = [...touches.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    cam.zoom = Math.max(0.3, Math.min(3, pinch.zoom0 * (d / pinch.d0)));
+    // 처음 잡은 월드 점이 지금 두 손가락 중심 아래에 오도록 카메라 이동
+    cam.x = pinch.wx - (cx - cam.w / 2) / cam.zoom;
+    cam.y = pinch.wy - (cy - cam.h / 2) / cam.zoom;
+  }
+
   canvas.addEventListener('pointerdown', (e) => {
     const p = pointer(e);
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, p);
+      if (touches.size === 2) { startPinch(); canvas.classList.add('dragging'); return; }
+      if (touches.size > 2) return;
+    }
     drag = { sx: p.x, sy: p.y, cx: cam.x, cy: cam.y, moved: false, id: e.pointerId };
-    canvas.setPointerCapture(e.pointerId);
     canvas.classList.add('dragging');
   });
   canvas.addEventListener('pointermove', (e) => {
-    if (!drag) { if (onHover) { const p = pointer(e); onHover(screenToWorld(p.x, p.y), p); } return; }
     const p = pointer(e);
+    if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
+      touches.set(e.pointerId, p);
+      if (pinch && touches.size >= 2) { movePinch(); return; }
+    }
+    if (!drag) { if (onHover && e.pointerType !== 'touch') onHover(screenToWorld(p.x, p.y), p); return; }
+    if (drag.id !== e.pointerId) return;
     const dx = p.x - drag.sx, dy = p.y - drag.sy;
     if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
     cam.x = drag.cx - dx / cam.zoom;
     cam.y = drag.cy - dy / cam.zoom;
   });
   const end = (e) => {
-    if (!drag) return;
+    if (e.pointerType === 'touch') {
+      touches.delete(e.pointerId);
+      if (pinch) {
+        if (touches.size < 2) {
+          pinch = null;
+          // 손가락 하나가 남으면 그 손가락으로 이동을 이어 간다 (클릭으로는 치지 않음)
+          const rest = [...touches.entries()][0];
+          if (rest) drag = { sx: rest[1].x, sy: rest[1].y, cx: cam.x, cy: cam.y, moved: true, id: rest[0] };
+          else canvas.classList.remove('dragging');
+        }
+        return;
+      }
+    }
+    if (!drag || drag.id !== e.pointerId) return;
     canvas.classList.remove('dragging');
     const p = pointer(e);
     if (!drag.moved && onClick) onClick(screenToWorld(p.x, p.y), p);
     drag = null;
   };
   canvas.addEventListener('pointerup', end);
-  canvas.addEventListener('pointercancel', () => { drag = null; canvas.classList.remove('dragging'); });
+  canvas.addEventListener('pointercancel', (e) => { touches.delete(e.pointerId); pinch = null; drag = null; canvas.classList.remove('dragging'); });
   canvas.addEventListener('pointerleave', () => { if (onHover) onHover(null, null); });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();

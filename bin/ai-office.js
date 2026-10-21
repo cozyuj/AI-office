@@ -9,6 +9,7 @@
 //   ai-office start [--port N] [--no-open]
 //   ai-office demo            가짜 세션 데모
 //   ai-office doctor          환경 점검
+//   ai-office compact         저널 즉시 압축
 
 const fs = require('fs');
 const path = require('path');
@@ -23,6 +24,7 @@ const HOME = process.env.AI_OFFICE_HOME || path.join(os.homedir(), '.ai-office')
 const APP = path.join(HOME, 'app');
 const PKG = JSON.parse(fs.readFileSync(path.join(SRC, 'package.json'), 'utf8'));
 const FILES = ['package.json', 'server.js', 'README.md', 'lib', 'hooks', 'public', 'scripts'];
+const JOURNAL_WARN_MB = 5;
 
 const args = process.argv.slice(2);
 const VALUE_FLAGS = new Set(['--port']);
@@ -137,7 +139,11 @@ async function doctor() {
   } catch { log(`settings  ${settings} ✗ 읽을 수 없음`); }
   log(`app       ${installedVersion() ? `${installedVersion()} @ ${APP} ✓` : '미설치 (ai-office install)'}`);
   log(`port      ${PORT} ${(await portInUse(PORT)) ? '사용 중 (서버 떠 있음)' : '비어 있음'}`);
-  try { const j = path.join(HOME, 'events.jsonl'); const st = fs.statSync(j); log(`journal   ${j} ${(st.size / 1024).toFixed(0)}KB`); } catch { log('journal   없음'); }
+  try {
+    const j = path.join(HOME, 'events.jsonl'); const st = fs.statSync(j);
+    const mb = st.size / 1024 / 1024;
+    log(`journal   ${j} ${mb >= 1 ? `${mb.toFixed(1)}MB` : `${(st.size / 1024).toFixed(0)}KB`}${mb >= JOURNAL_WARN_MB ? ` ⚠ ${JOURNAL_WARN_MB}MB 이상 → ai-office compact (서버가 매시간 자동 압축하지만 바로 줄이려면)` : ' ✓'}`);
+  } catch { log('journal   없음'); }
   const hp = readHookPort(settings);
   if (hp === null) log('hook port 훅 없음 ✗ → ai-office install-hooks');
   else log(`hook port ${hp} ${hp === PORT ? '✓' : `✗ 서버 포트 ${PORT} 와 다름 → ai-office install-hooks --port ${PORT}`}`);
@@ -152,7 +158,16 @@ async function doctor() {
     case 'start': await start(runningFromSource() || !installedVersion() ? SRC : APP); break;
     case 'demo': execFileSync(process.execPath, [path.join(runningFromSource() || !installedVersion() ? SRC : APP, 'scripts', 'demo.js')], { stdio: 'inherit', env: { ...process.env, AI_OFFICE_PORT: String(PORT) } }); break;
     case 'doctor': await doctor(); break;
+    case 'compact': { // 저널을 지금 압축 (최근 2시간만 남김). 서버도 매시간 스스로 한다
+      const { createJournal } = require('../lib/journal');
+      const j = createJournal({ dir: HOME });
+      const before = j.stats();
+      const kept = j.compactNow();
+      const after = j.stats();
+      log(`journal   ${j.file}\n          ${before.lines}건 ${(before.bytes / 1024).toFixed(0)}KB → ${after.lines}건 ${(after.bytes / 1024).toFixed(0)}KB (최근 2시간 ${kept}건 유지)`);
+      break;
+    }
     default:
-      log(`ai-office ${PKG.version}\n\n  ai-office                 설치 + 훅 등록 + 서버 기동 + 브라우저\n  ai-office install [--force]\n  ai-office install-hooks | uninstall-hooks\n  ai-office start [--port N] [--no-open]\n  ai-office demo\n  ai-office doctor`);
+      log(`ai-office ${PKG.version}\n\n  ai-office                 설치 + 훅 등록 + 서버 기동 + 브라우저\n  ai-office install [--force]\n  ai-office install-hooks | uninstall-hooks\n  ai-office start [--port N] [--no-open]\n  ai-office demo\n  ai-office doctor\n  ai-office compact         저널(events.jsonl) 즉시 압축`);
   }
 })().catch((e) => { console.error(e.message); process.exit(1); });
