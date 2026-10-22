@@ -151,6 +151,40 @@ async fn fetch_update(app: AppHandle, pending: PendingUpdate) -> Result<Option<S
     Ok(Some(version))
 }
 
+// ---------- 메뉴바 아이콘 (APP-12) ----------
+// 알릴 게 없으면 단색 템플릿(macOS 가 메뉴바 색에 맞춰 칠함). 알릴 게 있으면(답 기다리는 세션 · 받아 둔 업데이트)
+// 카카오톡처럼 오른쪽 위에 빨간 점. 템플릿은 한 색으로만 칠해지므로 점이 있을 땐 다크/라이트에 맞춰 건물 색을 직접 칠한다.
+const TRAY_PNG: &[u8] = include_bytes!("../icons/tray@2x.png");
+
+fn tray_image(dot: bool, dark: bool) -> (tauri::image::Image<'static>, bool) {
+    let base = tauri::image::Image::from_bytes(TRAY_PNG).expect("tray icon");
+    let (w, h) = (base.width(), base.height());
+    let mut px = base.rgba().to_vec();
+    // Windows 트레이는 템플릿이 없고 작업 표시줄이 어두울 수도 밝을 수도 있어 브랜드 주황으로 칠한다
+    let glyph: [u8; 3] = if cfg!(target_os = "macos") { if dark { [255, 255, 255] } else { [0, 0, 0] } } else { [0xe8, 0x68, 0x3a] };
+    if !dot && cfg!(target_os = "macos") { return (base.to_owned(), true); }
+    for p in px.chunks_exact_mut(4) { p[0] = glyph[0]; p[1] = glyph[1]; p[2] = glyph[2]; }
+    if dot {
+        // 오른쪽 위 빨간 점 (지름 ≈ 아이콘의 34%) + 둘레를 투명하게 비워 건물과 떨어져 보이게
+        let r = w as f32 * 0.17;
+        let (cx, cy) = (w as f32 - r - 0.5, r + 0.5);
+        for y in 0..h {
+            for x in 0..w {
+                let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
+                let i = ((y * w + x) * 4) as usize;
+                if d < r + 2.5 { px[i + 3] = 0; }
+                let a = (r + 0.5 - d).clamp(0.0, 1.0);
+                if a > 0.0 { px[i] = 0xff; px[i + 1] = 0x3b; px[i + 2] = 0x30; px[i + 3] = (a * 255.0) as u8; }
+            }
+        }
+    }
+    (tauri::image::Image::new_owned(px, w, h), false)
+}
+
+fn system_dark(app: &AppHandle) -> bool {
+    app.get_webview_window("main").and_then(|w| w.theme().ok()).map(|t| t == tauri::Theme::Dark).unwrap_or(true)
+}
+
 fn show_main(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
@@ -254,20 +288,32 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // 3) 대기 세션 수를 메뉴바 제목으로 (5초마다)
+            // 3) 알림 표시 (5초마다): 답 기다리는 세션이나 받아 둔 업데이트가 있으면 아이콘에 빨간 점, 자세한 건 툴팁
             let handle = app.handle().clone();
             let pending_for_title = pending.clone();
-            std::thread::spawn(move || loop {
-                let n = waiting_count().unwrap_or(0);
-                if let Some(t) = handle.tray_by_id("main") {
-                    let mut title = String::new();
-                    if pending_for_title.lock().map(|p| p.is_some()).unwrap_or(false) { title.push_str("⬆ "); }
-                    if n > 0 { title.push_str(&format!("🙋 {n}")); }
-                    let title = title.trim().to_string();
-                    let _ = t.set_title(if title.is_empty() { None::<String> } else { Some(title) });
+            std::thread::spawn(move || {
+                let mut last: Option<(bool, bool)> = None;
+                let mut last_tip = String::new();
+                loop {
+                    let n = waiting_count().unwrap_or(0);
+                    let update = pending_for_title.lock().ok().and_then(|p| p.as_ref().map(|p| p.update.version.clone()));
+                    let dot = n > 0 || update.is_some();
+                    let dark = system_dark(&handle);
+                    if let Some(t) = handle.tray_by_id("main") {
+                        if last != Some((dot, dark)) {
+                            let (img, template) = tray_image(dot, dark);
+                            let _ = t.set_icon_with_as_template(Some(img), template);
+                            let _ = t.set_title(None::<String>);
+                            last = Some((dot, dark));
+                        }
+                        let mut tip = format!("AI Office v{}", env!("CARGO_PKG_VERSION"));
+                        if n > 0 { tip.push_str(&format!(" · 답 기다림 {n}")); }
+                        if let Some(v) = &update { tip.push_str(&format!(" · v{v} 업데이트 준비됨")); }
+                        if tip != last_tip { let _ = t.set_tooltip(Some(&tip)); last_tip = tip; }
+                    }
+                    let _ = &tray;
+                    std::thread::sleep(Duration::from_secs(5));
                 }
-                let _ = &tray;
-                std::thread::sleep(Duration::from_secs(5));
             });
             Ok(())
         })
