@@ -356,3 +356,65 @@ test('데모 층은 이름에 (데모) 가 붙고 removeDemo 로 한 번에 제�
   assert.equal(st.removeDemo(), 1);
   assert.deepEqual(st.snapshot().floors.map((f) => f.name), ['nccx']);
 });
+
+// ---------- 세션 제목 (BE-17): 분리된 세션은 부모 제목으로 시작했다가 이름이 바뀐다 ----------
+test('제목: 훅의 session_title 이 바뀌면 따라가고, 바뀐 것을 로그로 남긴다', () => {
+  const st = createState({ me: 't', statFile: () => null, titleOf: () => null });
+  const ev = (extra) => st.apply({ session_id: 'fork', cwd: CWD, transcript_path: '/x', ...extra }, 1000);
+  ev({ hook_event_name: 'SessionStart', source: 'resume', session_title: '카카오톡 봇 뉴스 요약' }); // 부모 제목을 물려받아 시작
+  assert.equal(st.get('fork').title, '카카오톡 봇 뉴스 요약');
+  ev({ hook_event_name: 'UserPromptSubmit', prompt: '레포 올려줘', session_title: 'GitHub 비공개 레포 올리기' });
+  assert.equal(st.get('fork').title, 'GitHub 비공개 레포 올리기');
+  assert.ok(st.snapshot().log.some((e) => e.text === '제목: GitHub 비공개 레포 올리기'), '제목 변경 로그');
+  // 같은 훅 제목이 다시 와도 그대로, 프롬프트로 제목을 덮지 않는다
+  ev({ hook_event_name: 'UserPromptSubmit', prompt: '다른 얘기', session_title: 'GitHub 비공개 레포 올리기' });
+  assert.equal(st.get('fork').title, 'GitHub 비공개 레포 올리기');
+});
+
+test('제목: 훅 없이 이름만 바뀌면 sweep 이 transcript 의 custom-title 로 1분 안에 반영한다', () => {
+  let mtime = 1, title = '카카오톡 봇 뉴스 요약', reads = 0;
+  const st = createState({ me: 't', statFile: () => ({ mtimeMs: mtime }), titleOf: () => { reads++; return title; } });
+  const updates = []; st.on('update', (u) => updates.push(u));
+  st.apply({ session_id: 'fork', cwd: CWD, transcript_path: '/x', hook_event_name: 'SessionStart', source: 'resume', session_title: '카카오톡 봇 뉴스 요약' }, 1000);
+  st.sweep(2000);
+  assert.equal(st.get('fork').title, '카카오톡 봇 뉴스 요약');
+  // 파일이 안 바뀌었으면 1분이 지나도 다시 읽지 않는다
+  const before = reads; st.sweep(2000 + STAT_INTERVAL_MS); assert.equal(reads, before);
+  // 이름이 바뀌어 transcript 가 갱신되면 다음 확인 때 반영
+  mtime = 2; title = 'GitHub 비공개 레포 올리기';
+  st.sweep(2000 + STAT_INTERVAL_MS / 2); // 아직 1분 전
+  assert.equal(st.get('fork').title, '카카오톡 봇 뉴스 요약');
+  st.sweep(2000 + 2 * STAT_INTERVAL_MS);
+  assert.equal(st.get('fork').title, 'GitHub 비공개 레포 올리기');
+  assert.ok(updates.some((u) => u.session.title === 'GitHub 비공개 레포 올리기' && u.log && u.log.icon === '🏷️'));
+});
+
+test('제목: 훅과 transcript 중 나중에 바뀐 쪽을 따르고, 오래된 값이 다시 와도 되돌아가지 않는다', () => {
+  let mtime = 1, title = 'A';
+  const st = createState({ me: 't', statFile: () => ({ mtimeMs: mtime }), titleOf: () => title });
+  const ev = (extra, t) => st.apply({ session_id: 's', cwd: CWD, transcript_path: '/x', ...extra }, t);
+  ev({ hook_event_name: 'SessionStart', source: 'startup', session_title: 'A' }, 1000);
+  mtime = 2; title = 'B'; st.sweep(1000 + STAT_INTERVAL_MS);
+  assert.equal(st.get('s').title, 'B');
+  ev({ hook_event_name: 'UserPromptSubmit', prompt: 'x', session_title: 'A' }, 1000 + STAT_INTERVAL_MS + 1); // 훅이 같은(옛) 값을 보내도
+  assert.equal(st.get('s').title, 'B');
+  ev({ hook_event_name: 'UserPromptSubmit', prompt: 'y', session_title: 'C' }, 1000 + STAT_INTERVAL_MS + 2); // 훅 값이 새로 바뀌면
+  assert.equal(st.get('s').title, 'C');
+});
+
+test('defaultTitle: transcript 끝의 마지막 custom-title 을 읽고, 없거나 깨지면 null', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { defaultTitle } = require('../lib/state');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-title-'));
+  const f = path.join(dir, 't.jsonl');
+  const line = (o) => JSON.stringify(o) + '\n';
+  fs.writeFileSync(f, line({ type: 'custom-title', customTitle: '카카오톡 봇 뉴스 요약' }) + line({ type: 'user', message: 'x' }).repeat(3) + line({ type: 'custom-title', customTitle: 'GitHub 비공개 레포 올리기' }) + line({ type: 'assistant' }));
+  assert.equal(defaultTitle(f), 'GitHub 비공개 레포 올리기');
+  fs.writeFileSync(f, line({ type: 'user' }) + '{"type":"custom-title","customTitle":"깨진');
+  assert.equal(defaultTitle(f), null);
+  assert.equal(defaultTitle(path.join(dir, 'none.jsonl')), null);
+  // 64KB 보다 긴 파일도 끝부분만 읽어 찾는다
+  fs.writeFileSync(f, line({ type: 'custom-title', customTitle: '옛 제목' }) + 'x'.repeat(200 * 1024) + '\n' + line({ type: 'custom-title', customTitle: '새 제목' }));
+  assert.equal(defaultTitle(f), '새 제목');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
