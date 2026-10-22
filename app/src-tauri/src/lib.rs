@@ -181,6 +181,31 @@ fn tray_image(dot: bool, dark: bool) -> (tauri::image::Image<'static>, bool) {
     (tauri::image::Image::new_owned(px, w, h), false)
 }
 
+/// Dock(작업 표시줄) 아이콘의 빨간 점 (APP-14): 메뉴바와 같은 조건, 숫자 없음.
+/// macOS 는 Dock 배지(공백 한 칸이면 글자 없는 빨간 점), Windows 는 작업 표시줄 오버레이 아이콘
+fn set_app_badge(app: &AppHandle, dot: bool) {
+    let Some(w) = app.get_webview_window("main") else { return };
+    #[cfg(target_os = "macos")]
+    { let _ = w.set_badge_label(if dot { Some(" ".to_string()) } else { None }); }
+    #[cfg(target_os = "windows")]
+    {
+        let img = if dot {
+            let n: u32 = 32; let r = 13.0_f32; let c = n as f32 / 2.0;
+            let mut px = vec![0u8; (n * n * 4) as usize];
+            for y in 0..n { for x in 0..n {
+                let d = ((x as f32 + 0.5 - c).powi(2) + (y as f32 + 0.5 - c).powi(2)).sqrt();
+                let a = (r + 0.5 - d).clamp(0.0, 1.0);
+                let i = ((y * n + x) * 4) as usize;
+                if a > 0.0 { px[i] = 0xff; px[i + 1] = 0x3b; px[i + 2] = 0x30; px[i + 3] = (a * 255.0) as u8; }
+            } }
+            Some(tauri::image::Image::new_owned(px, n, n))
+        } else { None };
+        let _ = w.set_overlay_icon(img);
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    { let _ = (w, dot); }
+}
+
 fn system_dark(app: &AppHandle) -> bool {
     app.get_webview_window("main").and_then(|w| w.theme().ok()).map(|t| t == tauri::Theme::Dark).unwrap_or(true)
 }
@@ -301,6 +326,7 @@ pub fn run() {
                             let (img, template) = tray_image(dot, dark);
                             let _ = t.set_icon_with_as_template(Some(img), template);
                             let _ = t.set_title(None::<String>);
+                            if last.map(|(d, _)| d) != Some(dot) { set_app_badge(&handle, dot); } // Dock 도 메뉴바와 같이
                             last = Some((dot, dark));
                         }
                         let mut tip = format!("AI Office v{}", env!("CARGO_PKG_VERSION"));
