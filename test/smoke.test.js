@@ -246,3 +246,28 @@ test('store: 대기 전이 이벤트, 층 상태, 안정 정렬, 선택 복원�
   assert.equal(typeof store.nameOf(store.selectedSession(), null), 'string');
   assert.ok(store.logOfFloor(floorA.id).length > 0);
 });
+
+test('층별 안내 모두 펼치기 ↔ 모두 접기 (FE-47): 선택 층만 → 전부 → 없음, 접힌 상태에서 층을 고르면 그 층이 열린다', async () => {
+  const { store } = await import('../public/js/store.js');
+  const P = await import('../public/js/panels.js');
+  const snap = buildSnapshot();
+  store.applySnapshot(snap);
+  store.setFloorFold('auto');
+  const a = snap.floors.find((f) => f.name.includes('proj-a')), b = snap.floors.find((f) => f.name.includes('proj-b'));
+  store.selectFloor(a.id);
+  const lists = () => { P.renderFloors(); return (document.getElementById('floors').innerHTML.match(/class="floor-sessions"/g) || []).length; };
+  assert.equal(lists(), 1, '기본: 선택한 층만');
+  assert.equal(document.getElementById('floors-fold').textContent, '모두 펼치기');
+  store.toggleAllFloors();
+  assert.equal(lists(), 2, '모두 펼치기');
+  assert.equal(document.getElementById('floors-fold').textContent, '모두 접기');
+  assert.match(document.getElementById('floors').innerHTML, /data-session="sc"/, '다른 층 세션도 목록에 보인다');
+  store.toggleAllFloors();
+  assert.equal(lists(), 0, '모두 접기');
+  store.selectFloor(b.id);
+  assert.equal(store.floorFold, 'auto');
+  assert.equal(lists(), 1, '접힌 상태에서 층을 고르면 그 층만 열림');
+  store.setFloorFold('all'); store.selectFloor(a.id);
+  assert.equal(lists(), 2, '모두 펼친 상태는 층을 골라도 유지');
+  store.setFloorFold('auto');
+});

@@ -87,7 +87,8 @@ export function renderFloors() {
         ${selected ? '<button class="floor-style" title="이 층 인테리어 스타일 고르기">🎨</button>' : ''}
         <span class="dot ${status}"></span>
       </div>`;
-    if (!selected) return `<div class="floor">${head}</div>`;
+    const open = store.isFloorOpen(f.id);
+    if (!open) return `<div class="floor ${selected ? 'selected' : ''}">${head}</div>`;
     const list = sessions.map((s) => `
       <div class="session ${s.id === store.selectedSessionId ? 'selected' : ''} ${s.title ? '' : 'untitled'} ${s.status === 'away' || s.status === 'ended' ? 'away' : ''}" data-session="${esc(s.id)}" data-tip="${esc(s.title || s.id)}">
         <span class="dot ${s.status}"></span>
@@ -103,12 +104,14 @@ export function renderFloors() {
           </span>` : ''}
         </span>
       </div>`).join('');
-    return `<div class="floor selected">${head}
+    return `<div class="floor open ${selected ? 'selected' : ''}">${head}
       <div class="floor-sessions">
-        <label class="follow"><input type="checkbox" id="auto-follow" ${store.autoFollow ? 'checked' : ''}> 최근 세션 자동으로 따라가기</label>
-        ${list}
+        ${selected ? `<label class="follow"><input type="checkbox" id="auto-follow" ${store.autoFollow ? 'checked' : ''}> 최근 세션 자동으로 따라가기</label>` : ''}
+        ${list || '<div class="muted" style="padding:4px 8px">세션 없음</div>'}
       </div></div>`;
   }).join('');
+  const fold = $('floors-fold');
+  if (fold) { const all = store.allFloorsOpen(); fold.textContent = all ? '모두 접기' : '모두 펼치기'; fold.title = all ? '모든 층의 세션 목록 닫기' : '모든 층의 세션 목록 열기'; fold.disabled = floors.length < 1; }
   $('left-foot').textContent = `프로젝트 ${floors.length}개 · 세션 ${store.sessions.size}개${store.version ? ` · v${store.version}` : ''}`;
 }
 
@@ -181,6 +184,7 @@ export function bindPanelEvents() {
     const floor = e.target.closest('[data-floor]');
     if (floor) store.selectFloor(floor.dataset.floor);
   });
+  $('floors-fold').addEventListener('click', () => store.toggleAllFloors());
   $('log-search').addEventListener('input', (e) => store.setLogFilter({ q: e.target.value }));
   $('log-mine').addEventListener('click', () => store.setLogFilter({ mine: !store.logFilter.mine }));
   // 세션 캐릭터 이름: 입력(빈 값이면 자동 별명으로) · 🎲 다른 별명
