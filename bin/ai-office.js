@@ -17,6 +17,7 @@ const os = require('os');
 const net = require('net');
 const { spawn, execFileSync } = require('child_process');
 const { readHookPort } = require('../lib/hookport');
+const { isVersionedNodePath } = require('../lib/nodepath');
 const crypto = require('crypto');
 
 const SRC = path.join(__dirname, '..');
@@ -65,6 +66,11 @@ function fingerprint(dir) {
 const runningFromSource = () => path.resolve(SRC) !== path.resolve(APP) && fs.existsSync(path.join(SRC, '.git'));
 function install({ force = false } = {}) {
   if (path.resolve(SRC) === path.resolve(APP)) return APP; // 이미 설치 경로에서 실행 중
+  // 데스크톱 앱이 관리하는 설치본(.app-version 스탬프)은 덮어쓰지 않는다. 덮으면 다음 앱 실행 때 앱 버전으로 되돌아가 서로 덮어쓴다
+  if (!force && fs.existsSync(path.join(APP, '.app-version'))) {
+    log(`AI Office 앱이 ${APP} 를 관리하고 있어 그대로 둡니다 (앱 ${fs.readFileSync(path.join(APP, '.app-version'), 'utf8').trim()}, 덮어쓰려면 --force)`);
+    return APP;
+  }
   const have = installedVersion();
   const fp = fingerprint(SRC);
   let installedFp = null;
@@ -125,7 +131,7 @@ async function doctor() {
   log(`node      ${process.version} ${major >= 18 ? '✓' : '✗ 18 이상 필요'}  (${process.execPath})`);
   log(`platform  ${process.platform} ${os.release()}`);
   const settings = process.env.CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
-  let hooks = 0, stale = 0;
+  let hooks = 0, stale = 0, versioned = 0;
   try {
     const h = JSON.parse(fs.readFileSync(settings, 'utf8')).hooks || {};
     for (const ev of Object.values(h)) for (const g of ev) for (const x of g.hooks || []) {
@@ -135,9 +141,11 @@ async function doctor() {
         if (m && !fs.existsSync(m[1])) stale++;
         const n = /^"([^"]+)"/.exec(x.command); // 앞의 node 경로(앱이 등록한 내장 node 등)도 있어야 한다
         if (n && n[1] !== 'node' && !fs.existsSync(n[1])) stale++;
+        if (n && isVersionedNodePath(n[1])) versioned++;
       }
     }
     log(`settings  ${settings} ✓  훅 ${hooks}개 등록${stale ? `, ${stale}개는 node 또는 emit.js 파일 없음 → ai-office install-hooks` : ''}`);
+    if (versioned) log(`          ⚠ 훅 ${versioned}개가 Node 버전 폴더 경로라 brew upgrade 뒤 깨질 수 있음 → ai-office install-hooks`);
   } catch { log(`settings  ${settings} ✗ 읽을 수 없음`); }
   log(`app       ${installedVersion() ? `${installedVersion()} @ ${APP} ✓` : '미설치 (ai-office install)'}`);
   log(`port      ${PORT} ${(await portInUse(PORT)) ? '사용 중 (서버 떠 있음)' : '비어 있음'}`);
