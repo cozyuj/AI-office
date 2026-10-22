@@ -1,0 +1,35 @@
+# 앱(Rust) 코드가 바뀐 PR 마다 맥·Windows 에서 컴파일 검사 (APP-14). 릴리스 태그 전에 Windows 전용 코드 오류를 잡는다.
+name: app-check
+on:
+  pull_request:
+    paths: ['app/**', 'scripts/fetch-node.js', '.github/workflows/app-check.yml']
+  push:
+    branches: [main]
+    paths: ['app/**']
+jobs:
+  cargo-check:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            triple: aarch64-apple-darwin
+          - os: windows-latest
+            triple: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
+      - name: Node 사이드카 (tauri-build 가 externalBin 존재를 확인)
+        run: node scripts/fetch-node.js --target ${{ matrix.triple }}
+      - name: cargo check
+        working-directory: app/src-tauri
+        run: cargo check --locked --target ${{ matrix.triple }}
