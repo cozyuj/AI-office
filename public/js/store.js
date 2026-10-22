@@ -39,6 +39,7 @@ class Store {
     this.booted = false;           // 첫 스냅샷에서만 마지막 선택을 복원
     this.followCamera = false;   // 선택 세션 캐릭터를 카메라가 따라감
     this.bubbleMode = 'all';     // 'all' | 'selected'
+    this.floorFold = (() => { const v = ls.get('aiOffice.floorFold'); return v === 'all' || v === 'none' ? v : 'auto'; })(); // 층별 안내: auto(선택한 층만) · all · none
     this.sound = (() => { try { return localStorage.getItem('aiOffice.sound') === 'on'; } catch { return false; } })(); // 대기 알림 소리
     this.soundScope = ls.get('aiOffice.soundScope') === 'all' ? 'all' : 'waiting'; // 'waiting' 답 기다림만 | 'all' 실패·종료도
     this.ambient = (() => { try { return localStorage.getItem('aiOffice.ambient') !== 'off'; } catch { return true; } })(); // 쉬는 캐릭터 자율 행동
@@ -142,7 +143,15 @@ class Store {
     }
   }
 
+  /** 층 목록에서 이 층의 세션 목록을 펼칠지 (FE-47) */
+  isFloorOpen(floorId) { return this.floorFold === 'all' || (this.floorFold === 'auto' && floorId === this.selectedFloorId); }
+  allFloorsOpen() { const fs = [...this.floors.keys()]; return fs.length > 0 && fs.every((id) => this.isFloorOpen(id)); }
+  setFloorFold(v) { this.floorFold = v === 'all' || v === 'none' ? v : 'auto'; ls.set('aiOffice.floorFold', this.floorFold === 'auto' ? null : this.floorFold); this.emit('option'); }
+  /** 모두 펼치기 ↔ 모두 접기 */
+  toggleAllFloors() { this.setFloorFold(this.allFloorsOpen() ? 'none' : 'all'); }
+
   selectFloor(id) {
+    if (this.floorFold === 'none') this.setFloorFold('auto'); // 모두 접힌 상태에서 층을 고르면 지금처럼 그 층이 열린다
     this.setAutoFollowFlag(false);
     this.selectedFloorId = id;
     this.selectedSessionId = null;

@@ -73,6 +73,7 @@ const DICT = {
   '지금 보는 층의 인테리어 프리셋 (층별 안내의 🎨 와 같음) — 색과 사무실 구조가 바뀝니다': 'Interior preset of the floor you are viewing (same as 🎨 in Floors) — changes colors and the office layout',
   '층을 건물처럼 쌓아 한눈에 (O)': 'Stack the floors like a building (O)', '키보드 단축키 표': 'Keyboard shortcut table', '터미널에서 이 세션을 이어가는 명령을 복사': 'Copy the command that resumes this session in a terminal', '이 층 인테리어 스타일 고르기': 'Pick this floor\'s interior style',
   '이 브라우저는 알림을 지원하지 않습니다': 'This browser does not support notifications', '답을 기다리고 있어요': 'waiting for your answer',
+  '모두 펼치기': 'Expand all', '모두 접기': 'Collapse all', '모든 층의 세션 목록 열기': 'Open the session list of every floor', '모든 층의 세션 목록 닫기': 'Close the session list of every floor', '세션 없음': 'No sessions',
   '한국어 / English': '한국어 / English', '화면 언어': 'UI language',
   '드래그로 이동': 'Drag to pan', '휠로 확대': 'wheel to zoom', '캐릭터를 클릭하면 세션 선택': 'click a character to select its session',
   '숫자 층 번호로 이동 (12F 는 1,2 연타)': 'Digits go to a floor number (12F: press 1, 2)', '←/→ 이전·다음 층': '←/→ previous · next floor', 'F 따라가기': 'F follow', 'A 자동 따라가기': 'A auto-follow', 'D 데모': 'D demo', 'O 전체 보기': 'O building view', 'B 말풍선': 'B bubbles', 'S 소리': 'S sound', 'T 테마': 'T theme', '/ 로그 검색': '/ log search', 'Esc 닫기': 'Esc close', '? 이 도움말': '? this help',
