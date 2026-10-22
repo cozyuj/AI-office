@@ -94,7 +94,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <dt>서버</dt><dd>Node.js 18+ · <code>http</code> 표준 모듈만 · 상태 머신 + JSONL 저널 · SSE 푸시</dd>
   <dt>프런트</dt><dd>바닐라 ES 모듈 · Canvas 2D 아이소메트릭 렌더러(빌드 없음, 번들러 없음) · 폰트 D2Coding + NanumSquare</dd>
   <dt>데스크톱 앱</dt><dd>Tauri 2 (Rust) 메뉴바·트레이 앱 · macOS(Apple Silicon)·Windows(x64) · Node 22.12 사이드카 번들 · tauri-plugin-updater 자동 업데이트(서명 검증)</dd>
-  <dt>입력</dt><dd>Claude Code 훅 12종 (<code>~/.claude/settings.json</code> 에 등록, <code>hooks/emit.js</code> 가 POST)</dd>
+  <dt>입력</dt><dd>Claude Code 훅 11종 등록 (<code>~/.claude/settings.json</code>, <code>hooks/emit.js</code> 가 POST). 상태 머신은 TaskCompleted 까지 12종을 처리</dd>
   <dt>배포</dt><dd>npm <code>claude-ai-office</code> · Homebrew tap <code>cozyuj/tap</code>(cask <code>ai-office</code>, formula <code>claude-ai-office</code>) · GitHub Release(DMG·NSIS·<code>latest.json</code>, 고정 이름 링크)</dd>
   <dt>CI</dt><dd>GitHub Actions: push·PR 마다 Ubuntu·Windows·macOS 테스트, 태그 <code>v*</code> 마다 맥·Windows 앱 빌드·서명·릴리스 + Windows 설치 스모크</dd>
   <dt>화면 언어</dt><dd><code>public/js/i18n.js</code>: 한국어 원문 + 영어 사전·패턴 규칙, DOM 은 MutationObserver, 캔버스는 <code>tr()</code></dd>
@@ -125,7 +125,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <rect class="box" x="32" y="192" width="196" height="54"/><text class="t" x="44" y="214">claude 세션 C</text><text class="s" x="44" y="234">~/proj-b</text>
   <rect class="box" x="32" y="262" width="196" height="54"/><text class="t" x="44" y="284">훅: hooks/emit.js</text><text class="s" x="44" y="304">POST /hook · 1초 타임아웃 · exit 0</text>
   <!-- 설정 파일 -->
-  <rect class="box" x="32" y="350" width="196" height="46"/><text class="t" x="44" y="370">~/.claude/settings.json</text><text class="s" x="44" y="388">훅 12종 등록 (install-hooks.js)</text>
+  <rect class="box" x="32" y="350" width="196" height="46"/><text class="t" x="44" y="370">~/.claude/settings.json</text><text class="s" x="44" y="388">훅 11종 등록 (install-hooks.js)</text>
   <!-- 서버 -->
   <rect class="grp" x="300" y="30" width="330" height="366"/><text class="gt" x="312" y="22">LOCAL SERVER · node server.js · :4777</text>
   <rect class="box acc" x="318" y="52" width="294" height="60"/><text class="t" x="330" y="74">lib/state.js 상태 머신</text><text class="s" x="330" y="94">floors → sessions → agents · sweep() 1초</text>
@@ -172,7 +172,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
 <div class="tbl"><table>
 <tr><th>파일</th><th>역할</th><th>핵심 포인트</th></tr>
 <tr><td><code>server.js</code></td><td>HTTP·SSE·정적 파일·데모 자식·저널 연결</td><td>의존성 없음. <code>/hook</code> 은 먼저 204. <code>AI_OFFICE_WATCH_PARENT</code> 가 있으면 부모 pid 를 2초마다 확인해 사라지면 종료(앱·CLI 강제 종료 대비)</td></tr>
-<tr><td><code>lib/state.js</code></td><td>상태 머신</td><td>floors → sessions → agents. 훅 12종 전이, 서브에이전트 <code>agent_id</code> 매칭, <code>pendingSubagents</code> 큐로 Agent 도구 description 과 SubagentStart 짝짓기, sweep(): 30분 자리 비움·transcript mtime 으로 퇴근 감지·2시간 TTL, 층 이름 충돌 시 상위 경로로 구분</td></tr>
+<tr><td><code>lib/state.js</code></td><td>상태 머신</td><td>floors → sessions → agents. 훅 12종 처리(11종 등록 + TaskCompleted), 서브에이전트 <code>agent_id</code> 매칭, <code>pendingSubagents</code> 큐로 Agent 도구 description 과 SubagentStart 짝짓기, sweep(): 30분 자리 비움·transcript mtime 으로 퇴근 감지·2시간 TTL, 층 이름 충돌 시 상위 경로로 구분</td></tr>
 <tr><td><code>lib/normalize.js</code></td><td>도구 → 방·활동·말풍선·아이콘</td><td>Read/Grep/Glob → 자료실, Edit/Write → 개발실, Bash → 서버실, Web*/MCP → 정보검색실, Agent/Todo/Plan → 회의실, AskUserQuestion → 내 자리. 시스템 프롬프트(<code>&lt;task-notification&gt;</code>)는 요청으로 치지 않음</td></tr>
 <tr><td><code>lib/project.js</code></td><td>cwd → 저장소 루트·이름·브랜치·worktree</td><td><code>.git</code> 파일(worktree)이면 <code>gitdir:</code> 을 따라가 본 저장소로</td></tr>
 <tr><td><code>lib/journal.js</code></td><td>JSONL 저널</td><td>slim 페이로드, 1초 flush, 2시간 창 replay, 1시간 compact, 20MB 상한</td></tr>
@@ -363,7 +363,7 @@ node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → 
 <h2>10. 테스트와 성능</h2>
 <div class="tbl"><table>
 <tr><th>테스트 파일</th><th>다루는 것</th></tr>
-<tr><td><code>state.test.js</code></td><td>훅 12종 전이, 서브에이전트 매칭, 휴식 방 배정, 자리 비움·퇴근 감지, TTL, 층 이름 충돌</td></tr>
+<tr><td><code>state.test.js</code></td><td>훅 12종 처리(11종 등록 + TaskCompleted), 서브에이전트 매칭, 휴식 방 배정, 자리 비움·퇴근 감지, TTL, 층 이름 충돌</td></tr>
 <tr><td><code>pathfind.test.js</code> · <code>layouts.test.js</code> · <code>spots.test.js</code></td><td>모든 레이아웃에서 슬롯·명소가 걷기 가능하고 그 방 안에 있음, 방은 문으로만 출입, 문 수</td></tr>
 <tr><td><code>depth.test.js</code></td><td>AABB 비교 규칙, 위상 정렬, 공유 스프라이트의 평행이동 불변</td></tr>
 <tr><td><code>journal.test.js</code> · <code>cli.test.js</code> · <code>hookport.test.js</code> · <code>bump.test.js</code> · <code>project.test.js</code></td><td>저널 slim/replay/compact, CLI 설치·compact, 훅 포트 파싱, 버전 올림, git 루트 탐지</td></tr>

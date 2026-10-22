@@ -418,3 +418,31 @@ test('defaultTitle: transcript 끝의 마지막 custom-title 을 읽고, 없거�
   assert.equal(defaultTitle(f), '새 제목');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+// ---------- 첫 요청 복원 (BE-19) ----------
+test('첫 요청: 재생으로 최근 프롬프트가 들어가도 transcript 의 첫 사용자 메시지로 한 번 복원한다', () => {
+  let reads = 0;
+  const st = createState({ me: 't', statFile: () => ({ mtimeMs: 5 }), titleOf: () => null, firstPromptOf: () => { reads++; return '이거 만들고 싶어'; } });
+  st.apply({ session_id: 'old', cwd: CWD, transcript_path: '/x', hook_event_name: 'UserPromptSubmit', prompt: '이 세션 리모트 컨트롤 킬거야' }, 1000);
+  assert.equal(st.get('old').firstPrompt, '이 세션 리모트 컨트롤 킬거야');
+  st.sweep(2000);
+  assert.equal(st.get('old').firstPrompt, '이거 만들고 싶어');
+  assert.equal(st.get('old').lastPrompt, '이 세션 리모트 컨트롤 킬거야', '최근 요청은 그대로');
+  st.sweep(2000 + 2 * STAT_INTERVAL_MS);
+  assert.equal(reads, 1, '세션당 한 번만 읽는다');
+});
+
+test('defaultFirstPrompt: isMeta·명령 메시지는 건너뛰고, 이미지로 잘린 첫 줄에서도 텍스트를 꺼낸다', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { defaultFirstPrompt } = require('../lib/state');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-first-'));
+  const f = path.join(dir, 't.jsonl');
+  const line = (o) => JSON.stringify(o) + '\n';
+  fs.writeFileSync(f, line({ type: 'queue-operation' }) + line({ type: 'user', isMeta: true, message: { content: 'meta' } }) + line({ type: 'user', message: { content: '<command-name>/model</command-name>' } }) + line({ type: 'user', message: { content: [{ type: 'tool_result', content: 'x' }] } }) + line({ type: 'user', message: { content: '진짜 첫 요청' } }));
+  assert.equal(defaultFirstPrompt(f), '진짜 첫 요청');
+  // 1MB 를 넘는 첫 줄(이미지): JSON 이 잘려도 앞의 text 를 꺼낸다
+  fs.writeFileSync(f, line({ type: 'user', message: { content: [{ type: 'text', text: '사진 보고 만들어 줘' }, { type: 'image', data: 'A'.repeat(1500 * 1024) }] } }));
+  assert.equal(defaultFirstPrompt(f), '사진 보고 만들어 줘');
+  assert.equal(defaultFirstPrompt(path.join(dir, 'none.jsonl')), null);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

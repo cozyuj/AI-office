@@ -4,8 +4,16 @@
 // 서버가 보내는 말풍선·로그도 한국어라 같은 규칙으로 번역한다.
 const KEY = 'aiOffice.lang';
 export const LANGS = [['ko', '한국어'], ['en', 'English']];
+/** 브라우저면 localStorage, Node(테스트)면 테스트가 직접 넣은 것만 쓴다 — Node 25+ 의 실험용 localStorage getter 는 접근만 해도 경고를 찍는다 */
+function storage() {
+  try {
+    if (typeof window !== 'undefined') return window.localStorage;
+    const d = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    return d && 'value' in d ? d.value : null;
+  } catch { return null; }
+}
 let lang = (() => {
-  try { const v = localStorage.getItem(KEY); if (v === 'ko' || v === 'en') return v; } catch {}
+  try { const v = storage()?.getItem(KEY); if (v === 'ko' || v === 'en') return v; } catch {}
   return (typeof navigator !== 'undefined' && /^ko/i.test(navigator.language || '')) ? 'ko' : 'en';
 })();
 export function getLang() { return lang; }
@@ -194,7 +202,7 @@ export function setLang(v) {
   if (v !== 'ko' && v !== 'en') return;
   if (v === lang) return;
   lang = v;
-  try { localStorage.setItem(KEY, v); } catch {}
+  try { storage()?.setItem(KEY, v); } catch {}
   cache.clear();
   if (typeof document !== 'undefined') { document.documentElement.lang = v; walk(document.body); }
   for (const fn of listeners) fn(v);
