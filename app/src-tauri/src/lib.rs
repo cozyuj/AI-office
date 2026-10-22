@@ -208,6 +208,22 @@ fn set_app_badge(app: &AppHandle, dot: bool) {
     { let _ = (w, dot); }
 }
 
+/// 메뉴바가 실제로 쓰는 모양이 어두운지 (APP-16). macOS 메뉴바 글자색은 시스템 다크/라이트가 아니라 배경화면에 따라 정해지므로
+/// 상태 아이템 버튼의 effectiveAppearance 이름(…VibrantDark 등)을 본다. 못 읽으면 None
+#[cfg(target_os = "macos")]
+fn menubar_dark(tray: &tauri::tray::TrayIcon) -> Option<bool> {
+    tray.with_inner_tray_icon(|t| {
+        let item = t.ns_status_item()?;
+        let mtm = objc2::MainThreadMarker::new()?;
+        let button = item.button(mtm)?;
+        use objc2_app_kit::NSAppearanceCustomization;
+        let name = button.effectiveAppearance().name();
+        Some(name.to_string().contains("Dark"))
+    }).ok().flatten()
+}
+#[cfg(not(target_os = "macos"))]
+fn menubar_dark(_tray: &tauri::tray::TrayIcon) -> Option<bool> { None }
+
 fn system_dark(app: &AppHandle) -> bool {
     app.get_webview_window("main").and_then(|w| w.theme().ok()).map(|t| t == tauri::Theme::Dark).unwrap_or(true)
 }
@@ -357,8 +373,8 @@ pub fn run() {
                     let n = waiting_count().unwrap_or(0);
                     let update = pending_for_title.lock().ok().and_then(|p| p.as_ref().map(|p| p.update.version.clone()));
                     let dot = n > 0 || update.is_some();
-                    let dark = system_dark(&handle);
                     if let Some(t) = handle.tray_by_id("main") {
+                        let dark = menubar_dark(&t).unwrap_or_else(|| system_dark(&handle));
                         if last != Some((dot, dark)) {
                             let (img, template) = tray_image(dot, dark);
                             let _ = t.set_icon_with_as_template(Some(img), template);
