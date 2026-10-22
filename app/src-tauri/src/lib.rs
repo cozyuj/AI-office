@@ -7,8 +7,7 @@ use std::time::Duration;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WindowEvent};
-use tauri_plugin_updater::UpdaterExt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use tauri_plugin_updater::{Update, UpdaterExt};
 
 const PORT: u16 = 4777;
 
@@ -136,14 +135,20 @@ fn waiting_count() -> Option<usize> {
     Some(v["sessions"].as_array()?.iter().filter(|s| s["status"] == "waiting").count())
 }
 
-/// 업데이트 확인: 있으면 내려받아 설치해 두고(다음 재시작 때 적용) 트레이에 알린다. 돌려주는 값: 새 버전 문자열
-async fn check_update(app: AppHandle, ready: Arc<AtomicBool>) -> Option<String> {
-    let updater = app.updater().ok()?;
-    let update = updater.check().await.ok()??;
+/// 받아 둔 업데이트 (APP-11). 백그라운드에선 내려받아 서명 검증까지만 하고, 설치는 사용자가 '업데이트 적용' 을 누를 때 한다.
+/// 실행 중인 앱 번들을 바로 바꾸면 서버가 내려가거나(맥), 묻지 않고 설치·재시작된다(Windows).
+struct Pending { update: Update, bytes: Vec<u8> }
+type PendingUpdate = Arc<Mutex<Option<Pending>>>;
+
+/// 업데이트 확인 → 있으면 내려받아 보관. Ok(Some(버전)) 받아 둠, Ok(None) 최신, Err 확인 실패
+async fn fetch_update(app: AppHandle, pending: PendingUpdate) -> Result<Option<String>, String> {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let Some(update) = updater.check().await.map_err(|e| e.to_string())? else { return Ok(None) };
     let version = update.version.clone();
-    update.download_and_install(|_, _| {}, || {}).await.ok()?;
-    ready.store(true, Ordering::Relaxed);
-    Some(version)
+    if pending.lock().unwrap().as_ref().map(|p| p.update.version == version).unwrap_or(false) { return Ok(Some(version)); } // 이미 받아 둠
+    let bytes = update.download(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
+    *pending.lock().unwrap() = Some(Pending { update, bytes });
+    Ok(Some(version))
 }
 
 fn show_main(app: &AppHandle) {
@@ -157,6 +162,7 @@ fn show_main(app: &AppHandle) {
 pub fn run() {
     let child: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
     let child_for_exit = child.clone();
+    let child_for_apply = child.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
@@ -175,27 +181,30 @@ pub fn run() {
             let quit = MenuItem::with_id(app, "quit", "종료 (서버도 함께)", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &hide, &top, &reinstall, &check, &apply, &quit])?;
             let top_item = top.clone();
-            // 업데이트: 시작 10초 뒤 한 번, 그 뒤 6시간마다. 받아 두면 '업데이트 적용' 메뉴가 켜지고 트레이 제목에 ⬆ 가 붙는다
-            let update_ready = Arc::new(AtomicBool::new(false));
+            // 업데이트: 시작 10초 뒤 한 번, 그 뒤 6시간마다 확인해 내려받아 둔다. 받아 두면 '업데이트 적용' 이 켜지고 트레이 제목에 ⬆
+            let pending: PendingUpdate = Arc::new(Mutex::new(None));
             let apply_item = apply.clone();
             let check_item = check.clone();
             let spawn_check = {
-                let ready = update_ready.clone();
+                let pending = pending.clone();
                 let apply_item = apply_item.clone();
                 let check_item = check_item.clone();
                 move |app: AppHandle| {
-                    let ready = ready.clone();
+                    let pending = pending.clone();
                     let apply_item = apply_item.clone();
                     let check_item = check_item.clone();
                     tauri::async_runtime::spawn(async move {
                         let _ = check_item.set_text("업데이트 확인 중…");
-                        match check_update(app, ready).await {
-                            Some(v) => { let _ = apply_item.set_text(format!("v{v} 업데이트 적용 (다시 시작)")); let _ = apply_item.set_enabled(true); let _ = check_item.set_text("업데이트 확인"); }
-                            None => { let _ = check_item.set_text("업데이트 확인 (최신)"); }
+                        match fetch_update(app, pending).await {
+                            Ok(Some(v)) => { let _ = apply_item.set_text(format!("v{v} 업데이트 적용 (다시 시작)")); let _ = apply_item.set_enabled(true); let _ = check_item.set_text("업데이트 확인"); }
+                            Ok(None) => { let _ = check_item.set_text(format!("업데이트 확인 (최신 v{})", env!("CARGO_PKG_VERSION"))); }
+                            Err(e) => { let _ = check_item.set_text(format!("업데이트 확인 실패 — 다시 시도 ({})", e.chars().take(40).collect::<String>())); }
                         }
                     });
                 }
             };
+            let pending_for_apply = pending.clone();
+            let apply_for_menu = apply_item.clone();
             {
                 let handle = app.handle().clone();
                 let spawn_check = spawn_check.clone();
@@ -223,7 +232,20 @@ pub fn run() {
                     }
                     "reinstall" => { let _ = ensure_installed(app); }
                     "check" => spawn_check_menu(app.clone()),
-                    "apply" => app.restart(),
+                    "apply" => {
+                        // 서버를 먼저 내리고 설치 → 다시 시작. 다시 시작한 앱이 새 서버 파일을 설치하고 서버를 띄운다.
+                        // Windows 는 install() 이 설치 프로그램을 띄우고 앱을 끝낸다 (설치 뒤 자동 실행)
+                        let Some(p) = pending_for_apply.lock().unwrap().take() else { return };
+                        if let Some(mut c) = child_for_apply.lock().unwrap().take() { let _ = c.kill(); let _ = c.wait(); }
+                        match p.update.install(&p.bytes) {
+                            Ok(()) => app.restart(),
+                            Err(e) => {
+                                let _ = apply_for_menu.set_text(format!("업데이트 실패: {}", e.to_string().chars().take(50).collect::<String>()));
+                                let _ = apply_for_menu.set_enabled(false);
+                                *child_for_apply.lock().unwrap() = spawn_server(app); // 서버 되살리기
+                            }
+                        }
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -234,12 +256,12 @@ pub fn run() {
 
             // 3) 대기 세션 수를 메뉴바 제목으로 (5초마다)
             let handle = app.handle().clone();
-            let ready_for_title = update_ready.clone();
+            let pending_for_title = pending.clone();
             std::thread::spawn(move || loop {
                 let n = waiting_count().unwrap_or(0);
                 if let Some(t) = handle.tray_by_id("main") {
                     let mut title = String::new();
-                    if ready_for_title.load(Ordering::Relaxed) { title.push_str("⬆ "); }
+                    if pending_for_title.lock().map(|p| p.is_some()).unwrap_or(false) { title.push_str("⬆ "); }
                     if n > 0 { title.push_str(&format!("🙋 {n}")); }
                     let title = title.trim().to_string();
                     let _ = t.set_title(if title.is_empty() { None::<String> } else { Some(title) });
