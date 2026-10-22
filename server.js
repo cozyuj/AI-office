@@ -162,7 +162,12 @@ const server = http.createServer((req, res) => {
   if (del && req.method === 'DELETE') {
     const id = decodeURIComponent(del[1]);
     const found = !!state.get(id);
-    if (found) state.remove(id);
+    if (found) {
+      state.remove(id);
+      // 저널에도 남겨 서버를 다시 켜도 재생으로 되살아나지 않게 (FE-49). 재생하면 SessionEnd → 10초 뒤 제거
+      const s0 = { session_id: id, hook_event_name: 'SessionEnd', reason: 'dismissed' };
+      if (!String(id).startsWith('demo')) journal.append(Date.now(), s0);
+    }
     res.writeHead(found ? 200 : 404, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
     return res.end(JSON.stringify({ removed: found, sessionId: id }));
   }
