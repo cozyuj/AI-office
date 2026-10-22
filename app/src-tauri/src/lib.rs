@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
-use tauri::tray::{TrayIconBuilder, TrayIconEvent};
+use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, WindowEvent};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
@@ -253,7 +253,7 @@ pub fn run() {
                 .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray@2x.png")).expect("tray icon"))
                 .icon_as_template(true)
                 .menu(&menu)
-                .show_menu_on_left_click(false)
+                .show_menu_on_left_click(true) // 왼쪽·오른쪽 클릭 모두 메뉴 (APP-13). 창 열기는 메뉴의 'AI Office 열기'
                 .tooltip(format!("AI Office v{}", env!("CARGO_PKG_VERSION")))
                 .on_menu_event(move |app, ev| match ev.id().as_ref() {
                     "open" => show_main(app),
@@ -282,9 +282,6 @@ pub fn run() {
                     }
                     "quit" => app.exit(0),
                     _ => {}
-                })
-                .on_tray_icon_event(|tray, ev| {
-                    if let TrayIconEvent::Click { .. } = ev { show_main(tray.app_handle()); }
                 })
                 .build(app)?;
 
