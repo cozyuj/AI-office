@@ -8,6 +8,8 @@ use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, WindowEvent};
 use tauri_plugin_updater::{Update, UpdaterExt};
+use tauri_plugin_autostart::ManagerExt as AutostartExt;
+use std::time::Instant;
 
 const PORT: u16 = 4777;
 
@@ -206,6 +208,22 @@ fn set_app_badge(app: &AppHandle, dot: bool) {
     { let _ = (w, dot); }
 }
 
+/// 메뉴바가 실제로 쓰는 모양이 어두운지 (APP-16). macOS 메뉴바 글자색은 시스템 다크/라이트가 아니라 배경화면에 따라 정해지므로
+/// 상태 아이템 버튼의 effectiveAppearance 이름(…VibrantDark 등)을 본다. 못 읽으면 None
+#[cfg(target_os = "macos")]
+fn menubar_dark(tray: &tauri::tray::TrayIcon) -> Option<bool> {
+    tray.with_inner_tray_icon(|t| {
+        let item = t.ns_status_item()?;
+        let mtm = objc2::MainThreadMarker::new()?;
+        let button = item.button(mtm)?;
+        use objc2_app_kit::NSAppearanceCustomization;
+        let name = button.effectiveAppearance().name();
+        Some(name.to_string().contains("Dark"))
+    }).ok().flatten()
+}
+#[cfg(not(target_os = "macos"))]
+fn menubar_dark(_tray: &tauri::tray::TrayIcon) -> Option<bool> { None }
+
 fn system_dark(app: &AppHandle) -> bool {
     app.get_webview_window("main").and_then(|w| w.theme().ok()).map(|t| t == tauri::Theme::Dark).unwrap_or(true)
 }
@@ -226,6 +244,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // 로그인 시 자동 실행 (APP-15): macOS LaunchAgent / Windows 레지스트리 Run. 자동 실행으로 켜질 땐 --hidden 으로 창 없이 메뉴바에만
+        .plugin(tauri_plugin_autostart::Builder::new().args(["--hidden"]).build())
         .setup(move |app| {
             // 1) 서버 기동 (이미 떠 있으면 재사용)
             *child.lock().unwrap() = spawn_server(&app.handle().clone());
@@ -236,27 +256,48 @@ pub fn run() {
             let top = CheckMenuItem::with_id(app, "top", "항상 위에", true, false, None::<&str>)?;
             let reinstall = MenuItem::with_id(app, "reinstall", "훅 다시 설치", true, None::<&str>)?;
             let check = MenuItem::with_id(app, "check", "업데이트 확인", true, None::<&str>)?;
+            // 로그인 시 자동 실행: 처음 한 번은 켜 둔다(표시 파일로 기억해 사용자가 끈 걸 다시 켜지 않음)
+            let autostart_on = {
+                let al = app.autolaunch();
+                let marker = home_dir().map(|h| h.join(".ai-office").join(".autostart-default"));
+                if let Some(m) = &marker {
+                    if !m.exists() {
+                        let _ = al.enable();
+                        if let Some(p) = m.parent() { let _ = std::fs::create_dir_all(p); }
+                        let _ = std::fs::write(m, "enabled by default on first run\n");
+                    }
+                }
+                al.is_enabled().unwrap_or(false)
+            };
+            let autostart = CheckMenuItem::with_id(app, "autostart", "로그인 시 자동 실행", true, autostart_on, None::<&str>)?;
+            // 자동 실행(--hidden)으로 켜졌으면 창은 숨기고 메뉴바에만
+            if std::env::args().any(|a| a == "--hidden") { if let Some(w) = app.get_webview_window("main") { let _ = w.hide(); } }
             let apply = MenuItem::with_id(app, "apply", "업데이트 적용 (다시 시작)", false, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "종료 (서버도 함께)", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &hide, &top, &reinstall, &check, &apply, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &hide, &top, &autostart, &reinstall, &check, &apply, &quit])?;
+            let autostart_item = autostart.clone();
             let top_item = top.clone();
             // 업데이트: 시작 10초 뒤 한 번, 그 뒤 6시간마다 확인해 내려받아 둔다. 받아 두면 '업데이트 적용' 이 켜지고 트레이 제목에 ⬆
             let pending: PendingUpdate = Arc::new(Mutex::new(None));
+            // 마지막으로 확인에 성공한 시각. 실패(부팅 직후 네트워크 없음 등)면 비워 두어 5분 뒤 다시 확인한다
+            let last_check_ok: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
             let apply_item = apply.clone();
             let check_item = check.clone();
             let spawn_check = {
                 let pending = pending.clone();
                 let apply_item = apply_item.clone();
                 let check_item = check_item.clone();
+                let last_ok = last_check_ok.clone();
                 move |app: AppHandle| {
+                    let last_ok = last_ok.clone();
                     let pending = pending.clone();
                     let apply_item = apply_item.clone();
                     let check_item = check_item.clone();
                     tauri::async_runtime::spawn(async move {
                         let _ = check_item.set_text("업데이트 확인 중…");
                         match fetch_update(app, pending).await {
-                            Ok(Some(v)) => { let _ = apply_item.set_text(format!("v{v} 업데이트 적용 (다시 시작)")); let _ = apply_item.set_enabled(true); let _ = check_item.set_text("업데이트 확인"); }
-                            Ok(None) => { let _ = check_item.set_text(format!("업데이트 확인 (최신 v{})", env!("CARGO_PKG_VERSION"))); }
+                            Ok(Some(v)) => { *last_ok.lock().unwrap() = Some(Instant::now()); let _ = apply_item.set_text(format!("v{v} 업데이트 적용 (다시 시작)")); let _ = apply_item.set_enabled(true); let _ = check_item.set_text("업데이트 확인"); }
+                            Ok(None) => { *last_ok.lock().unwrap() = Some(Instant::now()); let _ = check_item.set_text(format!("업데이트 확인 (최신 v{})", env!("CARGO_PKG_VERSION"))); }
                             Err(e) => { let _ = check_item.set_text(format!("업데이트 확인 실패 — 다시 시도 ({})", e.chars().take(40).collect::<String>())); }
                         }
                     });
@@ -267,9 +308,15 @@ pub fn run() {
             {
                 let handle = app.handle().clone();
                 let spawn_check = spawn_check.clone();
+                let last_ok = last_check_ok.clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(Duration::from_secs(10));
-                    loop { spawn_check(handle.clone()); std::thread::sleep(Duration::from_secs(6 * 60 * 60)); }
+                    // 5분마다 깨어나 마지막 성공이 없거나 6시간 지났으면 확인 (실패는 5분 뒤 재시도, 잠자기 뒤에도 따라잡음)
+                    loop {
+                        let due = last_ok.lock().unwrap().map(|t| t.elapsed() >= Duration::from_secs(6 * 60 * 60)).unwrap_or(true);
+                        if due { spawn_check(handle.clone()); }
+                        std::thread::sleep(Duration::from_secs(5 * 60));
+                    }
                 });
             }
             let spawn_check_menu = spawn_check.clone();
@@ -305,6 +352,12 @@ pub fn run() {
                             }
                         }
                     }
+                    "autostart" => {
+                        let al = app.autolaunch();
+                        let want = autostart_item.is_checked().unwrap_or(false);
+                        let _ = if want { al.enable() } else { al.disable() };
+                        let _ = autostart_item.set_checked(al.is_enabled().unwrap_or(want));
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -320,8 +373,8 @@ pub fn run() {
                     let n = waiting_count().unwrap_or(0);
                     let update = pending_for_title.lock().ok().and_then(|p| p.as_ref().map(|p| p.update.version.clone()));
                     let dot = n > 0 || update.is_some();
-                    let dark = system_dark(&handle);
                     if let Some(t) = handle.tray_by_id("main") {
+                        let dark = menubar_dark(&t).unwrap_or_else(|| system_dark(&handle));
                         if last != Some((dot, dark)) {
                             let (img, template) = tray_image(dot, dark);
                             let _ = t.set_icon_with_as_template(Some(img), template);
