@@ -44,8 +44,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .floor-row:hover { background: rgba(0, 0, 0, .03); }
 .floor-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 22px; padding: 0 6px; border-radius: 6px; background: #e8ebef; color: #4a515a; font-weight: 700; font-size: 11px; }
 .floor.selected .floor-badge, #office-head .floor-badge { background: var(--accent); color: #fff; }
-.floor-name { font-weight: 600; font-size: 13px; }
-.floor-meta { font-size: 11px; color: var(--muted); }
+.floor-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.floor-meta { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* 배지·🎨 에 밀려 두 줄로 꺾이지 않게 (FE-49) */
+.floor-row > .badge-wait, .floor-row > .floor-style, .floor-row > .dot { flex: none; }
 .floor-text { flex: 1; min-width: 0; }
 .floor-style { border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 13px; line-height: 1; padding: 3px 5px; border-radius: 6px; opacity: .95; }
 .floor-style:hover { opacity: 1; background: rgba(0, 0, 0, .06); }

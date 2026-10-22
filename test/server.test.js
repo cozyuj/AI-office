@@ -55,3 +55,25 @@ test('AI_OFFICE_WATCH_PARENT: 부모 프로세스가 강제 종료되면 서버�
     assert.ok(await waitPort(port, false, 8000), '부모가 죽은 뒤 8초 안에 서버가 내려가야 한다');
   } finally { try { parent.kill('SIGKILL'); } catch {} fs.rmSync(home, { recursive: true, force: true }); }
 });
+
+test('치운 세션(DELETE)은 저널에 남아 서버를 다시 켜도 되살아나지 않는다 (FE-49)', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-srv-'));
+  const port = await freePort();
+  let srv = startServer(port, home);
+  try {
+    assert.ok(await waitPort(port, true), '서버가 안 뜸');
+    await post(port, '/hook', { session_id: 'keep', cwd: home, transcript_path: '', hook_event_name: 'SessionStart', source: 'startup' });
+    await post(port, '/hook', { session_id: 'gone', cwd: home, transcript_path: '', hook_event_name: 'SessionStart', source: 'startup' });
+    await sleep(200);
+    await new Promise((resolve, reject) => { const req = http.request({ host: '127.0.0.1', port, path: '/api/sessions/gone', method: 'DELETE' }, (res) => { res.resume(); res.on('end', resolve); }); req.on('error', reject); req.end(); });
+    await sleep(1500); // 저널 flush
+    srv.kill('SIGTERM');
+    assert.ok(await waitPort(port, false), '서버가 안 내려감');
+    srv = startServer(port, home);
+    assert.ok(await waitPort(port, true), '다시 안 뜸');
+    await sleep(300);
+    const st = await get(port, '/api/state');
+    const live = st.sessions.filter((s) => s.status !== 'ended').map((s) => s.id);
+    assert.deepEqual(live, ['keep'], '치운 세션은 재생 뒤에도 없어야 한다');
+  } finally { srv.kill('SIGKILL'); fs.rmSync(home, { recursive: true, force: true }); }
+});
