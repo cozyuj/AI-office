@@ -318,16 +318,18 @@ y = (tx + ty) * TH/2 - z * ZH
 
 <section id="app">
 <h2>8. 데스크톱 앱 (macOS · Windows)</h2>
-<p>Tauri 2 앱(<code>app/src-tauri/src/lib.rs</code>)은 창 하나와 메뉴바(Windows 는 트레이) 메뉴를 가집니다. 메뉴는 열기 · 숨기기 · 항상 위 · 훅 다시 설치 · 업데이트 확인 · 업데이트 적용(다시 시작) · 종료입니다. 창을 닫으면 숨기기만 하고, 종료하면 서버도 함께 내려갑니다.</p>
+<p>Tauri 2 앱(<code>app/src-tauri/src/lib.rs</code>)은 창 하나와 메뉴바(Windows 는 트레이) 메뉴를 가집니다. 아이콘을 왼쪽·오른쪽 어느 쪽으로 클릭해도 메뉴가 뜨고, 메뉴는 열기 · 숨기기 · 항상 위 · 로그인 시 자동 실행 · 훅 다시 설치 · 업데이트 확인 · 업데이트 적용(다시 시작) · 종료입니다. 창을 닫으면 숨기기만 하고, 종료하면 서버도 함께 내려갑니다.</p>
 <ul>
   <li><strong>설치본과 훅.</strong> 첫 실행 때 앱 리소스의 서버 파일을 <code>~/.ai-office/app</code> 에, 번들 Node(맥 <code>node</code>, Windows <code>node.exe</code>)를 <code>~/.ai-office/node</code> 에 복사하고(버전이 바뀔 때만, <code>.app-version</code> 스탬프) 그 경로로 훅을 등록합니다. 앱을 옮기거나 지워도 훅이 깨지지 않습니다.</li>
   <li><strong>서버 수명.</strong> 내장 Node 로 서버를 자식 프로세스로 띄우고(<code>AI_OFFICE_WATCH_PARENT=1</code>), 포트가 이미 열려 있으면 재사용합니다. 앱이 강제 종료돼도 서버가 2초 안에 스스로 끝납니다. Windows 에서는 <code>CREATE_NO_WINDOW</code> 로 콘솔 창을 띄우지 않습니다.</li>
-  <li><strong>자동 업데이트.</strong> <code>tauri-plugin-updater</code> 가 시작 10초 뒤와 6시간마다 <code>releases/latest/download/latest.json</code> 을 확인합니다. 새 버전이 있으면 백그라운드에서 <code>download()</code> 로 받아 서명 검증까지만 하고 바이트를 보관합니다. 메뉴바 제목에 <code>⬆</code> 를 붙이고 "vX 업데이트 적용 (다시 시작)" 을 켜며, 누르면 서버 자식 프로세스를 먼저 내린 뒤 <code>install(bytes)</code> → <code>restart()</code> 합니다. 처음에는 <code>download_and_install()</code> 로 바로 설치했는데, 실행 중인 번들이 바뀐 뒤 서버가 내려가고 Windows 에서는 묻지 않고 재시작돼(설치 직후 앱 종료) 이렇게 바꿨습니다(v0.26.1). 서명 공개키는 <code>tauri.conf.json</code> 에, 개인키는 GitHub Secrets 에 있습니다.</li>
-  <li><strong>메뉴바 표시.</strong> 아이콘은 창문·문이 뚫린 단색 건물 템플릿(<code>scripts/make-tray-icon.js</code> 가 의존성 없이 PNG 를 직접 인코딩)이라 라이트·다크 메뉴바에 맞춰 칠해집니다. 답을 기다리는 세션이 있으면 제목이 <code>🙋 n</code> 이 됩니다.</li>
+  <li><strong>자동 업데이트.</strong> <code>tauri-plugin-updater</code> 가 시작 10초 뒤와 6시간마다 <code>releases/latest/download/latest.json</code> 을 확인합니다. 새 버전이 있으면 백그라운드에서 <code>download()</code> 로 받아 서명 검증까지만 하고 바이트를 보관합니다. 아이콘에 빨간 점을 띄우고 "vX 업데이트 적용 (다시 시작)" 을 켜며, 누르면 서버 자식 프로세스를 먼저 내린 뒤 <code>install(bytes)</code> → <code>restart()</code> 합니다. 처음에는 <code>download_and_install()</code> 로 바로 설치했는데, 실행 중인 번들이 바뀐 뒤 서버가 내려가고 Windows 에서는 묻지 않고 재시작돼(설치 직후 앱 종료) 이렇게 바꿨습니다(v0.26.1). 확인은 5분마다 깨어나 마지막 성공이 없거나 6시간 지났을 때 하므로, 부팅 직후 네트워크가 없어 실패해도 5분 뒤 다시 확인합니다. 서명 공개키는 <code>tauri.conf.json</code> 에, 개인키는 GitHub Secrets 에 있습니다.</li>
+  <li><strong>로그인 시 자동 실행.</strong> <code>tauri-plugin-autostart</code> (macOS LaunchAgent · Windows 레지스트리 Run). 첫 실행 때 한 번 켜 두고(<code>~/.ai-office/.autostart-default</code> 로 기억해 사용자가 끈 걸 다시 켜지 않음) 메뉴의 체크 항목으로 끄고 켭니다. 자동 실행은 <code>--hidden</code> 인자로 창 없이 메뉴바에만 뜹니다.</li>
+  <li><strong>메뉴바 표시.</strong> 아이콘은 창문·문이 뚫린 단색 건물 템플릿(<code>scripts/make-tray-icon.js</code> 가 의존성 없이 PNG 를 직접 인코딩)이라 라이트·다크 메뉴바에 맞춰 칠해집니다. 답을 기다리는 세션이 있거나 받아 둔 업데이트가 있으면 카카오톡처럼 오른쪽 위에 빨간 점을 그린 아이콘으로 바꾸고(템플릿은 한 색이라 다크·라이트에 맞춰 건물 색을 직접 칠함), Dock 에도 같은 점(<code>set_badge_label(" ")</code>, Windows 는 <code>set_overlay_icon</code>)을 띄웁니다. 숫자는 없고 내용은 툴팁에 보입니다. Windows 트레이 글리프는 어두운 작업 표시줄에서도 보이게 주황입니다.</li>
 </ul>
 <div class="grid2">
 <figure><img src="screenshots/app-01-window.png" alt="데스크톱 앱 창"><figcaption>앱 창. 로더가 <code>/api/state</code> 를 폴링해 서버가 뜨면 웹 UI 를 엽니다.</figcaption></figure>
-<figure><img src="screenshots/app-08-tray.png" alt="맥 메뉴바의 AI Office 건물 아이콘"><figcaption>메뉴바 아이콘(맨 왼쪽 건물). 단색 템플릿이라 메뉴바 색을 따릅니다.</figcaption></figure>
+<figure><img src="screenshots/app-12-tray-dot.png" alt="메뉴바 아이콘 빨간 점: 라이트·다크, 점 없음·있음"><figcaption>빨간 점 알림(라이트·다크 메뉴바, 점 없음·있음). Dock 아이콘에도 같은 점이 뜹니다.</figcaption></figure>
+<figure><img src="screenshots/app-08-tray.png" alt="맥 메뉴바의 AI Office 건물 아이콘"><figcaption>메뉴바 아이콘(맨 왼쪽 건물). 알릴 게 없을 땐 단색 템플릿이라 메뉴바 색을 따르고, 알릴 게 있으면 빨간 점이 붙습니다.</figcaption></figure>
 </div>
 <p>CLI(<code>bin/ai-office.js</code>)는 소스 파일 지문(경로·크기·mtime 해시)을 비교해 설치본을 갱신하고, git clone 에서 실행하면 소스를 그대로 씁니다. <code>doctor</code> 는 Node 버전, 훅 등록 수와 node·emit.js 경로 존재, 설치본 버전, 포트 사용 여부, 저널 크기(5MB 이상 경고), 훅 포트 일치를 점검합니다.</p>
 </section>
