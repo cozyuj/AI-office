@@ -72,7 +72,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
 </nav>
 
 <main>
-<div class="eyebrow">AI Office · v0.25 · 2026-10-21</div>
+<div class="eyebrow">AI Office · v0.26 · 2026-10-22</div>
 <h1>Claude Code 세션을 아이소메트릭 사무실로 보여주는 로컬 뷰어</h1>
 <p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생깁니다. 웹 버전은 npm 과 Homebrew 로, 맥·Windows 앱은 GitHub Release 와 Homebrew 로 배포되고 앱은 스스로 업데이트합니다.</p>
 
@@ -262,7 +262,7 @@ y = (tx + ty) * TH/2 - z * ZH
 <h2>7. 주요 기능</h2>
 
 <h3>층과 세션</h3>
-<p>git 저장소마다 층. 같은 저장소의 세션(worktree 포함)은 한 층에 모이고 세션 색으로 구분됩니다. 왼쪽 층별 안내에서 층·세션을 고르고, 숫자 키로 층 번호(<kbd>7</kbd> → 7F, 12F 는 <kbd>1</kbd> <kbd>2</kbd> 연타), 화살표로 이전·다음 층. "최근 세션 자동으로 따라가기" 를 켜면 마지막으로 활동한 세션이 자동 선택됩니다.</p>
+<p>git 저장소마다 층. 같은 저장소의 세션(worktree 포함)은 한 층에 모이고 세션 색으로 구분됩니다. 왼쪽 층별 안내에서 층·세션을 고르고, 숫자 키로 층 번호(<kbd>7</kbd> → 7F, 12F 는 <kbd>1</kbd> <kbd>2</kbd> 연타), 화살표로 이전·다음 층. "최근 세션 자동으로 따라가기" 를 켜면 마지막으로 활동한 세션이 자동 선택됩니다. 기본은 선택한 층만 세션 목록이 열리고, 머리의 <strong>모두 펼치기 ↔ 모두 접기</strong> 로 모든 층을 한꺼번에 열고 닫습니다(<code>store.floorFold</code>: auto · all · none, 브라우저에 기억).</p>
 <div class="grid2">
 <figure><img src="screenshots/fe-05-waiting.jpg" alt="답을 기다리는 세션이 내 자리에서 손을 든 화면"><figcaption>질문·허락 대기: 내 자리에서 손을 들고, 층·세션에 빨간 배지, 탭 제목에 <code>(nF)</code>, 브라우저 알림·차임.</figcaption></figure>
 <figure><img src="screenshots/fe-36-log.jpg" alt="활동 로그와 세션 카드"><figcaption>세션 카드(프로젝트·브랜치·이어가기 명령 복사·캐릭터 이름·치우기)와 활동 로그(검색·선택 세션만 필터).</figcaption></figure>
@@ -322,7 +322,7 @@ y = (tx + ty) * TH/2 - z * ZH
 <ul>
   <li><strong>설치본과 훅.</strong> 첫 실행 때 앱 리소스의 서버 파일을 <code>~/.ai-office/app</code> 에, 번들 Node(맥 <code>node</code>, Windows <code>node.exe</code>)를 <code>~/.ai-office/node</code> 에 복사하고(버전이 바뀔 때만, <code>.app-version</code> 스탬프) 그 경로로 훅을 등록합니다. 앱을 옮기거나 지워도 훅이 깨지지 않습니다.</li>
   <li><strong>서버 수명.</strong> 내장 Node 로 서버를 자식 프로세스로 띄우고(<code>AI_OFFICE_WATCH_PARENT=1</code>), 포트가 이미 열려 있으면 재사용합니다. 앱이 강제 종료돼도 서버가 2초 안에 스스로 끝납니다. Windows 에서는 <code>CREATE_NO_WINDOW</code> 로 콘솔 창을 띄우지 않습니다.</li>
-  <li><strong>자동 업데이트.</strong> <code>tauri-plugin-updater</code> 가 시작 10초 뒤와 6시간마다 <code>releases/latest/download/latest.json</code> 을 확인합니다. 새 버전이 있으면 백그라운드로 받아 서명을 검증해 설치해 두고, 메뉴바 제목에 <code>⬆</code> 를 붙이며 "업데이트 적용 (다시 시작)" 을 켭니다. 서명 공개키는 <code>tauri.conf.json</code> 에, 개인키는 GitHub Secrets 에 있습니다.</li>
+  <li><strong>자동 업데이트.</strong> <code>tauri-plugin-updater</code> 가 시작 10초 뒤와 6시간마다 <code>releases/latest/download/latest.json</code> 을 확인합니다. 새 버전이 있으면 백그라운드에서 <code>download()</code> 로 받아 서명 검증까지만 하고 바이트를 보관합니다. 메뉴바 제목에 <code>⬆</code> 를 붙이고 "vX 업데이트 적용 (다시 시작)" 을 켜며, 누르면 서버 자식 프로세스를 먼저 내린 뒤 <code>install(bytes)</code> → <code>restart()</code> 합니다. 처음에는 <code>download_and_install()</code> 로 바로 설치했는데, 실행 중인 번들이 바뀐 뒤 서버가 내려가고 Windows 에서는 묻지 않고 재시작돼(설치 직후 앱 종료) 이렇게 바꿨습니다(v0.26.1). 서명 공개키는 <code>tauri.conf.json</code> 에, 개인키는 GitHub Secrets 에 있습니다.</li>
   <li><strong>메뉴바 표시.</strong> 아이콘은 창문·문이 뚫린 단색 건물 템플릿(<code>scripts/make-tray-icon.js</code> 가 의존성 없이 PNG 를 직접 인코딩)이라 라이트·다크 메뉴바에 맞춰 칠해집니다. 답을 기다리는 세션이 있으면 제목이 <code>🙋 n</code> 이 됩니다.</li>
 </ul>
 <div class="grid2">
@@ -395,6 +395,7 @@ node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → 
   <li><strong>층 = git 루트.</strong> cwd 가 바뀔 때마다 층이 늘어나는 문제를 피하고 worktree 를 한 층에 모읍니다.</li>
   <li><strong>잔류 방지.</strong> 앱·CLI 가 띄운 서버는 부모를 감시해 스스로 끝나고, 데모 이벤트는 저널에 남기지 않습니다.</li>
   <li><strong>번역은 틀만.</strong> 사전과 패턴 규칙으로 알려진 문구만 바꾸고, 그 안의 사용자 글은 건드리지 않습니다. 구절 치환을 쓰지 않는 이유는 세션 제목 같은 사용자 글을 망가뜨리기 때문입니다.</li>
+  <li><strong>업데이트는 받기만.</strong> 백그라운드에서는 내려받기와 서명 검증까지만 하고, 설치·재시작은 사용자가 고른 때 합니다. 쓰던 중에 앱 파일이 바뀌지 않습니다.</li>
   <li><strong>항상 최신 링크.</strong> 릴리스마다 버전 없는 이름의 사본을 올려 README·문서의 다운로드 링크를 고칠 필요가 없게 했습니다.</li>
 </ul>
 <h3>보류·다음</h3>
@@ -408,6 +409,6 @@ node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → 
 </ul>
 </section>
 
-<footer>AI Office v0.25 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
+<footer>AI Office v0.26 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
 </main>
 </div>
