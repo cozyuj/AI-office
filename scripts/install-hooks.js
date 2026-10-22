@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { stableNodePath } = require('../lib/nodepath');
 
 const EVENTS = [
   'SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
@@ -21,7 +22,8 @@ const argNode = (() => { const i = process.argv.indexOf('--node'); return i >= 0
 
 // Windows/macOS/Linux 공통: "<node 절대경로>" "<app>/hooks/emit.js"  (공백·역슬래시 경로 대비 따옴표)
 const q = (s) => `"${s}"`;
-const COMMAND = buildCommand(argNode || process.execPath, path.join(APP_DIR, 'hooks', 'emit.js'), argPort);
+// --node 가 없으면 업그레이드에 안 깨지는 경로 (앱이 복사한 ~/.ai-office/node > Homebrew opt 링크 > 실행 중인 Node)
+const COMMAND = buildCommand(argNode || stableNodePath(), path.join(APP_DIR, 'hooks', 'emit.js'), argPort);
 function buildCommand(nodePath, emitPath, port) { return `${q(nodePath)} ${q(emitPath)}${port && port !== 4777 ? ` --port ${port}` : ''}`; }
 
 function isOurs(h) {

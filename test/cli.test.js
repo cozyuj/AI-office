@@ -125,3 +125,20 @@ test('ai-office compact: 오래된 저널 줄을 버리고 최근 것만 남긴�
   assert.equal(left.length, 1);
   fs.rmSync(home, { recursive: true, force: true });
 });
+
+test('CLI install: 데스크톱 앱이 관리하는 설치본(.app-version)은 덮어쓰지 않고, --force 면 덮는다', () => {
+  const os = require('os');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-appmanaged-'));
+  const app = path.join(home, 'app');
+  fs.mkdirSync(app, { recursive: true });
+  fs.writeFileSync(path.join(app, '.app-version'), '0.1.0\n');
+  fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ version: '0.1.0' }));
+  fs.writeFileSync(path.join(app, 'server.js'), '// app 0.1.0');
+  const env = { ...process.env, AI_OFFICE_HOME: home, CLAUDE_SETTINGS: path.join(home, 'settings.json') };
+  const out = execFileSync(process.execPath, [path.join(ROOT, 'bin', 'ai-office.js'), 'install'], { env, encoding: 'utf8' });
+  assert.match(out, /앱이 .* 관리하고 있어 그대로/);
+  assert.equal(fs.readFileSync(path.join(app, 'server.js'), 'utf8'), '// app 0.1.0', '앱 설치본 유지');
+  execFileSync(process.execPath, [path.join(ROOT, 'bin', 'ai-office.js'), 'install', '--force'], { env, encoding: 'utf8' });
+  assert.notEqual(fs.readFileSync(path.join(app, 'server.js'), 'utf8'), '// app 0.1.0', '--force 면 덮어씀');
+  fs.rmSync(home, { recursive: true, force: true });
+});
