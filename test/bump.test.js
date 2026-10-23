@@ -31,3 +31,18 @@ test('bump: 네 파일이 같은 버전으로 바뀐다 (임시 복사본)', () 
   assert.match(cargo, /^version = "0\.3\.0"/m);
   assert.match(cargo, /serde = \{ version = "1" \}/, '의존성 버전은 건드리지 않음');
 });
+
+test('bump: Cargo.lock 의 이 크레이트 버전도 바꾸고 의존성은 그대로 (cargo check --locked)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-bump-'));
+  const tauri = path.join(root, 'app', 'src-tauri');
+  fs.mkdirSync(tauri, { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'x', version: '0.2.0' }));
+  fs.writeFileSync(path.join(tauri, 'Cargo.toml'), '[package]\nname = "my-app"\nversion = "0.2.0"\n');
+  fs.writeFileSync(path.join(tauri, 'Cargo.lock'), '[[package]]\nname = "my-app"\nversion = "0.2.0"\n\n[[package]]\nname = "my-app-helper"\nversion = "0.2.0"\n');
+  const { execFileSync } = require('child_process');
+  execFileSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'bump-version.js'), 'patch'], { env: { ...process.env, BUMP_ROOT: root }, encoding: 'utf8' });
+  const lock = fs.readFileSync(path.join(tauri, 'Cargo.lock'), 'utf8');
+  assert.match(lock, /name = "my-app"\nversion = "0\.2\.1"/);
+  assert.match(lock, /name = "my-app-helper"\nversion = "0\.2\.0"/, '이름이 비슷한 다른 패키지는 그대로');
+  fs.rmSync(root, { recursive: true, force: true });
+});

@@ -96,7 +96,7 @@ async function handleFloorStyle(req, res) {
   const id = typeof body.id === 'string' ? body.id : '';
   if (!id) { res.writeHead(400).end(); return; }
   const floor = state.setFloorStyle(id, typeof body.style === 'string' ? body.style : null);
-  res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
+  res.writeHead(200, { 'Content-Type': MIME['.json'], ...cors(req) });
   res.end(JSON.stringify({ floor }));
 }
 
@@ -125,7 +125,7 @@ async function handleHook(req, res) {
 
 function handleEvents(req, res) {
   res.writeHead(200, {
-    'Access-Control-Allow-Origin': '*',
+    ...cors(req),
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
@@ -150,13 +150,42 @@ function serveStatic(req, res) {
   });
 }
 
+// ---------- 접근 검사 (BE-21) ----------
+// 로컬 서버라도 브라우저에 열린 다른 웹사이트가 fetch·EventSource 로 세션 기록(제목·요청·경로)을 읽거나 가짜 이벤트를 보낼 수 있다.
+//  - Host 가 루프백 이름이 아니면 거절 (DNS 리바인딩 차단)
+//  - Origin 이 있으면 AI Office 자신과 데스크톱 앱 창만 허용. 훅(emit.js)·CLI·curl 은 Origin 이 없어 그대로 통과
+const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+function hostAllowed(req) {
+  const host = String(req.headers.host || '').toLowerCase();
+  const name = host.startsWith('[') ? host.slice(0, host.indexOf(']') + 1) : host.replace(/:\d+$/, '');
+  return LOOPBACK.has(name);
+}
+function originAllowed(origin) {
+  if (!origin) return true;
+  let u;
+  try { u = new URL(origin); } catch { return false; }
+  const host = u.hostname.toLowerCase();
+  if (u.protocol === 'tauri:' && host === 'localhost') return true;                       // macOS 앱 창
+  if ((u.protocol === 'http:' || u.protocol === 'https:') && host === 'tauri.localhost') return true; // Windows 앱 창
+  return u.protocol === 'http:' && LOOPBACK.has(host) && Number(u.port || 80) === Number(PORT); // 이 서버가 띄운 웹 화면
+}
+/** 허용된 Origin 이면 그 값을 돌려주는 CORS 헤더 (* 는 쓰지 않는다) */
+function cors(req) {
+  const origin = req.headers.origin;
+  return origin && originAllowed(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
+}
+
 const server = http.createServer((req, res) => {
+  if (!hostAllowed(req) || !originAllowed(req.headers.origin)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('forbidden: AI Office 는 이 컴퓨터의 AI Office 화면에서만 접근할 수 있습니다\n');
+  }
   const { pathname } = new URL(req.url, 'http://x');
   if (req.method === 'POST' && pathname === '/hook') return handleHook(req, res);
   if (req.method === 'GET' && pathname === '/events') return handleEvents(req, res);
   if (req.method === 'POST' && pathname === '/api/floors/style') return handleFloorStyle(req, res);
-  if (req.method === 'POST' && pathname === '/api/demo/start') { startDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: true })); }
-  if (req.method === 'POST' && pathname === '/api/demo/stop') { const removed = stopDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' }); return res.end(JSON.stringify({ demo: false, removed })); }
+  if (req.method === 'POST' && pathname === '/api/demo/start') { startDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], ...cors(req) }); return res.end(JSON.stringify({ demo: true })); }
+  if (req.method === 'POST' && pathname === '/api/demo/stop') { const removed = stopDemo(); res.writeHead(200, { 'Content-Type': MIME['.json'], ...cors(req) }); return res.end(JSON.stringify({ demo: false, removed })); }
   // 끝난/자리 비운 세션을 목록에서 치운다 (TTL 을 기다리지 않고). state.remove → SSE 'remove' 로 모든 브라우저에 전파
   const del = /^\/api\/sessions\/([^/]+)$/.exec(pathname);
   if (del && req.method === 'DELETE') {
@@ -168,12 +197,12 @@ const server = http.createServer((req, res) => {
       const s0 = { session_id: id, hook_event_name: 'SessionEnd', reason: 'dismissed' };
       if (!String(id).startsWith('demo')) journal.append(Date.now(), s0);
     }
-    res.writeHead(found ? 200 : 404, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(found ? 200 : 404, { 'Content-Type': MIME['.json'], ...cors(req) });
     return res.end(JSON.stringify({ removed: found, sessionId: id }));
   }
   if (req.method === 'GET' && pathname === '/api/state') {
     // 데스크탑 앱(tauri://) 로더가 서버 준비 여부를 묻는다 — 로컬 전용 서버라 전체 허용
-    res.writeHead(200, { 'Content-Type': MIME['.json'], 'Access-Control-Allow-Origin': '*' });
+    res.writeHead(200, { 'Content-Type': MIME['.json'], ...cors(req) });
     return res.end(JSON.stringify({ ...withPorts(state.snapshot()), installDir: __dirname }));
   }
   if (req.method === 'GET') return serveStatic(req, res);

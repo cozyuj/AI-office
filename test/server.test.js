@@ -77,3 +77,50 @@ test('치운 세션(DELETE)은 저널에 남아 서버를 다시 켜도 되살�
     assert.deepEqual(live, ['keep'], '치운 세션은 재생 뒤에도 없어야 한다');
   } finally { srv.kill('SIGKILL'); fs.rmSync(home, { recursive: true, force: true }); }
 });
+
+// 다른 웹사이트가 로컬 서버를 읽거나 가짜 이벤트를 넣지 못하게 막는다 (BE-21)
+function raw(port, method, p, headers = {}, body) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port, path: p, method, headers }, (res) => {
+      let b = ''; res.on('data', (c) => (b += c)); res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: b }));
+    });
+    req.on('error', reject); req.end(body);
+  });
+}
+
+test('Host·Origin 검사: 다른 사이트와 DNS 리바인딩은 403, 훅·앱·자기 화면은 통과 (BE-21)', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-srv-'));
+  const port = await freePort();
+  const srv = startServer(port, home);
+  try {
+    assert.ok(await waitPort(port, true), '서버가 안 뜸');
+    // Origin 없는 요청(훅·CLI·curl)은 그대로, CORS 헤더도 붙이지 않는다
+    let r = await raw(port, 'GET', '/api/state');
+    assert.equal(r.status, 200);
+    assert.equal(r.headers['access-control-allow-origin'], undefined, '* 를 돌려주면 안 된다');
+    // 다른 사이트에서 읽기 · 쓰기
+    r = await raw(port, 'GET', '/api/state', { Origin: 'https://evil.example' });
+    assert.equal(r.status, 403);
+    assert.ok(!r.body.includes('sessions'), '거절 응답에 상태가 섞이면 안 된다');
+    r = await raw(port, 'POST', '/hook', { Origin: 'https://evil.example', 'content-type': 'text/plain' }, JSON.stringify({ session_id: 'fake', cwd: home, hook_event_name: 'SessionStart' }));
+    assert.equal(r.status, 403);
+    r = await raw(port, 'GET', '/events', { Origin: 'http://127.0.0.1:1' });
+    assert.equal(r.status, 403, '다른 포트의 로컬 페이지도 남이다');
+    r = await raw(port, 'GET', '/api/state', { Origin: 'null' });
+    assert.equal(r.status, 403, 'file:// 이나 샌드박스 iframe');
+    // DNS 리바인딩: Origin 이 같아 보여도 Host 이름이 루프백이 아니면 거절
+    r = await raw(port, 'GET', '/api/state', { Host: `evil.example:${port}` });
+    assert.equal(r.status, 403);
+    // 허용: 자기 화면, 데스크톱 앱 창 (macOS · Windows)
+    for (const origin of [`http://127.0.0.1:${port}`, `http://localhost:${port}`, 'tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost']) {
+      r = await raw(port, 'GET', '/api/state', { Origin: origin });
+      assert.equal(r.status, 200, origin);
+      assert.equal(r.headers['access-control-allow-origin'], origin, origin);
+    }
+    r = await raw(port, 'GET', '/', { Host: `localhost:${port}` });
+    assert.equal(r.status, 200, 'localhost 로 열어도 화면이 떠야 한다');
+    // 거절된 가짜 이벤트는 세션을 만들지 않았다
+    const st = await get(port, '/api/state');
+    assert.ok(!st.sessions.some((s) => s.id === 'fake'));
+  } finally { srv.kill('SIGKILL'); fs.rmSync(home, { recursive: true, force: true }); }
+});
