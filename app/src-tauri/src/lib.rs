@@ -7,6 +7,7 @@ use std::time::Duration;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, WindowEvent};
+use serde_json::json;
 use tauri_plugin_updater::{Update, UpdaterExt};
 use tauri_plugin_autostart::ManagerExt as AutostartExt;
 use std::time::Instant;
@@ -153,6 +154,111 @@ async fn fetch_update(app: AppHandle, pending: PendingUpdate) -> Result<Option<S
     Ok(Some(version))
 }
 
+// ---------- 업데이트 진행 창 (APP-19) ----------
+// 사용자가 메뉴에서 업데이트를 고를 때만 뜨는 작은 창 (app/dist/update.html). 백그라운드 확인·다운로드는 지금처럼 조용히 한다.
+// IPC 권한 없이 Rust 가 eval 로 상태를 넣고, 창의 취소·닫기는 가짜 주소로 이동해 on_navigation 이 받는다.
+const UPDATE_WINDOW: &str = "updater";
+const UPDATE_NAV_HOST: &str = "aioffice-update.invalid";
+
+#[derive(Default)]
+struct UpdateUi {
+    task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>, // 진행 중인 확인·다운로드 (취소하면 abort)
+    last: Mutex<String>,                                         // 마지막 상태. 창이 늦게 뜨면 로드 직후 다시 넣는다
+}
+
+fn ui_set(app: &AppHandle, state: serde_json::Value) {
+    let js = format!("window.setState && setState({state})");
+    *app.state::<UpdateUi>().last.lock().unwrap() = js.clone();
+    if let Some(w) = app.get_webview_window(UPDATE_WINDOW) { let _ = w.eval(&js); }
+}
+
+fn cancel_update(app: &AppHandle) {
+    if let Some(t) = app.state::<UpdateUi>().task.lock().unwrap().take() { t.abort(); }
+}
+
+fn open_update_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window(UPDATE_WINDOW) { let _ = w.show(); let _ = w.set_focus(); return; }
+    let nav_app = app.clone();
+    let _ = tauri::WebviewWindowBuilder::new(app, UPDATE_WINDOW, tauri::WebviewUrl::App("update.html".into()))
+        .title("AI Office")
+        .inner_size(440.0, 128.0)
+        .resizable(false)
+        .maximizable(false)
+        .minimizable(false)
+        .always_on_top(true)
+        .center()
+        .focused(true)
+        .on_navigation(move |url| {
+            if url.host_str() != Some(UPDATE_NAV_HOST) { return true; }
+            if url.path() == "/cancel" { cancel_update(&nav_app); }
+            if let Some(w) = nav_app.get_webview_window(UPDATE_WINDOW) { let _ = w.close(); }
+            false
+        })
+        .on_page_load(|w, p| {
+            if matches!(p.event(), tauri::webview::PageLoadEvent::Finished) {
+                let js = w.app_handle().state::<UpdateUi>().last.lock().unwrap().clone();
+                if !js.is_empty() { let _ = w.eval(&js); }
+            }
+        })
+        .build();
+}
+
+/// 서버를 내리고 설치 → 다시 시작. 다시 시작한 앱이 새 서버 파일을 설치하고 서버를 띄운다.
+/// Windows 는 install() 이 설치 프로그램을 띄우고 앱을 끝낸다 (설치 뒤 자동 실행). 실패하면 창에 이유를 띄우고 서버를 되살린다
+fn install_update(app: &AppHandle, update: Update, bytes: Vec<u8>, child: &Arc<Mutex<Option<Child>>>) -> Result<(), String> {
+    ui_set(app, json!({ "phase": "install", "version": update.version }));
+    std::thread::sleep(Duration::from_millis(600)); // 창이 '설치 중' 을 그릴 시간
+    if let Some(mut c) = child.lock().unwrap().take() { let _ = c.kill(); let _ = c.wait(); }
+    match update.install(&bytes) {
+        Ok(()) => app.restart(),
+        Err(e) => {
+            let msg = e.to_string();
+            ui_set(app, json!({ "phase": "error", "message": msg }));
+            *child.lock().unwrap() = spawn_server(app);
+            Err(msg)
+        }
+    }
+}
+
+/// 메뉴 '업데이트 확인': 창을 띄우고 확인 → 새 버전이면 진행 막대와 함께 내려받기(이미 받아 뒀으면 생략) → 설치 → 다시 시작
+fn manual_update(app: &AppHandle, pending: PendingUpdate, child: Arc<Mutex<Option<Child>>>, check_item: MenuItem<tauri::Wry>) {
+    cancel_update(app);
+    let current = env!("CARGO_PKG_VERSION");
+    ui_set(app, json!({ "phase": "check", "current": current }));
+    open_update_window(app);
+    let a = app.clone();
+    let task = tauri::async_runtime::spawn(async move {
+        let fail = |a: &AppHandle, e: String| ui_set(a, json!({ "phase": "error", "message": e }));
+        let updater = match a.updater() { Ok(u) => u, Err(e) => return fail(&a, e.to_string()) };
+        let update = match updater.check().await {
+            Ok(Some(u)) => u,
+            Ok(None) => { let _ = check_item.set_text(format!("업데이트 확인 (최신 v{current})")); return ui_set(&a, json!({ "phase": "latest", "current": current })); }
+            Err(e) => return fail(&a, e.to_string()),
+        };
+        let version = update.version.clone();
+        let ready = pending.lock().unwrap().take_if(|p| p.update.version == version).map(|p| p.bytes);
+        let bytes = match ready {
+            Some(b) => b,
+            None => {
+                let (pa, v) = (a.clone(), version.clone());
+                let (mut received, mut shown) = (0u64, Instant::now() - Duration::from_secs(1));
+                ui_set(&a, json!({ "phase": "download", "version": v, "received": 0 }));
+                let res = update.download(move |chunk, total| {
+                    received += chunk as u64;
+                    if shown.elapsed() >= Duration::from_millis(100) || Some(received) == total {
+                        shown = Instant::now();
+                        ui_set(&pa, json!({ "phase": "download", "version": v, "received": received, "total": total }));
+                    }
+                }, || {}).await;
+                match res { Ok(b) => b, Err(e) => return fail(&a, e.to_string()) }
+            }
+        };
+        a.state::<UpdateUi>().task.lock().unwrap().take(); // 설치부터는 취소하지 않는다
+        let _ = install_update(&a, update, bytes, &child);
+    });
+    *app.state::<UpdateUi>().task.lock().unwrap() = Some(task);
+}
+
 // ---------- 메뉴바 아이콘 (APP-12) ----------
 // 알릴 게 없으면 단색 템플릿(macOS 가 메뉴바 색에 맞춰 칠함). 알릴 게 있으면(답 기다리는 세션 · 받아 둔 업데이트)
 // 카카오톡처럼 오른쪽 위에 빨간 점. 템플릿은 한 색으로만 칠해지므로 점이 있을 땐 다크/라이트에 맞춰 건물 색을 직접 칠한다.
@@ -242,10 +348,11 @@ pub fn run() {
     let child_for_apply = child.clone();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_window_state::Builder::default().with_denylist(&[UPDATE_WINDOW]).build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         // 로그인 시 자동 실행 (APP-15): macOS LaunchAgent / Windows 레지스트리 Run. 자동 실행으로 켜질 땐 --hidden 으로 창 없이 메뉴바에만
         .plugin(tauri_plugin_autostart::Builder::new().args(["--hidden"]).build())
+        .manage(UpdateUi::default())
         .setup(move |app| {
             // 1) 서버 기동 (이미 떠 있으면 재사용)
             *child.lock().unwrap() = spawn_server(&app.handle().clone());
@@ -319,7 +426,11 @@ pub fn run() {
                     }
                 });
             }
-            let spawn_check_menu = spawn_check.clone();
+            let pending_for_manual = pending.clone();
+            let child_for_manual = child_for_apply.clone();
+            #[cfg(debug_assertions)]
+            let (child_for_test, check_for_test) = (child_for_apply.clone(), check_item.clone());
+            let check_for_manual = check_item.clone();
             let tray = TrayIconBuilder::with_id("main")
                 // 메뉴바용 단색 템플릿 아이콘 (창문·문이 투명한 건물). 컬러 앱 아이콘을 템플릿으로 쓰면 흰 네모로 뭉개진다
                 .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray@2x.png")).expect("tray icon"))
@@ -337,20 +448,19 @@ pub fn run() {
                         }
                     }
                     "reinstall" => { let _ = ensure_installed(app); }
-                    "check" => spawn_check_menu(app.clone()),
+                    "check" => manual_update(app, pending_for_manual.clone(), child_for_manual.clone(), check_for_manual.clone()),
                     "apply" => {
-                        // 서버를 먼저 내리고 설치 → 다시 시작. 다시 시작한 앱이 새 서버 파일을 설치하고 서버를 띄운다.
-                        // Windows 는 install() 이 설치 프로그램을 띄우고 앱을 끝낸다 (설치 뒤 자동 실행)
+                        // 받아 둔 업데이트: 진행 창에 '설치 중' 을 띄우고 설치 → 다시 시작
                         let Some(p) = pending_for_apply.lock().unwrap().take() else { return };
-                        if let Some(mut c) = child_for_apply.lock().unwrap().take() { let _ = c.kill(); let _ = c.wait(); }
-                        match p.update.install(&p.bytes) {
-                            Ok(()) => app.restart(),
-                            Err(e) => {
-                                let _ = apply_for_menu.set_text(format!("업데이트 실패: {}", e.to_string().chars().take(50).collect::<String>()));
-                                let _ = apply_for_menu.set_enabled(false);
-                                *child_for_apply.lock().unwrap() = spawn_server(app); // 서버 되살리기
+                        cancel_update(app);
+                        open_update_window(app);
+                        let (a, child, apply_item) = (app.clone(), child_for_apply.clone(), apply_for_menu.clone());
+                        std::thread::spawn(move || {
+                            if let Err(e) = install_update(&a, p.update, p.bytes, &child) {
+                                let _ = apply_item.set_text(format!("업데이트 실패: {}", e.chars().take(50).collect::<String>()));
+                                let _ = apply_item.set_enabled(false);
                             }
-                        }
+                        });
                     }
                     "autostart" => {
                         let al = app.autolaunch();
@@ -362,6 +472,25 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
+
+            // 개발 빌드 전용: 메뉴를 누르지 않고 업데이트 창 흐름을 시험한다.
+            // AI_OFFICE_UPDATE_TEST=check 확인→다운로드→설치, =cancel 다운로드 중 창의 취소 버튼을 눌러 멈추는지
+            #[cfg(debug_assertions)]
+            if let Ok(mode) = std::env::var("AI_OFFICE_UPDATE_TEST") {
+                manual_update(app.handle(), pending.clone(), child_for_test, check_for_test);
+                if mode == "cancel" {
+                    let h = app.handle().clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(Duration::from_millis(1500));
+                        let last = h.state::<UpdateUi>().last.lock().unwrap().clone();
+                        eprintln!("[update-test] before: {}", last.chars().take(90).collect::<String>());
+                        if let Some(w) = h.get_webview_window(UPDATE_WINDOW) { let _ = w.eval("document.getElementById('btn').click()"); }
+                        std::thread::sleep(Duration::from_millis(4000));
+                        eprintln!("[update-test] window open: {}, task: {}, last: {}", h.get_webview_window(UPDATE_WINDOW).is_some(),
+                            h.state::<UpdateUi>().task.lock().unwrap().is_some(), h.state::<UpdateUi>().last.lock().unwrap().chars().take(90).collect::<String>());
+                    });
+                }
+            }
 
             // 3) 알림 표시 (5초마다): 답 기다리는 세션이나 받아 둔 업데이트가 있으면 아이콘에 빨간 점, 자세한 건 툴팁
             let handle = app.handle().clone();
@@ -394,6 +523,11 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // 업데이트 창을 닫으면 진행 중인 확인·다운로드를 멈춘다
+            if window.label() == UPDATE_WINDOW {
+                if let WindowEvent::CloseRequested { .. } = event { cancel_update(window.app_handle()); }
+                return;
+            }
             // 닫기 = 숨기기 (메뉴바에 남는다). 종료는 tray 메뉴에서
             if let WindowEvent::CloseRequested { api, .. } = event {
                 let _ = window.hide();
