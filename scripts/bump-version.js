@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 // 버전을 네 파일에 동시에 반영한다: package.json, app/package.json, app/src-tauri/tauri.conf.json, app/src-tauri/Cargo.toml
+// (+ Cargo.lock 의 이 크레이트 항목. 안 맞으면 CI 의 cargo check --locked 가 실패한다)
 //   node scripts/bump-version.js patch|minor|major|1.2.3   (버그 수정 = patch, 기능 = minor, 호환 깨짐 = major)
 const fs = require('fs');
 const path = require('path');
@@ -11,6 +12,7 @@ const FILES = {
   appPkg: path.join(ROOT, 'app', 'package.json'),
   tauri: path.join(ROOT, 'app', 'src-tauri', 'tauri.conf.json'),
   cargo: path.join(ROOT, 'app', 'src-tauri', 'Cargo.toml'),
+  lock: path.join(ROOT, 'app', 'src-tauri', 'Cargo.lock'),
 };
 
 function next(current, how) {
@@ -40,9 +42,16 @@ function bump(how) {
     changed.push(FILES.tauri);
   }
   if (fs.existsSync(FILES.cargo)) {
-    const t = fs.readFileSync(FILES.cargo, 'utf8').replace(/^version = "[^"]+"/m, `version = "${to}"`);
-    fs.writeFileSync(FILES.cargo, t);
+    const toml = fs.readFileSync(FILES.cargo, 'utf8');
+    fs.writeFileSync(FILES.cargo, toml.replace(/^version = "[^"]+"/m, `version = "${to}"`));
     changed.push(FILES.cargo);
+    const name = (/^name = "([^"]+)"/m.exec(toml) || [])[1];
+    if (name && fs.existsSync(FILES.lock)) {
+      const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const lock = fs.readFileSync(FILES.lock, 'utf8');
+      const t = lock.replace(new RegExp(`(\\[\\[package\\]\\]\\r?\\nname = "${esc}"\\r?\\nversion = )"[^"]+"`), `$1"${to}"`);
+      if (t !== lock) { fs.writeFileSync(FILES.lock, t); changed.push(FILES.lock); }
+    }
   }
   return { from: pkg.version, to, changed };
 }
