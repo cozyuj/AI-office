@@ -72,7 +72,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
 </nav>
 
 <main>
-<div class="eyebrow">AI Office · v0.29 · 2026-10-22</div>
+<div class="eyebrow">AI Office · v0.29.5 · 2026-10-23</div>
 <h1>Claude Code 세션을 아이소메트릭 사무실로 보여주는 로컬 뷰어</h1>
 <p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생깁니다. 웹 버전은 npm 과 Homebrew 로, 맥·Windows 앱은 GitHub Release 와 Homebrew 로 배포되고 앱은 스스로 업데이트합니다.</p>
 
@@ -83,8 +83,8 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <div class="fact"><b>0</b><span>런타임 의존성 (Node 18+ 표준 모듈만)</span></div>
   <div class="fact"><b>12</b><span>처리하는 훅 이벤트 종류</span></div>
   <div class="fact"><b>11 + α</b><span>방 (업무 9 + 휴식 편의시설, 프리셋마다 교체)</span></div>
-  <div class="fact"><b>112</b><span>node --test 테스트 · CI 3 OS + 앱 컴파일 맥·Windows</span></div>
-  <div class="fact"><b>515 KB</b><span>npm 패키지 claude-ai-office (54 파일)</span></div>
+  <div class="fact"><b>114</b><span>node --test 테스트 · CI 3 OS + 앱 컴파일 맥·Windows</span></div>
+  <div class="fact"><b>524 KB</b><span>npm 패키지 claude-ai-office (54 파일)</span></div>
   <div class="fact"><b>40 / 25 MB</b><span>맥 DMG / Windows 설치 파일 (Node 22 내장)</span></div>
   <div class="fact"><b>5</b><span>설치 경로: npm · Homebrew 2종 · Release · 자동 업데이트</span></div>
   <div class="fact"><b>2</b><span>화면 언어: 한국어 · English</span></div>
@@ -161,6 +161,15 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
                                                    └─ broadcast('update' | 'remove' | 'floor')  # SSE</code></pre>
 <h3>서버 → 브라우저</h3>
 <p><code>GET /events</code> 는 Server-Sent Events 입니다. 접속 직후 <code>snapshot</code>(전체 상태) 한 번, 그 뒤로는 바뀐 세션만 <code>update</code>, 사라지면 <code>remove</code>, 층 이름·프리셋이 바뀌면 <code>floor</code>, 데모 on/off 는 <code>demo</code>. 클라이언트 <code>store.js</code> 가 같은 모양으로 미러링하고, 패널은 DOM 을 다시 그리고 캔버스는 다음 프레임에 캐릭터 목표를 갱신합니다.</p>
+<h3>접근 검사 (이 컴퓨터의 AI Office 화면만)</h3>
+<p>서버는 <code>127.0.0.1</code> 에만 열리지만, 브라우저에 열린 다른 웹사이트도 그 주소로 요청을 보낼 수 있습니다. 세션 제목·요청·경로를 읽거나 가짜 훅 이벤트를 넣지 못하도록 모든 요청을 라우팅 전에 검사합니다(v0.29.3, BE-21).</p>
+<pre><code>Host   127.0.0.1 · localhost · [::1] 가 아니면                 → 403   # DNS 리바인딩
+Origin 없음 (emit.js 훅 · CLI · curl)                         → 통과
+       http://127.0.0.1:&lt;서버 포트&gt; · http://localhost:&lt;포트&gt;   → 통과   # 이 서버가 띄운 화면
+       tauri://localhost · http(s)://tauri.localhost          → 통과   # 맥 · Windows 앱 창
+       그 밖 (다른 사이트, 다른 포트, null)                    → 403
+Access-Control-Allow-Origin: 허용된 Origin 을 그대로 + Vary: Origin   (* 는 쓰지 않음)</code></pre>
+<p><code>text/plain</code> 으로 보내 사전 요청(preflight)을 피하는 POST 도 Origin 이 붙으므로 같은 규칙에 걸립니다. <code>server.test.js</code> 가 실제 서버 프로세스로 공격 요청과 허용 요청을 모두 확인합니다.</p>
 <h3>저널과 복구</h3>
 <p>훅 payload 는 큰 필드(<code>tool_response</code>, 긴 프롬프트)를 잘라낸 slim 형태로 <code>~/.ai-office/events.jsonl</code> 에 1초 단위로 flush 됩니다. 서버를 다시 켜면 최근 2시간치를 그대로 다시 흘려 상태를 복원하고, 1시간마다 오래된 줄을 정리합니다(<code>ai-office compact</code> 로 즉시 가능). 데모 이벤트는 저널에 남기지 않습니다.</p>
 <h3>층 = git 프로젝트</h3>
@@ -185,10 +194,10 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
 </table></div>
 <h3>HTTP API</h3>
 <div class="tbl"><table>
-<tr><th>메서드·경로</th><th>설명</th></tr>
+<tr><th>메서드·경로</th><th>설명 (모든 경로가 먼저 접근 검사를 거칩니다)</th></tr>
 <tr><td><code>POST /hook</code></td><td>Claude Code 훅 payload. 204 즉시 응답 후 처리. 데모가 꺼진 상태의 <code>/demo/</code> 이벤트는 무시</td></tr>
 <tr><td><code>GET /events</code></td><td>SSE: <code>snapshot</code>, <code>update</code>, <code>remove</code>, <code>floor</code>, <code>demo</code></td></tr>
-<tr><td><code>GET /api/state</code></td><td>전체 스냅샷 + <code>serverPort</code>, <code>hookPort</code>, <code>version</code>, <code>demo</code>, <code>journal</code> 통계. CORS <code>*</code>(Tauri 로더용)</td></tr>
+<tr><td><code>GET /api/state</code></td><td>전체 스냅샷 + <code>serverPort</code>, <code>hookPort</code>, <code>version</code>, <code>demo</code>, <code>journal</code> 통계. CORS 는 허용된 Origin(앱 로더 포함)에만</td></tr>
 <tr><td><code>POST /api/demo/start</code> · <code>/stop</code></td><td>데모 자식 프로세스 시작/종료, 종료 시 데모 세션 전부 제거</td></tr>
 <tr><td><code>POST /api/floors/style</code></td><td>층 인테리어 프리셋 저장 (<code>{ floorId, preset }</code>, 빈 값이면 자동)</td></tr>
 <tr><td><code>DELETE /api/sessions/:id</code></td><td>끝난·자리 비운 세션을 TTL 전에 목록에서 치우기</td></tr>
@@ -339,16 +348,16 @@ y = (tx + ty) * TH/2 - z * ZH
 <h2>9. 배포 채널과 릴리스 파이프라인</h2>
 <div class="tbl"><table>
 <tr><th>채널</th><th>대상</th><th>설치</th><th>비고</th></tr>
-<tr><td>npm</td><td>Node 18+ 모든 OS (웹 버전)</td><td><code>npx claude-ai-office</code></td><td>패키지 <code>claude-ai-office</code>. 실행 명령은 <code>ai-office</code>. 처음 이름 <code>ai-office</code> 는 기존 <code>aioffice</code> 와 비슷하다고 npm 이 거부해 바꿨습니다. 배포에는 계정 2FA 가 필수이고 <code>prepublishOnly</code> 가 테스트 100개를 먼저 돌립니다</td></tr>
-<tr><td>Homebrew cask</td><td>macOS Apple Silicon (앱)</td><td><code>brew install --cask cozyuj/tap/ai-office</code></td><td>tap <a href="https://github.com/cozyuj/homebrew-tap">cozyuj/homebrew-tap</a>. <code>auto_updates true</code>(앱이 스스로 갱신), 서명 전이라 <code>postflight_steps</code> 의 <code>run "/usr/bin/xattr", args: [..., "{{appdir}}/AI Office.app"]</code> 로 격리 속성을 지웁니다(Homebrew 7 규칙)</td></tr>
-<tr><td>Homebrew formula</td><td>macOS (웹 버전 CLI)</td><td><code>brew install cozyuj/tap/claude-ai-office</code></td><td>npm tarball 을 <code>std_npm_args</code> 로 설치, <code>node</code> 의존. <code>brew test</code> 는 <code>ai-office doctor</code></td></tr>
+<tr><td>npm</td><td>Node 18+ 모든 OS (웹 버전)</td><td><code>npx claude-ai-office</code></td><td>패키지 <code>claude-ai-office</code>. 실행 명령은 <code>ai-office</code>. 처음 이름 <code>ai-office</code> 는 기존 <code>aioffice</code> 와 비슷하다고 npm 이 거부해 바꿨습니다. 배포에는 계정 2FA 가 필수이고 <code>prepublishOnly</code> 가 테스트 114개를 먼저 돌립니다</td></tr>
+<tr><td>Homebrew cask</td><td>macOS Apple Silicon (앱)</td><td><code>brew install --cask cozyuj/tap/ai-office</code></td><td>tap <a href="https://github.com/cozyuj/homebrew-tap">cozyuj/homebrew-tap</a>. <code>auto_updates true</code>(앱이 스스로 갱신), 서명 전이라 <code>postflight_steps</code> 의 <code>run "/usr/bin/xattr", args: [..., "{{appdir}}/AI Office.app"]</code> 로 격리 속성을 지웁니다(Homebrew 7 규칙). 릴리스가 끝나면 <code>homebrew.yml</code> 이 자동으로 갱신</td></tr>
+<tr><td>Homebrew formula</td><td>macOS (웹 버전 CLI)</td><td><code>brew install cozyuj/tap/claude-ai-office</code></td><td>npm tarball 을 <code>std_npm_args</code> 로 설치, <code>node</code> 의존. <code>brew test</code> 는 <code>ai-office doctor</code>. npm 배포 뒤 <code>homebrew.yml</code> 을 버전 지정으로 한 번 실행</td></tr>
 <tr><td>GitHub Release</td><td>macOS · Windows (앱)</td><td><a href="https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-mac-arm64.dmg">AI-Office-mac-arm64.dmg</a> · <a href="https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-windows-x64-setup.exe">AI-Office-windows-x64-setup.exe</a></td><td>버전 없는 고정 이름 사본을 함께 올려 <code>releases/latest/download/</code> 링크가 항상 최신을 받습니다. 버전 이름 파일·updater 아티팩트(<code>.app.tar.gz</code>·<code>.sig</code>)·<code>latest.json</code> 도 같은 릴리스에</td></tr>
 <tr><td>자동 업데이트</td><td>설치된 앱</td><td>앱 메뉴 "업데이트 적용"</td><td><code>latest.json</code> 의 플랫폼별 URL·서명으로 받아 검증 후 설치</td></tr>
 <tr><td>GitHub 소스</td><td>Node 18+</td><td><code>npx github:cozyuj/AI-office</code></td><td>레포 공개 후 가능. npm 과 같은 동작</td></tr>
 </table></div>
 <h3>릴리스 한 번의 흐름</h3>
 <pre><code>PR                            # test.yml(3 OS npm test) + app-check.yml(app/** 가 바뀌면 맥·Windows cargo check) 통과를 확인한 뒤 머지
-npm run bump:minor            # package.json · app/package.json · tauri.conf.json · Cargo.toml 동시에
+npm run bump:minor            # package.json · app/package.json · tauri.conf.json · Cargo.toml · Cargo.lock 동시에
 git tag vX.Y.Z && git push origin vX.Y.Z
   └─ .github/workflows/release.yml
        ├─ build (macos-14, aarch64)   fetch-node.js → npm test → tauri-action → DMG + .app.tar.gz(.sig)
@@ -357,11 +366,16 @@ git tag vX.Y.Z && git push origin vX.Y.Z
        └─ smoke-windows               setup.exe /S 설치 → 앱 실행 → /api/state 버전 = 태그
                                       → settings.json 훅(node.exe · emit.js) → 훅으로 SessionStart → 세션 도착
                                       → 앱 강제 종료 → 서버도 종료
+  └─ (release 성공) .github/workflows/homebrew.yml
+       버전 검사(x.y.z 형식 · Release 존재) → update-homebrew.js: DMG sha256 → cask 갱신
+       → deploy key 로 cozyuj/homebrew-tap 에 커밋·푸시 (바뀐 게 없으면 건너뜀)
 npm publish                   # 2FA 브라우저 승인 (또는 --otp)
-node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → tap 의 cask·formula 갱신 → push</code></pre>
+gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula 갱신</code></pre>
 <div class="note">Windows 는 실제 PC 대신 GitHub Actions 의 Windows 러너에서 설치 파일로 설치·실행·훅까지 확인합니다(v0.25.0: 설치 폴더 <code>%LOCALAPPDATA%\AI Office</code>, 서버 0.25.0 응답, 훅 → 서버 경로 OK, 앱 종료 후 서버 종료 OK). 화면이 실제로 어떻게 보이는지는 Windows 기기에서 확인할 일로 남아 있습니다.</div>
 <p>테스트 워크플로(<code>test.yml</code>)는 push 와 PR 마다 Ubuntu·Windows·macOS 에서 <code>npm test</code> 를 돌리고, <code>app-check.yml</code> 은 앱(Rust) 코드가 바뀐 PR 마다 맥·Windows 러너에서 <code>cargo check</code> 를 돌려 Windows 전용 코드 오류를 릴리스 전에 잡습니다(맥에서는 <code>ring</code> 때문에 Windows 교차 컴파일이 안 됨). 한 번 Windows 테스트 실패를 놓쳐 v0.25.5 의 Windows 빌드가 빠진 뒤로, 머지 전에 두 워크플로 통과를 확인합니다. 워크플로 파일은 GitHub 토큰의 <code>workflow</code> 권한이 필요해 SSH 원격으로 푸시합니다.</p>
-<div class="note">자동 업데이트는 실제 설치본으로 확인했습니다: 0.25.0 → 0.25.6(옛 방식, 번들 즉시 교체) → 0.26.1(받기만) → 0.26.2·0.27.1·0.28.0·0.29.1 을 "받아 둠 → 빨간 점 → 업데이트 적용 → 다시 시작" 으로 차례로 올림. 재부팅 직후 확인이 실패해 6시간을 기다리던 문제는 5분 재시도로 고쳤습니다.</div>
+<p>Homebrew tap 은 다른 저장소라 기본 토큰으로는 쓸 수 없습니다. 개인 토큰 대신 <strong>tap 저장소 하나에만 쓰기 권한이 있는 deploy key</strong> 를 만들어 AI-office 의 secret <code>HOMEBREW_TAP_DEPLOY_KEY</code> 로 두었고, secret 이 없으면 경고만 내고 건너뜁니다. 입력 버전은 환경변수로만 받아 셸에 끼워 넣지 않고, <code>x.y.z</code> 같은 잘못된 값이나 아직 릴리스가 없는 버전은 첫 단계에서 이유와 함께 멈춥니다(APP-18). v0.29.5 에서 cask 와 formula 가 이 경로로 처음 갱신됐습니다.</p>
+<div class="note">버전 올리기 스크립트가 <code>Cargo.toml</code> 만 바꾸고 <code>Cargo.lock</code> 의 앱 크레이트 버전을 두면 <code>cargo check --locked</code> 가 실패합니다. app-check 가 BE-21 PR 에서 이를 잡았고, 이제 스크립트가 lock 의 해당 항목까지 맞춥니다(이름이 비슷한 다른 패키지는 그대로, <code>bump.test.js</code>).</div>
+<div class="note">자동 업데이트는 실제 설치본으로 확인했습니다: 0.25.0 → 0.25.6(옛 방식, 번들 즉시 교체) → 0.26.1(받기만) → 0.26.2·0.27.1·0.28.0·0.29.1·0.29.5 를 "받아 둠 → 빨간 점 → 업데이트 적용 → 다시 시작" 으로 차례로 올림. 재부팅 직후 확인이 실패해 6시간을 기다리던 문제는 5분 재시도로 고쳤습니다.</div>
 </section>
 
 <section id="quality">
@@ -371,13 +385,13 @@ node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → 
 <tr><td><code>state.test.js</code></td><td>훅 12종 처리(11종 등록 + TaskCompleted), 서브에이전트 매칭, 휴식 방 배정, 자리 비움·퇴근 감지, TTL, 층 이름 충돌, 분리된 세션 제목 추적(훅·transcript, 되돌림 없음), 첫 요청 복원(이미지로 잘린 첫 줄 포함)</td></tr>
 <tr><td><code>pathfind.test.js</code> · <code>layouts.test.js</code> · <code>spots.test.js</code></td><td>모든 레이아웃에서 슬롯·명소가 걷기 가능하고 그 방 안에 있음, 방은 문으로만 출입, 문 수</td></tr>
 <tr><td><code>depth.test.js</code></td><td>AABB 비교 규칙, 위상 정렬, 공유 스프라이트의 평행이동 불변</td></tr>
-<tr><td><code>journal.test.js</code> · <code>cli.test.js</code> · <code>hookport.test.js</code> · <code>bump.test.js</code> · <code>project.test.js</code></td><td>저널 slim/replay/compact, CLI 설치·compact, 훅 포트 파싱, 버전 올림, git 루트 탐지</td></tr>
-<tr><td><code>server.test.js</code> · <code>api.test.js</code></td><td>실제 server.js 프로세스: 데모 훅 무시·저널 제외, 부모 SIGKILL 후 8초 안 종료, 세션 치우기 API, 치운 세션이 재시작 뒤에도 없음</td></tr>
+<tr><td><code>journal.test.js</code> · <code>cli.test.js</code> · <code>hookport.test.js</code> · <code>bump.test.js</code> · <code>project.test.js</code></td><td>저널 slim/replay/compact, CLI 설치·compact, 훅 포트 파싱, 버전 올림(Cargo.lock 포함), git 루트 탐지</td></tr>
+<tr><td><code>server.test.js</code> · <code>api.test.js</code></td><td>실제 server.js 프로세스: 데모 훅 무시·저널 제외, 부모 SIGKILL 후 8초 안 종료, 세션 치우기 API, 치운 세션이 재시작 뒤에도 없음, 다른 Origin·Host·<code>null</code> 은 403 이고 가짜 세션이 생기지 않음, 앱·자기 화면 Origin 은 허용</td></tr>
 <tr><td><code>nodepath.test.js</code></td><td>앱 Node 우선, Homebrew 버전 폴더 → opt 링크(<code>node@22</code> 포함), Windows 경로 구분자</td></tr>
 <tr><td><code>smoke.test.js</code></td><td>가짜 2D 컨텍스트(NaN 인자 감지)·최소 DOM 으로 프리셋×테마×시간대 60여 조합 그리기, 아바타 전 파츠, 캐릭터 400프레임, 패널 템플릿, 전체 보기, store</td></tr>
 <tr><td><code>avatar.test.js</code> · <code>names.test.js</code> · <code>floorStyle*.test.js</code> · <code>daylight.test.js</code></td><td>외형 정규화, 별명 배정, 프리셋 배정 결정성, 시간대 판정</td></tr>
 <tr><td><code>i18n.test.js</code></td><td>번역 규칙, 사용자 글 보존, 언어 전환, <code>index.html</code> 의 모든 한글 문구가 사전에 있는지</td></tr>
-<tr><td>CI <code>test.yml</code> · <code>app-check.yml</code> · <code>release.yml</code></td><td>3 OS 테스트, 앱 코드 PR 마다 맥·Windows 컴파일 검사, 태그마다 맥·Windows 빌드 + Windows 설치 스모크</td></tr>
+<tr><td>CI <code>test.yml</code> · <code>app-check.yml</code> · <code>release.yml</code> · <code>homebrew.yml</code></td><td>3 OS 테스트, 앱 코드 PR 마다 맥·Windows 컴파일 검사, 태그마다 맥·Windows 빌드 + Windows 설치 스모크, 릴리스 뒤 Homebrew tap 갱신</td></tr>
 </table></div>
 <h3>실측 (1600×900, zoom 0.83, 캐릭터 4)</h3>
 <div class="tbl"><table>
@@ -387,8 +401,8 @@ node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → 
 <tr><td>정적 레이어 프레임</td><td>1.7 ms</td><td>0.3 ms</td></tr>
 <tr><td>전체 프레임 (캐릭터 포함)</td><td colspan="2">약 1.4 ms, 전체 보기 1 ms, 층 전환 첫 프레임 6 ms 이하</td></tr>
 <tr><td>유휴 프레임</td><td>항상 60fps</td><td>움직임 없으면 20fps</td></tr>
-<tr><td>npm 패키지 (0.29.1)</td><td colspan="2">211 KB (압축) / 515 KB, 54 파일</td></tr>
-<tr><td>앱 배포 파일 (0.29.1)</td><td colspan="2">맥 DMG 41.6 MB · updater .app.tar.gz 42.8 MB · Windows 설치 파일 24.8 MB</td></tr>
+<tr><td>npm 패키지 (0.29.5)</td><td colspan="2">215 KB (압축) / 524 KB, 54 파일</td></tr>
+<tr><td>앱 배포 파일 (0.29.5)</td><td colspan="2">맥 DMG 41.6 MB · updater .app.tar.gz 42.8 MB · Windows 설치 파일 24.8 MB</td></tr>
 </table></div>
 </section>
 
@@ -403,19 +417,21 @@ node scripts/update-homebrew.js --version X.Y.Z   # DMG·npm tarball sha256 → 
   <li><strong>번역은 틀만.</strong> 사전과 패턴 규칙으로 알려진 문구만 바꾸고, 그 안의 사용자 글은 건드리지 않습니다. 구절 치환을 쓰지 않는 이유는 세션 제목 같은 사용자 글을 망가뜨리기 때문입니다.</li>
   <li><strong>업데이트는 받기만.</strong> 백그라운드에서는 내려받기와 서명 검증까지만 하고, 설치·재시작은 사용자가 고른 때 합니다. 쓰던 중에 앱 파일이 바뀌지 않습니다.</li>
   <li><strong>알림은 빨간 점 하나.</strong> 답 기다림과 받아 둔 업데이트를 숫자 없이 같은 점으로 메뉴바·Dock 에 띄우고, 무엇인지는 툴팁과 메뉴에 둡니다. 메뉴바 아이콘 색은 시스템 다크/라이트가 아니라 메뉴바가 실제 쓰는 모양(<code>effectiveAppearance</code>, 배경화면에 따라 바뀜)을 읽어 고릅니다.</li>
+  <li><strong>로컬 전용.</strong> 127.0.0.1 에만 열고, Host·Origin 허용 목록으로 다른 웹사이트를 막습니다. 인증 토큰 없이도 훅·CLI(Origin 없음)와 앱 창은 그대로 동작합니다.</li>
+  <li><strong>배포 권한은 좁게.</strong> Homebrew 자동 갱신은 개인 토큰이 아니라 tap 저장소 전용 deploy key 로 합니다.</li>
   <li><strong>항상 최신 링크.</strong> 릴리스마다 버전 없는 이름의 사본을 올려 README·문서의 다운로드 링크를 고칠 필요가 없게 했습니다.</li>
 </ul>
 <h3>보류·다음</h3>
-<p>v0.25 에서 끝낸 것: 자동 업데이트, 맥·Windows CI 릴리스, Windows 설치 스모크, 영어 UI·README, npm 배포, Homebrew cask·formula. v0.29 까지 더한 것: 받기만 하는 업데이트와 재시도, 빨간 점(메뉴바·Dock·작업 표시줄), 왼쪽 클릭 메뉴, 로그인 시 자동 실행, 층 모두 펼치기·접기, 세션 제목·첫 요청 추적, 훅 Node 경로 안정화, 앱 컴파일 검사 CI.</p>
+<p>v0.25 에서 끝낸 것: 자동 업데이트, 맥·Windows CI 릴리스, Windows 설치 스모크, 영어 UI·README, npm 배포, Homebrew cask·formula. v0.29 까지 더한 것: 받기만 하는 업데이트와 재시도, 빨간 점(메뉴바·Dock·작업 표시줄), 왼쪽 클릭 메뉴, 로그인 시 자동 실행, 층 모두 펼치기·접기, 세션 제목·첫 요청 추적, 훅 Node 경로 안정화, 앱 컴파일 검사 CI. v0.29.5: 다른 웹사이트 접근 차단(Host·Origin 검사), Homebrew cask·formula 자동 갱신.</p>
 <ul>
   <li>맥 앱 서명·공증(Apple Developer 계정 필요). 지금은 우클릭 → 열기, Homebrew 는 격리 해제로 우회</li>
   <li>Windows 코드 서명(SmartScreen 경고 제거)과 실제 Windows 기기에서 화면·트레이·업데이트 흐름 확인</li>
   <li>Intel 맥·Linux 앱 빌드 (지금은 웹 버전)</li>
-  <li>Homebrew·npm 배포 자동화 (지금은 릴리스 뒤 스크립트·브라우저 승인)</li>
+  <li>npm 배포 자동화 (지금은 2FA 브라우저 승인. GitHub Actions 의 Trusted Publishing 검토)</li>
   <li>아이패드 등 터치 기기 실기 확인</li>
 </ul>
 </section>
 
-<footer>AI Office v0.29 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
+<footer>AI Office v0.29.5 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
 </main>
 </div>
