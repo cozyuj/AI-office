@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>AI Office</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root { --bg: #ffffff; --fg: #1d2127; --muted: #5d6570; --track: #e6e9ee; --bar: #0a84ff; --btn: #eceef1; --btn-hover: #e0e3e8; --err: #d93a2b; }
+@media (prefers-color-scheme: dark) { :root { --bg: #2a2c30; --fg: #eef0f3; --muted: #a3a9b3; --track: #44474d; --bar: #0a84ff; --btn: #3c3f45; --btn-hover: #474a51; --err: #ff6b5e; } }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; -webkit-user-select: none; user-select: none; cursor: default; overflow: hidden; }
+.wrap { display: flex; gap: 18px; align-items: center; padding: 22px 26px 20px; height: 100%; box-sizing: border-box; }
+.icon { width: 64px; height: 64px; flex: none; border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.body { flex: 1; min-width: 0; }
+#title { font-size: 14px; font-weight: 600; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; position: relative; }
+#bar { height: 100%; width: 0; background: var(--bar); border-radius: 3px; transition: width .15s linear; }
+.track.indet #bar { width: 30%; position: absolute; animation: slide 1.1s ease-in-out infinite; }
+@keyframes slide { from { left: -30%; } to { left: 100%; } }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; min-height: 28px; }
+#detail { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#detail.err { color: var(--err); white-space: normal; font-size: 12px; }
+button { font: inherit; border: 0; border-radius: 7px; padding: 5px 22px; background: var(--btn); color: var(--fg); cursor: pointer; }
+button:hover { background: var(--btn-hover); }
+button[hidden] { display: none; }
+.hide-track .track { display: none; }
+</style></head>
+<body>
+<div class="wrap">
+  <img class="icon" src="app-icon.png" alt="">
+  <div class="body" id="box">
+    <div id="title"></div>
+    <div class="track indet"><div id="bar"></div></div>
+    <div class="row"><span id="detail"></span><button id="btn" type="button"></button></div>
+  </div>
+</div>
+<script>
+// 업데이트 진행 창 (APP-19). Rust 가 webview.eval 로 setState({...}) 를 부른다 (IPC 권한 없음).
+// 버튼은 가짜 주소로 이동하고 Rust 의 on_navigation 이 받아 취소·닫기를 처리한다.
+const ko = (navigator.language || '').toLowerCase().startsWith('ko');
+const T = ko ? {
+  check: '업데이트 확인 중…', latest: '최신 버전입니다', download: '다운로드 중…', install: '설치 중…',
+  installSub: '곧 다시 시작합니다', error: '업데이트하지 못했습니다', cancel: '취소', close: '닫기', ver: (v) => `AI Office v${v}`,
+} : {
+  check: 'Checking for updates…', latest: 'You’re up to date', download: 'Downloading…', install: 'Installing…',
+  installSub: 'AI Office will restart shortly', error: 'Couldn’t update', cancel: 'Cancel', close: 'Close', ver: (v) => `AI Office v${v}`,
+};
+document.title = ko ? 'AI Office 업데이트' : 'AI Office Update';
+const $ = (id) => document.getElementById(id);
+const mb = (n) => `${(n / 1e6).toFixed(1)}MB`;
+let action = 'cancel';
+function go(what) { location.href = `http://aioffice-update.invalid/${what}`; }
+$('btn').addEventListener('click', () => go(action));
+addEventListener('keydown', (e) => { if (e.key === 'Escape') go(action); });
+
+window.setState = function (s) {
+  const track = document.querySelector('.track');
+  const box = $('box');
+  const detail = $('detail');
+  const btn = $('btn');
+  detail.className = '';
+  box.classList.remove('hide-track');
+  track.classList.remove('indet');
+  btn.hidden = false;
+  const ver = s.version ? ` (v${s.version})` : '';
+  switch (s.phase) {
+    case 'check':
+      $('title').textContent = T.check; track.classList.add('indet'); detail.textContent = s.current ? T.ver(s.current) : '';
+      action = 'cancel'; btn.textContent = T.cancel; break;
+    case 'latest':
+      $('title').textContent = T.latest; box.classList.add('hide-track'); detail.textContent = T.ver(s.current || s.version || '');
+      action = 'close'; btn.textContent = T.close; break;
+    case 'download': {
+      $('title').textContent = T.download + ver;
+      const total = s.total || 0, got = s.received || 0;
+      if (total > 0) { $('bar').style.width = `${Math.min(100, (got / total) * 100).toFixed(1)}%`; detail.textContent = `${mb(got)} / ${mb(total)}`; }
+      else { track.classList.add('indet'); detail.textContent = mb(got); }
+      action = 'cancel'; btn.textContent = T.cancel; break;
+    }
+    case 'install':
+      $('title').textContent = T.install + ver; $('bar').style.width = '100%'; track.classList.add('indet');
+      detail.textContent = T.installSub; btn.hidden = true; break;
+    case 'error':
+      $('title').textContent = T.error; box.classList.add('hide-track'); detail.className = 'err'; detail.textContent = s.message || '';
+      action = 'close'; btn.textContent = T.close; break;
+  }
+};
+setState({ phase: 'check' });
+</script>
+</body></html>

@@ -257,6 +257,8 @@ AI Office.app / AI Office.exe  (app/src-tauri/src/lib.rs)
   │    (macOS 는 status item 의 effectiveAppearance 로 글자 색 결정), Dock 배지 / Windows 오버레이 아이콘도 같은 규칙
   ├─ 업데이터 (tauri-plugin-updater): 백그라운드에서 내려받기만 → 메뉴 "업데이트 적용" 때 서버 종료 → 설치 → 재시작.
   │    성공 전엔 5분마다, 성공 뒤엔 6시간마다 확인
+  │    메뉴 "업데이트 확인"·"업데이트 적용" 은 진행 창(app/dist/update.html)을 띄운다: 확인 → 다운로드 막대(취소) → 설치 중 → 재시작.
+  │    창은 IPC 권한 없이 Rust 가 eval 로 상태를 넣고, 버튼은 가짜 주소 이동 → on_navigation 이 받는다
   └─ 로그인 시 자동 실행 (tauri-plugin-autostart, LaunchAgent / Run 키, --hidden). 첫 실행에 한 번 켜고 메뉴 체크박스로 끔
 ```
 
