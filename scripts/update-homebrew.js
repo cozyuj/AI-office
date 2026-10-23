@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// 릴리스 뒤 Homebrew tap(cozyuj/homebrew-tap)의 cask·formula 버전과 sha256 을 갱신한다.
+// 릴리스 뒤 Homebrew tap(cozyuj/homebrew-tap)의 cask·formula 버전과 sha256 을 갱신한다. CI 에선 .github/workflows/homebrew.yml 이 돌린다.
 //   node scripts/update-homebrew.js [--tap ../homebrew-tap] [--version 0.25.0]
 // cask: GitHub Release 의 AI.Office_<v>_aarch64.dmg, formula: npm 의 claude-ai-office-<v>.tgz (npm 에 그 버전이 있을 때만)
 const fs = require('fs');

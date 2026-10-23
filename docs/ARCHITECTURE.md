@@ -266,7 +266,7 @@ AI Office.app / AI Office.exe  (app/src-tauri/src/lib.rs)
 |---|---|
 | GitHub Release | 태그 `v*` → `.github/workflows/release.yml`: macOS arm64 dmg + `.app.tar.gz(.sig)`, Windows NSIS(.sig), `latest.json`(업데이터), 고정 이름 사본(`AI-Office-mac-arm64.dmg`, `AI-Office-windows-x64-setup.exe`), Windows 설치 스모크 테스트 |
 | npm | `claude-ai-office` (bin `ai-office`). 2FA 때문에 사람이 `npm publish` |
-| Homebrew | `cozyuj/homebrew-tap`: `Casks/ai-office.rb`(dmg, 격리 속성 제거), `Formula/claude-ai-office.rb`(npm tarball) |
+| Homebrew | `cozyuj/homebrew-tap`: `Casks/ai-office.rb`(dmg, 격리 속성 제거), `Formula/claude-ai-office.rb`(npm tarball). release 가 성공하면 `homebrew.yml` 이 둘을 갱신해 푸시(formula 는 npm 에 그 버전이 있을 때). npm publish 뒤엔 `gh workflow run homebrew.yml -f version=x.y.z` |
 
 - `test.yml`: `npm test` (node --test) 를 ubuntu · windows · macos 에서
 - `app-check.yml`: `app/**` 가 바뀌면 macOS · Windows 에서 `cargo check --locked`
