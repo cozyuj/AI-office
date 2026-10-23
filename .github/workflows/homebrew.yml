@@ -24,8 +24,21 @@ jobs:
         env:
           INPUT: ${{ inputs.version }}
           TAG: ${{ github.event.workflow_run.head_branch }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          v="${INPUT:-${TAG#v}}"
+          v="${INPUT:-$TAG}"
+          v="${v#v}"
+          if [ -n "$v" ]; then
+            # 잘못된 값(x.y.z, 아직 없는 버전)은 dmg 404 까지 가지 않고 여기서 이유와 함께 멈춘다 (APP-18)
+            if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::버전 형식이 아닙니다: '$v' — 숫자 x.y.z 로 넣으세요 (예: 0.29.5)"
+              exit 1
+            fi
+            if ! gh release view "v$v" -R "${{ github.repository }}" >/dev/null 2>&1; then
+              echo "::error::GitHub Release v$v 가 없습니다 — 태그를 푸시해 release 가 끝난 버전만 넣을 수 있습니다"
+              exit 1
+            fi
+          fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "버전: ${v:-package.json}"
       - name: deploy key 확인

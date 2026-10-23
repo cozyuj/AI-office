@@ -10,7 +10,8 @@ const crypto = require('crypto');
 const arg = (name, def) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : def; };
 const ROOT = path.join(__dirname, '..');
 const TAP = path.resolve(arg('tap', path.join(ROOT, '..', 'homebrew-tap')));
-const VERSION = arg('version', require(path.join(ROOT, 'package.json')).version);
+const VERSION = arg('version', require(path.join(ROOT, 'package.json')).version).replace(/^v/, '');
+if (!/^\d+\.\d+\.\d+$/.test(VERSION)) { console.error(`버전 형식이 아닙니다: '${VERSION}' — 숫자 x.y.z 로 넣으세요 (예: 0.29.5)`); process.exit(1); }
 
 async function sha256Of(url) {
   const res = await fetch(url, { redirect: 'follow' });
