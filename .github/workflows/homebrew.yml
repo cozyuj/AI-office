@@ -78,5 +78,9 @@ jobs:
           git diff --stat
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "ai-office $(grep -m1 -o 'version "[^"]*"' Casks/ai-office.rb | cut -d'"' -f2)"
+          # 커밋 메시지는 실제로 바뀐 것만 (APP-20): ai-office X / claude-ai-office Y / 둘 다
+          msg=""
+          git diff --quiet -- Casks || msg="ai-office $(grep -m1 -o 'version "[^"]*"' Casks/ai-office.rb | cut -d'"' -f2)"
+          git diff --quiet -- Formula || msg="${msg:+$msg, }claude-ai-office $(grep -m1 -o 'claude-ai-office-[0-9.]*[0-9]\.tgz' Formula/claude-ai-office.rb | sed 's/claude-ai-office-//; s/\.tgz//')"
+          git commit -am "$msg"
           git push
