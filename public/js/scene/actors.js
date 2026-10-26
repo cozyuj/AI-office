@@ -250,7 +250,10 @@ export function createActors(store, scene, avatars) {
     for (const [key, a] of actors) {
       if (seen.has(key) || a.dead) continue;
       a.dead = true; a.deadAt = Date.now();
-      a.bubble = '퇴근합니다'; a.icon = '👋'; a.activity = 'leave';
+      // 다른 층으로 옮겨 간 세션(BE-22)은 퇴근이 아니라 엘리베이터로 이동
+      const moved = store.sessions.get(a.sessionId);
+      const to = moved && moved.floorId !== floorId ? store.floors.get(moved.floorId) : null;
+      a.bubble = to ? `${to.no}F ${to.name} 로 이동` : '퇴근합니다'; a.icon = to ? '🛗' : '👋'; a.activity = 'leave';
       slots.release(key);
       a.goTo([SPAWN.x, SPAWN.y]);
     }

@@ -48,7 +48,8 @@ Floor {                      // 프로젝트 = 층. id = git 저장소 루트 (l
 
 Session {
   id: string                 // hook.session_id
-  floorId: string            // 처음 정해진 층 유지 (cwd 가 하위 폴더로 바뀌어도)
+  floorId: string            // 처음 정해진 층 유지 (cwd 가 하위 폴더로 바뀌어도). 예외: git 저장소가 아닌 폴더에서 연 세션은
+                             // 도구 경로(file_path·path·Bash 앞머리 cd)의 저장소를 세어 고친 파일 최다 → 본 횟수 최다 저장소 층으로 옮긴다 (BE-22, lib/state.js follow)
   title: string              // 훅 session_title > transcript 의 마지막 custom-title > 첫 요청 앞부분
   firstPrompt, lastPrompt    // 첫 요청(transcript 앞 1MB 에서 복원), 최근 요청
   status: 'thinking' | 'working' | 'waiting' | 'idle' | 'ended'
