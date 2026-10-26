@@ -86,6 +86,8 @@ class Store {
       this.selectedFloorId = floor.id;
       this.selectedSessionId = session.id;
     }
+    // 선택한 세션이 작업 저장소 층으로 옮겨 가면 선택도 따라간다 (BE-22)
+    if (prev && prev.floorId !== session.floorId && this.selectedSessionId === session.id) this.selectedFloorId = session.floorId;
     this.reconcileSelection();
     this.emit('update', { session, floor, log });
     // 도구 실패 / 세션 종료 전이 — 알림 소리 범위 'all' 에서 쓴다 (첫 등장부터 ended 인 세션은 전이가 아니므로 제외)
