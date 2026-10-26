@@ -72,9 +72,9 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
 </nav>
 
 <main>
-<div class="eyebrow">AI Office · v0.29.5 · 2026-10-23</div>
+<div class="eyebrow">AI Office · v0.31.0 · 2026-10-26</div>
 <h1>Claude Code 세션을 아이소메트릭 사무실로 보여주는 로컬 뷰어</h1>
-<p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생깁니다. 웹 버전은 npm 과 Homebrew 로, 맥·Windows 앱은 GitHub Release 와 Homebrew 로 배포되고 앱은 스스로 업데이트합니다.</p>
+<p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생기고, 여러 저장소를 묶은 폴더에서 연 세션은 실제로 작업하는 저장소 층으로 옮겨 갑니다. 웹 버전은 npm 과 Homebrew 로, 맥·Windows 앱은 GitHub Release 와 Homebrew 로 배포되고 앱은 스스로 업데이트합니다.</p>
 
 <section id="overview">
 <h2>1. 한눈에</h2>
@@ -83,8 +83,8 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <div class="fact"><b>0</b><span>런타임 의존성 (Node 18+ 표준 모듈만)</span></div>
   <div class="fact"><b>12</b><span>처리하는 훅 이벤트 종류</span></div>
   <div class="fact"><b>11 + α</b><span>방 (업무 9 + 휴식 편의시설, 프리셋마다 교체)</span></div>
-  <div class="fact"><b>114</b><span>node --test 테스트 · CI 3 OS + 앱 컴파일 맥·Windows</span></div>
-  <div class="fact"><b>524 KB</b><span>npm 패키지 claude-ai-office (54 파일)</span></div>
+  <div class="fact"><b>122</b><span>node --test 테스트 · CI 3 OS + 앱 컴파일 맥·Windows</span></div>
+  <div class="fact"><b>530 KB</b><span>npm 패키지 claude-ai-office (54 파일)</span></div>
   <div class="fact"><b>40 / 25 MB</b><span>맥 DMG / Windows 설치 파일 (Node 22 내장)</span></div>
   <div class="fact"><b>5</b><span>설치 경로: npm · Homebrew 2종 · Release · 자동 업데이트</span></div>
   <div class="fact"><b>2</b><span>화면 언어: 한국어 · English</span></div>
@@ -98,7 +98,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <dt>배포</dt><dd>npm <code>claude-ai-office</code> · Homebrew tap <code>cozyuj/tap</code>(cask <code>ai-office</code>, formula <code>claude-ai-office</code>) · GitHub Release(DMG·NSIS·<code>latest.json</code>, 고정 이름 링크)</dd>
   <dt>CI</dt><dd>GitHub Actions: push·PR 마다 Ubuntu·Windows·macOS 테스트, 태그 <code>v*</code> 마다 맥·Windows 앱 빌드·서명·릴리스 + Windows 설치 스모크</dd>
   <dt>화면 언어</dt><dd><code>public/js/i18n.js</code>: 한국어 원문 + 영어 사전·패턴 규칙, DOM 은 MutationObserver, 캔버스는 <code>tr()</code></dd>
-  <dt>테스트</dt><dd><code>node --test</code> 100개: 상태 머신, 경로 탐색, 깊이 정렬, 저널, CLI, 서버 통합, 번역, 프런트 스모크(가짜 캔버스·DOM)</dd>
+  <dt>테스트</dt><dd><code>node --test</code> 122개: 상태 머신, 층 이동, 경로 탐색, 깊이 정렬, 저널, CLI, 서버 통합, 번역, 프런트 스모크(가짜 캔버스·DOM)</dd>
 </dl>
 </section>
 
@@ -160,7 +160,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
                                                    ├─ journal.append(now, slim)   # 데모 제외
                                                    └─ broadcast('update' | 'remove' | 'floor')  # SSE</code></pre>
 <h3>서버 → 브라우저</h3>
-<p><code>GET /events</code> 는 Server-Sent Events 입니다. 접속 직후 <code>snapshot</code>(전체 상태) 한 번, 그 뒤로는 바뀐 세션만 <code>update</code>, 사라지면 <code>remove</code>, 층 이름·프리셋이 바뀌면 <code>floor</code>, 데모 on/off 는 <code>demo</code>. 클라이언트 <code>store.js</code> 가 같은 모양으로 미러링하고, 패널은 DOM 을 다시 그리고 캔버스는 다음 프레임에 캐릭터 목표를 갱신합니다.</p>
+<p><code>GET /events</code> 는 Server-Sent Events 입니다. 접속 직후 <code>snapshot</code>(전체 상태) 한 번, 그 뒤로는 바뀐 세션만 <code>update</code>(세션이 다른 층으로 옮겨 가면 새 층과 함께), 사라지면 <code>remove</code>, 층 이름·프리셋이 바뀌면 <code>floor</code>, 데모 on/off 는 <code>demo</code>. 클라이언트 <code>store.js</code> 가 같은 모양으로 미러링하고, 패널은 DOM 을 다시 그리고 캔버스는 다음 프레임에 캐릭터 목표를 갱신합니다.</p>
 <h3>접근 검사 (이 컴퓨터의 AI Office 화면만)</h3>
 <p>서버는 <code>127.0.0.1</code> 에만 열리지만, 브라우저에 열린 다른 웹사이트도 그 주소로 요청을 보낼 수 있습니다. 세션 제목·요청·경로를 읽거나 가짜 훅 이벤트를 넣지 못하도록 모든 요청을 라우팅 전에 검사합니다(v0.29.3, BE-21).</p>
 <pre><code>Host   127.0.0.1 · localhost · [::1] 가 아니면                 → 403   # DNS 리바인딩
@@ -173,7 +173,20 @@ Access-Control-Allow-Origin: 허용된 Origin 을 그대로 + Vary: Origin   (* 
 <h3>저널과 복구</h3>
 <p>훅 payload 는 큰 필드(<code>tool_response</code>, 긴 프롬프트)를 잘라낸 slim 형태로 <code>~/.ai-office/events.jsonl</code> 에 1초 단위로 flush 됩니다. 서버를 다시 켜면 최근 2시간치를 그대로 다시 흘려 상태를 복원하고, 1시간마다 오래된 줄을 정리합니다(<code>ai-office compact</code> 로 즉시 가능). 데모 이벤트는 저널에 남기지 않습니다.</p>
 <h3>층 = git 프로젝트</h3>
-<p><code>lib/project.js</code> 가 cwd 에서 위로 올라가며 <code>.git</code> 을 찾아 저장소 루트를 층 id 로 씁니다. worktree 는 원래 저장소로 묶이므로 같은 층에 보이고, 브랜치 이름은 <code>HEAD</code> 파일을 읽어 세션 옆에 <code>⎇</code> 태그로 붙습니다. git 을 실행하지 않습니다.</p>
+<p><code>lib/project.js</code> 가 cwd 에서 위로 올라가며 <code>.git</code> 을 찾아 저장소 루트를 층 id 로 씁니다. worktree 는 원래 저장소로 묶이므로 같은 층에 보이고, 브랜치 이름은 <code>HEAD</code> 파일을 읽어 세션 옆에 <code>⎇</code> 태그로 붙습니다. git 을 실행하지 않습니다. 저장소 안에서 연 세션은 다른 저장소 파일을 고쳐도 처음 층에 그대로 있습니다.</p>
+<h3>묶음 폴더에서 연 세션은 작업하는 저장소 층으로 (v0.31.0, BE-22)</h3>
+<p>여러 저장소를 담은 폴더(그 자체는 git 저장소가 아님)에서 Claude Code 를 열면 cwd 만으로는 어느 프로젝트인지 알 수 없어, 예전에는 그 폴더 이름으로 층이 따로 생겼습니다. 이제는 <code>PreToolUse</code> 마다 도구가 건드린 경로를 저장소 단위로 세어, 세션을 실제로 작업하는 저장소 층으로 옮깁니다.</p>
+<pre><code>경로   Read · Edit · Write · NotebookEdit 의 file_path(폴더) · Grep · Glob · LS 의 path
+       Bash 명령 앞머리 cd &lt;dir&gt;   (상대 경로는 연 폴더 기준, ~ 는 홈)   # 서브에이전트 도구도 셈
+셈     저장소마다 { 고침: Edit·MultiEdit·Write·NotebookEdit, 봄: 나머지 }
+이동   고침이 많은 저장소, 같으면 봄이 많은 저장소 — 지금 층보다 확실히 많을 때만 (동점은 그대로)
+       → update(새 층, 로그 🛗 "&lt;층&gt; 층으로 이동") → 빈 옛 층은 remove(floorRemoved), 남은 세션이 있으면 floor
+       브랜치·worktree 는 옮긴 저장소 기준, 이어가기용 cwd 는 처음 연 폴더 그대로. 데모 세션은 옮기지 않음</code></pre>
+<p>화면에서는 옛 층의 캐릭터가 "🛗 3F dataworks-catalog 로 이동" 말풍선을 띄우고 엘리베이터로 걸어 나가며, 보고 있던 세션이 옮겨 가면 자동 따라가기가 꺼져 있어도 선택한 층이 함께 바뀝니다. 공통 규칙 문서를 먼저 읽는 세션은 잠깐 그 문서 저장소 층에 들렀다가, 실제 코드를 읽거나 고치는 순간 그 저장소 층으로 옮겨 갑니다.</p>
+<div class="grid2">
+<figure><img src="screenshots/be-22-catalog.jpg" alt="묶음 폴더에서 연 세션이 catalog 저장소 층으로 옮겨 간 화면"><figcaption>bigxdata-c 폴더에서 연 세션이 catalog 파일을 읽자 3F dataworks-catalog 로 옮겨 가고, 빈 bigxdata-c 층은 사라짐.</figcaption></figure>
+<figure><img src="screenshots/be-22-follow.jpg" alt="보던 세션이 deploy 저장소 층으로 옮겨 가며 선택이 따라간 화면"><figcaption>자동 따라가기를 끈 채 보던 세션이 deploy.sh 를 고치자 6F dataworks-deploy 로 옮겨 가고 화면도 따라감.</figcaption></figure>
+</div>
 </section>
 
 <section id="backend">
@@ -181,7 +194,7 @@ Access-Control-Allow-Origin: 허용된 Origin 을 그대로 + Vary: Origin   (* 
 <div class="tbl"><table>
 <tr><th>파일</th><th>역할</th><th>핵심 포인트</th></tr>
 <tr><td><code>server.js</code></td><td>HTTP·SSE·정적 파일·데모 자식·저널 연결</td><td>의존성 없음. <code>/hook</code> 은 먼저 204. <code>AI_OFFICE_WATCH_PARENT</code> 가 있으면 부모 pid 를 2초마다 확인해 사라지면 종료(앱·CLI 강제 종료 대비)</td></tr>
-<tr><td><code>lib/state.js</code></td><td>상태 머신</td><td>floors → sessions → agents. 훅 12종 처리(11종 등록 + TaskCompleted), 서브에이전트 <code>agent_id</code> 매칭, <code>pendingSubagents</code> 큐로 Agent 도구 description 과 SubagentStart 짝짓기, sweep(): 30분 자리 비움·transcript mtime 으로 퇴근 감지·2시간 TTL, transcript 에서 세션 제목(마지막 <code>custom-title</code>, 분리된 세션이 부모 제목에 고정되지 않게)과 첫 요청(재시작 뒤 복원)을 읽음 — stat 은 세션당 1분에 한 번, 층 이름 충돌 시 상위 경로로 구분</td></tr>
+<tr><td><code>lib/state.js</code></td><td>상태 머신</td><td>floors → sessions → agents. 훅 12종 처리(11종 등록 + TaskCompleted), 서브에이전트 <code>agent_id</code> 매칭, <code>pendingSubagents</code> 큐로 Agent 도구 description 과 SubagentStart 짝짓기, sweep(): 30분 자리 비움·transcript mtime 으로 퇴근 감지·2시간 TTL, transcript 에서 세션 제목(마지막 <code>custom-title</code>, 분리된 세션이 부모 제목에 고정되지 않게)과 첫 요청(재시작 뒤 복원)을 읽음 — stat 은 세션당 1분에 한 번, 층 이름 충돌 시 상위 경로로 구분. 묶음 폴더 세션은 <code>follow()</code> 가 저장소별 고침·봄 수를 세어 층을 옮김(BE-22)</td></tr>
 <tr><td><code>lib/normalize.js</code></td><td>도구 → 방·활동·말풍선·아이콘</td><td>Read/Grep/Glob → 자료실, Edit/Write → 개발실, Bash → 서버실, Web*/MCP → 정보검색실, Agent/Todo/Plan → 회의실, AskUserQuestion → 내 자리. 시스템 프롬프트(<code>&lt;task-notification&gt;</code>)는 요청으로 치지 않음</td></tr>
 <tr><td><code>lib/project.js</code></td><td>cwd → 저장소 루트·이름·브랜치·worktree</td><td><code>.git</code> 파일(worktree)이면 <code>gitdir:</code> 을 따라가 본 저장소로</td></tr>
 <tr><td><code>lib/journal.js</code></td><td>JSONL 저널</td><td>slim 페이로드, 1초 flush, 2시간 창 replay, 1시간 compact, 20MB 상한. 치운 세션은 <code>SessionEnd(dismissed)</code> 로 남겨 재시작 때 되살아나지 않음</td></tr>
@@ -204,7 +217,7 @@ Access-Control-Allow-Origin: 허용된 Origin 을 그대로 + Vary: Origin   (* 
 </table></div>
 <h3>데이터 모델</h3>
 <pre><code>Floor   { id: gitRoot, name, no, sessions: Map, lastActivity, style, styleAuto, styleOverride }
-Session { id, floorId, title, status: thinking|working|waiting|idle|away|ended,
+Session { id, floorId /* 묶음 폴더 세션은 작업 저장소로 바뀔 수 있음 */, title, status: thinking|working|waiting|idle|away|ended,
           cwd, branch, worktree, transcriptPath, agents: Map, pendingSubagents[] }
 Agent   { id: 'main'|agent_id, kind: main|sub, name, room, activity, bubble, icon,
           tool?: { name, useId, target, detail }, since, leaving }
@@ -272,7 +285,7 @@ y = (tx + ty) * TH/2 - z * ZH
 <h2>7. 주요 기능</h2>
 
 <h3>층과 세션</h3>
-<p>git 저장소마다 층. 같은 저장소의 세션(worktree 포함)은 한 층에 모이고 세션 색으로 구분됩니다. 왼쪽 층별 안내에서 층·세션을 고르고, 숫자 키로 층 번호(<kbd>7</kbd> → 7F, 12F 는 <kbd>1</kbd> <kbd>2</kbd> 연타), 화살표로 이전·다음 층. "최근 세션 자동으로 따라가기" 를 켜면 마지막으로 활동한 세션이 자동 선택됩니다. 세션 제목은 Claude Code 의 세션 이름을 따라가므로, 다른 세션에서 분리된 세션도 부모 제목이 아니라 자기 이름으로 보이고 이름을 바꾸면 1분 안에 반영됩니다(로그에 🏷️). 층 행의 이름·상태 줄은 한 줄로 두고 넘치면 말줄임합니다. 기본은 선택한 층만 세션 목록이 열리고, 머리의 <strong>모두 펼치기 ↔ 모두 접기</strong> 로 모든 층을 한꺼번에 열고 닫습니다(<code>store.floorFold</code>: auto · all · none, 브라우저에 기억).</p>
+<p>git 저장소마다 층. 같은 저장소의 세션(worktree 포함)은 한 층에 모이고 세션 색으로 구분됩니다. 여러 저장소를 묶은 폴더에서 연 세션은 고치거나 읽는 저장소 층으로 옮겨 갑니다(3절). 왼쪽 층별 안내에서 층·세션을 고르고, 숫자 키로 층 번호(<kbd>7</kbd> → 7F, 12F 는 <kbd>1</kbd> <kbd>2</kbd> 연타), 화살표로 이전·다음 층. "최근 세션 자동으로 따라가기" 를 켜면 마지막으로 활동한 세션이 자동 선택됩니다. 세션 제목은 Claude Code 의 세션 이름을 따라가므로, 다른 세션에서 분리된 세션도 부모 제목이 아니라 자기 이름으로 보이고 이름을 바꾸면 1분 안에 반영됩니다(로그에 🏷️). 층 행의 이름·상태 줄은 한 줄로 두고 넘치면 말줄임합니다. 기본은 선택한 층만 세션 목록이 열리고, 머리의 <strong>모두 펼치기 ↔ 모두 접기</strong> 로 모든 층을 한꺼번에 열고 닫습니다(<code>store.floorFold</code>: auto · all · none, 브라우저에 기억).</p>
 <div class="grid2">
 <figure><img src="screenshots/fe-05-waiting.jpg" alt="답을 기다리는 세션이 내 자리에서 손을 든 화면"><figcaption>질문·허락 대기: 내 자리에서 손을 들고, 층·세션에 빨간 배지, 탭 제목에 <code>(nF)</code>, 브라우저 알림·차임.</figcaption></figure>
 <figure><img src="screenshots/fe-36-log.jpg" alt="활동 로그와 세션 카드"><figcaption>세션 카드(프로젝트·브랜치·이어가기 명령 복사·캐릭터 이름·치우기)와 활동 로그(검색·선택 세션만 필터).</figcaption></figure>
@@ -333,12 +346,14 @@ y = (tx + ty) * TH/2 - z * ZH
   <li><strong>설치본과 훅.</strong> 첫 실행 때 앱 리소스의 서버 파일을 <code>~/.ai-office/app</code> 에, 번들 Node(맥 <code>node</code>, Windows <code>node.exe</code>)를 <code>~/.ai-office/node</code> 에 복사하고(버전이 바뀔 때만, <code>.app-version</code> 스탬프) 그 경로로 훅을 등록합니다. 앱을 옮기거나 지워도 훅이 깨지지 않습니다.</li>
   <li><strong>서버 수명.</strong> 내장 Node 로 서버를 자식 프로세스로 띄우고(<code>AI_OFFICE_WATCH_PARENT=1</code>), 포트가 이미 열려 있으면 재사용합니다. 앱이 강제 종료돼도 서버가 2초 안에 스스로 끝납니다. Windows 에서는 <code>CREATE_NO_WINDOW</code> 로 콘솔 창을 띄우지 않습니다.</li>
   <li><strong>자동 업데이트.</strong> <code>tauri-plugin-updater</code> 가 시작 10초 뒤와 6시간마다 <code>releases/latest/download/latest.json</code> 을 확인합니다. 새 버전이 있으면 백그라운드에서 <code>download()</code> 로 받아 서명 검증까지만 하고 바이트를 보관합니다. 아이콘에 빨간 점을 띄우고 "vX 업데이트 적용 (다시 시작)" 을 켜며, 누르면 서버 자식 프로세스를 먼저 내린 뒤 <code>install(bytes)</code> → <code>restart()</code> 합니다. 처음에는 <code>download_and_install()</code> 로 바로 설치했는데, 실행 중인 번들이 바뀐 뒤 서버가 내려가고 Windows 에서는 묻지 않고 재시작돼(설치 직후 앱 종료) 이렇게 바꿨습니다(v0.26.1). 확인은 5분마다 깨어나 마지막 성공이 없거나 6시간 지났을 때 하므로, 부팅 직후 네트워크가 없어 실패해도 5분 뒤 다시 확인합니다. 서명 공개키는 <code>tauri.conf.json</code> 에, 개인키는 GitHub Secrets 에 있습니다.</li>
+  <li><strong>업데이트 진행 창 (v0.30.0, APP-19).</strong> 백그라운드 확인·다운로드는 지금처럼 조용히 하고, 사용자가 메뉴를 누를 때만 440×128 작은 창(<code>app/dist/update.html</code>)을 띄웁니다. "업데이트 확인" 은 확인 중 → 새 버전이면 <code>다운로드 중… 18.4MB / 42.9MB</code> 막대와 취소 → 설치 중 → 다시 시작(이미 받아 둔 버전이면 다운로드 생략), 최신이면 "최신 버전입니다", 실패면 이유와 닫기. "업데이트 적용" 은 같은 창에 "설치 중… 곧 다시 시작합니다" 를 띄운 뒤 설치합니다. 진행률은 <code>update.download</code> 의 청크 콜백을 100ms 간격으로 묶어 보냅니다. 창에는 IPC 권한을 주지 않고 Rust 가 <code>webview.eval("setState({...})")</code> 로 상태를 넣으며, 취소·닫기 버튼과 Esc 는 가짜 주소(<code>aioffice-update.invalid</code>)로 이동해 <code>on_navigation</code> 이 받습니다. 창을 닫아도 다운로드가 멈춥니다. 문구는 시스템 언어(한국어·영어), 색은 다크 모드를 따릅니다.</li>
   <li><strong>로그인 시 자동 실행.</strong> <code>tauri-plugin-autostart</code> (macOS LaunchAgent · Windows 레지스트리 Run). 첫 실행 때 한 번 켜 두고(<code>~/.ai-office/.autostart-default</code> 로 기억해 사용자가 끈 걸 다시 켜지 않음) 메뉴의 체크 항목으로 끄고 켭니다. 자동 실행은 <code>--hidden</code> 인자로 창 없이 메뉴바에만 뜹니다.</li>
   <li><strong>메뉴바 표시.</strong> 아이콘은 창문·문이 뚫린 단색 건물 템플릿(<code>scripts/make-tray-icon.js</code> 가 의존성 없이 PNG 를 직접 인코딩)이라 라이트·다크 메뉴바에 맞춰 칠해집니다. 답을 기다리는 세션이 있거나 받아 둔 업데이트가 있으면 카카오톡처럼 오른쪽 위에 빨간 점을 그린 아이콘으로 바꾸고(템플릿은 한 색이라 다크·라이트에 맞춰 건물 색을 직접 칠함), Dock 에도 같은 점(<code>set_badge_label(" ")</code>, Windows 는 <code>set_overlay_icon</code>)을 띄웁니다. 숫자는 없고 내용은 툴팁에 보입니다. Windows 트레이 글리프는 어두운 작업 표시줄에서도 보이게 주황입니다.</li>
 </ul>
 <div class="grid2">
 <figure><img src="screenshots/app-01-window.png" alt="데스크톱 앱 창"><figcaption>앱 창. 로더가 <code>/api/state</code> 를 폴링해 서버가 뜨면 웹 UI 를 엽니다.</figcaption></figure>
 <figure><img src="screenshots/app-12-tray-dot.png" alt="메뉴바 아이콘 빨간 점: 라이트·다크, 점 없음·있음"><figcaption>빨간 점 알림(라이트·다크 메뉴바, 점 없음·있음). Dock 아이콘에도 같은 점이 뜹니다.</figcaption></figure>
+<figure><img src="screenshots/app-19-update.png" alt="업데이트 진행 창: 다운로드 중 막대와 취소, 설치 중, 최신 버전입니다"><figcaption>업데이트 진행 창. 다운로드 막대·취소 → 설치 중(곧 다시 시작) / 최신이면 "최신 버전입니다".</figcaption></figure>
 <figure><img src="screenshots/app-08-tray.png" alt="맥 메뉴바의 AI Office 건물 아이콘"><figcaption>메뉴바 아이콘(맨 왼쪽 건물). 알릴 게 없을 땐 단색 템플릿이라 메뉴바 색을 따르고, 알릴 게 있으면 빨간 점이 붙습니다.</figcaption></figure>
 </div>
 <p>CLI(<code>bin/ai-office.js</code>)는 소스 파일 지문(경로·크기·mtime 해시)을 비교해 설치본을 갱신하고, git clone 에서 실행하면 소스를 그대로 씁니다. <code>doctor</code> 는 Node 버전, 훅 등록 수와 node·emit.js 경로 존재, 설치본 버전, 포트 사용 여부, 저널 크기(5MB 이상 경고), 훅 포트 일치를 점검합니다.</p>
@@ -348,7 +363,7 @@ y = (tx + ty) * TH/2 - z * ZH
 <h2>9. 배포 채널과 릴리스 파이프라인</h2>
 <div class="tbl"><table>
 <tr><th>채널</th><th>대상</th><th>설치</th><th>비고</th></tr>
-<tr><td>npm</td><td>Node 18+ 모든 OS (웹 버전)</td><td><code>npx claude-ai-office</code></td><td>패키지 <code>claude-ai-office</code>. 실행 명령은 <code>ai-office</code>. 처음 이름 <code>ai-office</code> 는 기존 <code>aioffice</code> 와 비슷하다고 npm 이 거부해 바꿨습니다. 배포에는 계정 2FA 가 필수이고 <code>prepublishOnly</code> 가 테스트 114개를 먼저 돌립니다</td></tr>
+<tr><td>npm</td><td>Node 18+ 모든 OS (웹 버전)</td><td><code>npx claude-ai-office</code></td><td>패키지 <code>claude-ai-office</code>. 실행 명령은 <code>ai-office</code>. 처음 이름 <code>ai-office</code> 는 기존 <code>aioffice</code> 와 비슷하다고 npm 이 거부해 바꿨습니다. 배포에는 계정 2FA 가 필수이고 <code>prepublishOnly</code> 가 테스트 122개를 먼저 돌립니다</td></tr>
 <tr><td>Homebrew cask</td><td>macOS Apple Silicon (앱)</td><td><code>brew install --cask cozyuj/tap/ai-office</code></td><td>tap <a href="https://github.com/cozyuj/homebrew-tap">cozyuj/homebrew-tap</a>. <code>auto_updates true</code>(앱이 스스로 갱신), 서명 전이라 <code>postflight_steps</code> 의 <code>run "/usr/bin/xattr", args: [..., "{{appdir}}/AI Office.app"]</code> 로 격리 속성을 지웁니다(Homebrew 7 규칙). 릴리스가 끝나면 <code>homebrew.yml</code> 이 자동으로 갱신</td></tr>
 <tr><td>Homebrew formula</td><td>macOS (웹 버전 CLI)</td><td><code>brew install cozyuj/tap/claude-ai-office</code></td><td>npm tarball 을 <code>std_npm_args</code> 로 설치, <code>node</code> 의존. <code>brew test</code> 는 <code>ai-office doctor</code>. npm 배포 뒤 <code>homebrew.yml</code> 을 버전 지정으로 한 번 실행</td></tr>
 <tr><td>GitHub Release</td><td>macOS · Windows (앱)</td><td><a href="https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-mac-arm64.dmg">AI-Office-mac-arm64.dmg</a> · <a href="https://github.com/cozyuj/AI-office/releases/latest/download/AI-Office-windows-x64-setup.exe">AI-Office-windows-x64-setup.exe</a></td><td>버전 없는 고정 이름 사본을 함께 올려 <code>releases/latest/download/</code> 링크가 항상 최신을 받습니다. 버전 이름 파일·updater 아티팩트(<code>.app.tar.gz</code>·<code>.sig</code>)·<code>latest.json</code> 도 같은 릴리스에</td></tr>
@@ -373,9 +388,9 @@ npm publish                   # 2FA 브라우저 승인 (또는 --otp)
 gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula 갱신</code></pre>
 <div class="note">Windows 는 실제 PC 대신 GitHub Actions 의 Windows 러너에서 설치 파일로 설치·실행·훅까지 확인합니다(v0.25.0: 설치 폴더 <code>%LOCALAPPDATA%\AI Office</code>, 서버 0.25.0 응답, 훅 → 서버 경로 OK, 앱 종료 후 서버 종료 OK). 화면이 실제로 어떻게 보이는지는 Windows 기기에서 확인할 일로 남아 있습니다.</div>
 <p>테스트 워크플로(<code>test.yml</code>)는 push 와 PR 마다 Ubuntu·Windows·macOS 에서 <code>npm test</code> 를 돌리고, <code>app-check.yml</code> 은 앱(Rust) 코드가 바뀐 PR 마다 맥·Windows 러너에서 <code>cargo check</code> 를 돌려 Windows 전용 코드 오류를 릴리스 전에 잡습니다(맥에서는 <code>ring</code> 때문에 Windows 교차 컴파일이 안 됨). 한 번 Windows 테스트 실패를 놓쳐 v0.25.5 의 Windows 빌드가 빠진 뒤로, 머지 전에 두 워크플로 통과를 확인합니다. 워크플로 파일은 GitHub 토큰의 <code>workflow</code> 권한이 필요해 SSH 원격으로 푸시합니다.</p>
-<p>Homebrew tap 은 다른 저장소라 기본 토큰으로는 쓸 수 없습니다. 개인 토큰 대신 <strong>tap 저장소 하나에만 쓰기 권한이 있는 deploy key</strong> 를 만들어 AI-office 의 secret <code>HOMEBREW_TAP_DEPLOY_KEY</code> 로 두었고, secret 이 없으면 경고만 내고 건너뜁니다. 입력 버전은 환경변수로만 받아 셸에 끼워 넣지 않고, <code>x.y.z</code> 같은 잘못된 값이나 아직 릴리스가 없는 버전은 첫 단계에서 이유와 함께 멈춥니다(APP-18). v0.29.5 에서 cask 와 formula 가 이 경로로 처음 갱신됐습니다.</p>
+<p>Homebrew tap 은 다른 저장소라 기본 토큰으로는 쓸 수 없습니다. 개인 토큰 대신 <strong>tap 저장소 하나에만 쓰기 권한이 있는 deploy key</strong> 를 만들어 AI-office 의 secret <code>HOMEBREW_TAP_DEPLOY_KEY</code> 로 두었고, secret 이 없으면 경고만 내고 건너뜁니다. 입력 버전은 환경변수로만 받아 셸에 끼워 넣지 않고, <code>x.y.z</code> 같은 잘못된 값이나 아직 릴리스가 없는 버전은 첫 단계에서 이유와 함께 멈춥니다(APP-18). v0.29.5 에서 cask 와 formula 가 이 경로로 처음 갱신됐습니다. 릴리스 직후 실행은 npm 보다 먼저라 cask 만 바뀌므로, tap 커밋 메시지는 실제로 바뀐 것만 적습니다(<code>ai-office 0.31.0</code> / <code>claude-ai-office 0.31.0</code> / 둘 다, APP-20).</p>
 <div class="note">버전 올리기 스크립트가 <code>Cargo.toml</code> 만 바꾸고 <code>Cargo.lock</code> 의 앱 크레이트 버전을 두면 <code>cargo check --locked</code> 가 실패합니다. app-check 가 BE-21 PR 에서 이를 잡았고, 이제 스크립트가 lock 의 해당 항목까지 맞춥니다(이름이 비슷한 다른 패키지는 그대로, <code>bump.test.js</code>).</div>
-<div class="note">자동 업데이트는 실제 설치본으로 확인했습니다: 0.25.0 → 0.25.6(옛 방식, 번들 즉시 교체) → 0.26.1(받기만) → 0.26.2·0.27.1·0.28.0·0.29.1·0.29.5 를 "받아 둠 → 빨간 점 → 업데이트 적용 → 다시 시작" 으로 차례로 올림. 재부팅 직후 확인이 실패해 6시간을 기다리던 문제는 5분 재시도로 고쳤습니다.</div>
+<div class="note">자동 업데이트는 실제 설치본으로 확인했습니다: 0.25.0 → 0.25.6(옛 방식, 번들 즉시 교체) → 0.26.1(받기만) → 0.26.2·0.27.1·0.28.0·0.29.1·0.29.5 를 "받아 둠 → 빨간 점 → 업데이트 적용 → 다시 시작" 으로 차례로 올림. 0.30.0 → 0.31.0 은 메뉴 "업데이트 확인" 의 진행 창(다운로드 막대 → 설치 중 → 다시 시작)으로 올렸습니다. 재부팅 직후 확인이 실패해 6시간을 기다리던 문제는 5분 재시도로 고쳤습니다.</div>
 </section>
 
 <section id="quality">
@@ -383,6 +398,7 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
 <div class="tbl"><table>
 <tr><th>테스트 파일</th><th>다루는 것</th></tr>
 <tr><td><code>state.test.js</code></td><td>훅 12종 처리(11종 등록 + TaskCompleted), 서브에이전트 매칭, 휴식 방 배정, 자리 비움·퇴근 감지, TTL, 층 이름 충돌, 분리된 세션 제목 추적(훅·transcript, 되돌림 없음), 첫 요청 복원(이미지로 잘린 첫 줄 포함)</td></tr>
+<tr><td><code>follow.test.js</code></td><td>묶음 폴더 세션의 층 이동: 첫 저장소로 이동·빈 층 삭제, 동점 유지, 고침 우선, Bash <code>cd</code>·상대 경로·저장소 밖 경로, 저장소 세션·데모 고정, 남은 세션 있는 층은 갱신만, 서브에이전트 도구·치우기</td></tr>
 <tr><td><code>pathfind.test.js</code> · <code>layouts.test.js</code> · <code>spots.test.js</code></td><td>모든 레이아웃에서 슬롯·명소가 걷기 가능하고 그 방 안에 있음, 방은 문으로만 출입, 문 수</td></tr>
 <tr><td><code>depth.test.js</code></td><td>AABB 비교 규칙, 위상 정렬, 공유 스프라이트의 평행이동 불변</td></tr>
 <tr><td><code>journal.test.js</code> · <code>cli.test.js</code> · <code>hookport.test.js</code> · <code>bump.test.js</code> · <code>project.test.js</code></td><td>저널 slim/replay/compact, CLI 설치·compact, 훅 포트 파싱, 버전 올림(Cargo.lock 포함), git 루트 탐지</td></tr>
@@ -401,8 +417,8 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
 <tr><td>정적 레이어 프레임</td><td>1.7 ms</td><td>0.3 ms</td></tr>
 <tr><td>전체 프레임 (캐릭터 포함)</td><td colspan="2">약 1.4 ms, 전체 보기 1 ms, 층 전환 첫 프레임 6 ms 이하</td></tr>
 <tr><td>유휴 프레임</td><td>항상 60fps</td><td>움직임 없으면 20fps</td></tr>
-<tr><td>npm 패키지 (0.29.5)</td><td colspan="2">215 KB (압축) / 524 KB, 54 파일</td></tr>
-<tr><td>앱 배포 파일 (0.29.5)</td><td colspan="2">맥 DMG 41.6 MB · updater .app.tar.gz 42.8 MB · Windows 설치 파일 24.8 MB</td></tr>
+<tr><td>npm 패키지 (0.31.0)</td><td colspan="2">217 KB (압축) / 530 KB, 54 파일</td></tr>
+<tr><td>앱 배포 파일 (0.31.0)</td><td colspan="2">맥 DMG 41.6 MB · updater .app.tar.gz 42.8 MB · Windows 설치 파일 24.8 MB</td></tr>
 </table></div>
 </section>
 
@@ -412,26 +428,26 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
   <li><strong>의존성 0.</strong> 훅마다 프로세스가 뜨므로 <code>emit.js</code> 는 표준 모듈만 쓰고 1초 안에 끝나야 합니다. 서버도 같은 이유로 가볍게 유지했습니다.</li>
   <li><strong>서버가 진실.</strong> 휴식 방, 인테리어 프리셋, 세션 제거처럼 "모든 브라우저가 같은 것을 봐야 하는" 결정은 서버에서 하고, 외형·이름·테마처럼 보는 사람의 취향은 브라우저에 둡니다.</li>
   <li><strong>이미지 없이 코드로 그리기.</strong> 플랫 벡터 스프라이트와 치비 아바타는 전부 Canvas 코드라 팔레트·레이아웃을 바꾸기 쉽고 패키지가 작습니다. 대신 캐시 전략이 중요해 종류별 공유 캐시를 넣었습니다.</li>
-  <li><strong>층 = git 루트.</strong> cwd 가 바뀔 때마다 층이 늘어나는 문제를 피하고 worktree 를 한 층에 모읍니다.</li>
+  <li><strong>층 = git 루트, 묶음 폴더는 작업 기준.</strong> cwd 가 바뀔 때마다 층이 늘어나는 문제를 피하고 worktree 를 한 층에 모읍니다. git 이 아닌 묶음 폴더에서 연 세션만 고친 파일(없으면 본 파일)이 많은 저장소로 옮기고, 동점에는 움직이지 않아 층을 오가며 깜빡이지 않습니다. 저장소 안에서 연 세션은 다른 저장소를 고쳐도 고정입니다(그 저장소가 주 작업이라는 뜻이므로).</li>
   <li><strong>잔류 방지.</strong> 앱·CLI 가 띄운 서버는 부모를 감시해 스스로 끝나고, 데모 이벤트는 저널에 남기지 않습니다.</li>
   <li><strong>번역은 틀만.</strong> 사전과 패턴 규칙으로 알려진 문구만 바꾸고, 그 안의 사용자 글은 건드리지 않습니다. 구절 치환을 쓰지 않는 이유는 세션 제목 같은 사용자 글을 망가뜨리기 때문입니다.</li>
-  <li><strong>업데이트는 받기만.</strong> 백그라운드에서는 내려받기와 서명 검증까지만 하고, 설치·재시작은 사용자가 고른 때 합니다. 쓰던 중에 앱 파일이 바뀌지 않습니다.</li>
+  <li><strong>업데이트는 받기만.</strong> 백그라운드에서는 내려받기와 서명 검증까지만 하고, 설치·재시작은 사용자가 고른 때 합니다. 쓰던 중에 앱 파일이 바뀌지 않습니다. 사용자가 직접 누를 때만 진행 창을 띄우고, 그 창에는 IPC 권한을 주지 않습니다.</li>
   <li><strong>알림은 빨간 점 하나.</strong> 답 기다림과 받아 둔 업데이트를 숫자 없이 같은 점으로 메뉴바·Dock 에 띄우고, 무엇인지는 툴팁과 메뉴에 둡니다. 메뉴바 아이콘 색은 시스템 다크/라이트가 아니라 메뉴바가 실제 쓰는 모양(<code>effectiveAppearance</code>, 배경화면에 따라 바뀜)을 읽어 고릅니다.</li>
   <li><strong>로컬 전용.</strong> 127.0.0.1 에만 열고, Host·Origin 허용 목록으로 다른 웹사이트를 막습니다. 인증 토큰 없이도 훅·CLI(Origin 없음)와 앱 창은 그대로 동작합니다.</li>
   <li><strong>배포 권한은 좁게.</strong> Homebrew 자동 갱신은 개인 토큰이 아니라 tap 저장소 전용 deploy key 로 합니다.</li>
   <li><strong>항상 최신 링크.</strong> 릴리스마다 버전 없는 이름의 사본을 올려 README·문서의 다운로드 링크를 고칠 필요가 없게 했습니다.</li>
 </ul>
 <h3>보류·다음</h3>
-<p>v0.25 에서 끝낸 것: 자동 업데이트, 맥·Windows CI 릴리스, Windows 설치 스모크, 영어 UI·README, npm 배포, Homebrew cask·formula. v0.29 까지 더한 것: 받기만 하는 업데이트와 재시도, 빨간 점(메뉴바·Dock·작업 표시줄), 왼쪽 클릭 메뉴, 로그인 시 자동 실행, 층 모두 펼치기·접기, 세션 제목·첫 요청 추적, 훅 Node 경로 안정화, 앱 컴파일 검사 CI. v0.29.5: 다른 웹사이트 접근 차단(Host·Origin 검사), Homebrew cask·formula 자동 갱신.</p>
+<p>v0.25 에서 끝낸 것: 자동 업데이트, 맥·Windows CI 릴리스, Windows 설치 스모크, 영어 UI·README, npm 배포, Homebrew cask·formula. v0.29 까지 더한 것: 받기만 하는 업데이트와 재시도, 빨간 점(메뉴바·Dock·작업 표시줄), 왼쪽 클릭 메뉴, 로그인 시 자동 실행, 층 모두 펼치기·접기, 세션 제목·첫 요청 추적, 훅 Node 경로 안정화, 앱 컴파일 검사 CI. v0.29.5: 다른 웹사이트 접근 차단(Host·Origin 검사), Homebrew cask·formula 자동 갱신. v0.31.0: 업데이트 진행 창(다운로드 막대·취소·설치 중), 묶음 폴더 세션의 저장소 층 이동.</p>
 <ul>
   <li>맥 앱 서명·공증(Apple Developer 계정 필요). 지금은 우클릭 → 열기, Homebrew 는 격리 해제로 우회</li>
-  <li>Windows 코드 서명(SmartScreen 경고 제거)과 실제 Windows 기기에서 화면·트레이·업데이트 흐름 확인</li>
+  <li>Windows 코드 서명(SmartScreen 경고 제거)과 실제 Windows 기기에서 화면·트레이·업데이트 진행 창 확인</li>
   <li>Intel 맥·Linux 앱 빌드 (지금은 웹 버전)</li>
   <li>npm 배포 자동화 (지금은 2FA 브라우저 승인. GitHub Actions 의 Trusted Publishing 검토)</li>
   <li>아이패드 등 터치 기기 실기 확인</li>
 </ul>
 </section>
 
-<footer>AI Office v0.29.5 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
+<footer>AI Office v0.31.0 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
 </main>
 </div>
