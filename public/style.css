@@ -204,6 +204,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .cz-note.busy { color: var(--muted); }
 .cz-credit { font-size: 10.5px; }
 .cz-credit a { color: inherit; }
+.style-pop-sub { font-size: 10.5px; font-weight: 700; color: var(--muted); padding: 8px 6px 2px; border-top: 1px solid var(--line); margin-top: 4px; }
 .modal-card.cz { width: min(900px, calc(100vw - 40px)); }
 .cz-partrow { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
 .cz-partlabel { flex: 0 0 52px; font-size: 11.5px; color: var(--muted); }

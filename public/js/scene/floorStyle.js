@@ -35,12 +35,53 @@ export const PRESETS = [
     corridor: '#faf7fb',
     accent: { leaf: ['#66b17a', '#7cc48d', '#56a06a', '#8fd49e'], sofa: '#f28ca8', parasol: '#f7a1b9', wood: '#e0bf98', text: '#5c4a5a' } },
 ];
+// 테마 층(FE-60): 층 구조(레이아웃)는 그 층의 원래 프리셋을 따르고, 색과 소품(decor.js)만 덮는 스킨. 자동 배정에는 섞이지 않는다
+export const THEMES = [
+  // floor: 실내 바닥 무늬, wall: 벽 색·무늬, tint: 장면 틴트, deep: 바닥이 이미 어두워 다크 테마에서 더 누르지 않는다
+  { id: 'halloween', label: '할로윈', emoji: '🎃', theme: true, floor: 'checker', deep: true, tint: 'rgba(60,20,110,0.12)',
+    rooms: { library: '#7a6458', dev: '#7a6c94', research: '#73668e', meeting: '#7d6f96', lounge: '#836a7e', server: '#6d6188', mydesk: '#776a92', lobby: '#7f7398', elevator: '#776f8c', cafe: '#86707f', terrace: '#6b5d55' },
+    corridor: '#857a9c',
+    wall: { face: '#4a3a62', top: '#5f4d7c', left: '#433558', right: '#33284a', lines: 'stripes', band: '#2a1f3a' },
+    accent: { leaf: ['#4f6b4f', '#5d7a5b', '#405a42', '#6c8a69'], sofa: '#e8742c', parasol: '#6b3fa0', wood: '#8a6a4f', text: '#4a3a5c' } },
+  { id: 'christmas', label: '크리스마스', emoji: '🎄', theme: true, floor: 'wood', tint: 'rgba(255,170,90,0.07)',
+    wall: { face: '#b0703f', top: '#c8834e', left: '#a5683a', right: '#8a5530', lines: 'logs', band: null },
+    rooms: { library: '#c9945f', dev: '#d8b088', research: '#d3ab84', meeting: '#d6ad86', lounge: '#dbb28a', server: '#cfa982', mydesk: '#d5ae88', lobby: '#dab48d', elevator: '#cdb39a', cafe: '#ddb58c', terrace: '#e6e2db' },
+    corridor: '#e6cfb0',
+    accent: { leaf: ['#2f7a45', '#3d8c52', '#24683a', '#4f9d62'], sofa: '#c8323b', parasol: '#c8323b', wood: '#a8743f', text: '#5a3a32' } },
+  { id: 'summer', label: '여름휴가', emoji: '🏖️', theme: true, floor: 'deck',
+    wall: { face: '#f6fafa', top: '#ffffff', left: '#e8f0f0', right: '#d8e4e4', lines: 'planks', band: '#5cc6c2' },
+    rooms: { library: '#ecd8b2', dev: '#f4fbfc', research: '#e8f6f7', meeting: '#f3f8f2', lounge: '#e3f3f5', server: '#e1f0ed', mydesk: '#e5f1f9', lobby: '#f8f6ee', elevator: '#eef3f3', cafe: '#fbf0de', terrace: '#f0dcae' },
+    corridor: '#f6f9f8',
+    accent: { leaf: ['#3fa66b', '#52b87c', '#2f9459', '#6ccb92'], sofa: '#22a7c4', parasol: '#ff7a59', wood: '#e0bb85', text: '#2f5a66' } },
+];
+export const THEME_IDS = THEMES.map((t) => t.id);
+export const isTheme = (id) => THEME_IDS.includes(id);
+/** 날짜 → 그 철의 테마 id 또는 null. 할로윈 10/15~11/1, 크리스마스 12/1~12/26, 여름휴가 7/15~8/31 */
+export function seasonTheme(date = new Date()) {
+  const md = (date.getMonth() + 1) * 100 + date.getDate();
+  if (md >= 1015 && md <= 1101) return 'halloween';
+  if (md >= 1201 && md <= 1226) return 'christmas';
+  if (md >= 715 && md <= 831) return 'summer';
+  return null;
+}
+/**
+ * 그리는 스타일 키: 프리셋 id('warm') 또는 테마+구조('halloween/warm').
+ * → { look: 색을 줄 프리셋·테마 id, base: 구조를 줄 프리셋 id, theme: 테마 id|null }. 모르는 키면 null
+ */
+export function splitStyle(key) {
+  const parts = String(key || '').split('/');
+  if (parts.length > 2) return null;
+  const [a, b] = parts;
+  if (isTheme(a)) { if (b === undefined) return { look: a, base: DEFAULT_PRESET, theme: a }; return PRESET_IDS.includes(b) ? { look: a, base: b, theme: a } : null; }
+  return PRESET_IDS.includes(a) && b === undefined ? { look: a, base: a, theme: null } : null;
+}
 export const PRESET_IDS = PRESETS.map((p) => p.id);
 export const DEFAULT_PRESET = 'warm';
 export const DEMO_PRESET = 'pastel';
 export const AUTO_PRESETS = PRESET_IDS.filter((id) => id !== DEMO_PRESET); // 실제 층의 자동 배정 후보 (파스텔은 데모 층 전용)
 
-export function presetById(id) { return PRESETS.find((p) => p.id === id) || null; }
+/** 프리셋 또는 테마 */
+export function presetById(id) { return PRESETS.find((p) => p.id === id) || THEMES.find((t) => t.id === id) || null; }
 export function isDemoFloor(floor) { return !!floor && typeof floor.id === 'string' && floor.id.startsWith('/demo/'); }
 
 // ---------- 색 유틸 (hex ↔ hsl) ----------
@@ -70,12 +111,15 @@ export function toDark(hex) {
   return hslToHex({ h: c.h, s: Math.min(0.5, 0.12 + c.s * 0.27), l: 0.20 + Math.max(0, 0.97 - c.l) * 0.5 });
 }
 
+export const DEFAULT_WALL = { face: '#fbfbfc', top: '#ffffff', left: '#e9ebf0', right: '#d8dbe2', lines: null, band: null };
+
 /**
  * 프리셋 + 테마 → 렌더가 쓰는 팔레트.
  * { rooms: { id: { floor, trim, alt } }, corridor: { floor, trim }, accent, label: { text, bg } }
  */
 export function palette(presetId, theme = 'light') {
-  const p = presetById(presetId) || presetById(DEFAULT_PRESET);
+  const sp = splitStyle(presetId);
+  const p = presetById(sp ? sp.look : presetId) || presetById(DEFAULT_PRESET);
   const dark = theme === 'dark';
   const rooms = {};
   const lightOf = (id) => {
@@ -83,17 +127,24 @@ export function palette(presetId, theme = 'light') {
     if (id === 'garden') { const c = hexToHsl(p.accent.leaf[1]); return hslToHex({ h: c.h, s: Math.min(0.6, c.s * 0.8), l: 0.8 }); }
     return p.rooms[ROOM_FALLBACK[id]] || p.rooms.lobby;
   };
+  const toDarkOf = (hex) => (p.deep ? lum(hex, -0.12) : toDark(hex));
   for (const id of ROOM_IDS) {
-    const base = dark ? toDark(lightOf(id)) : lightOf(id);
+    const base = dark ? toDarkOf(lightOf(id)) : lightOf(id);
     rooms[id] = {
       floor: base,
       trim: id === 'library' || id === 'booklounge' ? null : lum(base, dark ? 0.04 : -0.05),       // 우드 바닥은 격자선 없음
       alt: lum(base, dark ? -0.02 : -0.03),                                 // 체커 무늬 칸
     };
   }
-  const corridor = dark ? lum(toDark(p.corridor), -0.03) : p.corridor;
+  const corridor = dark ? lum(toDarkOf(p.corridor), -0.03) : p.corridor;
+  const w = p.wall || DEFAULT_WALL;
+  const dw = p.deep ? -0.06 : -0.25;
+  const wall = dark && p.wall ? { ...w, face: lum(w.face, dw), top: lum(w.top, dw), left: lum(w.left, dw), right: lum(w.right, dw) } : { ...w };
   return {
     id: p.id,
+    floorPattern: p.floor || null,
+    wall,
+    tint: p.tint || null,
     rooms,
     corridor: { floor: corridor, trim: lum(corridor, dark ? 0.04 : -0.05) },
     accent: { ...p.accent, leaf: [...p.accent.leaf] },
@@ -152,12 +203,19 @@ export function createFloorStyleBook(storage) {
     },
     /** presetId 가 null/'' 이면 자동으로 되돌린다 (브라우저 저장; 서버 저장은 floorStylePicker 가 API 로) */
     set(floorId, presetId) { write(STORAGE_PREFIX + floorId, presetId && presetById(presetId) ? presetId : null); },
-    auto(floor, floors) { return (floor && floor.styleAuto && presetById(floor.styleAuto)) ? floor.styleAuto : autoPresetFor(floor, floors); },
-    /** 서버가 정한 style > 직접 선택 > 자동 배정 */
-    resolve(floor, floors) {
+    auto(floor, floors) { return (floor && floor.styleAuto && PRESET_IDS.includes(floor.styleAuto)) ? floor.styleAuto : autoPresetFor(floor, floors); },
+    /**
+     * 그릴 스타일 키 (splitStyle 참고). 서버가 정한 style > 직접 선택 > 자동 배정.
+     * 테마를 고른 층은 'halloween/<자동 프리셋>' (구조는 그대로). season 이 있으면(설정 '날짜에 맞춰 자동') 직접 고르지 않은 층에 그 테마를 덮는다
+     */
+    resolve(floor, floors, season = null) {
       if (!floor) return DEFAULT_PRESET;
-      if (floor.style && presetById(floor.style)) return floor.style;
-      return this.get(floor.id, floor) || autoPresetFor(floor, floors);
+      const own = this.get(floor.id, floor);   // 직접 고른 프리셋·테마
+      const auto = this.auto(floor, floors);
+      const chosen = floor.style && presetById(floor.style) ? floor.style : own || auto;
+      if (isTheme(chosen)) return `${chosen}/${auto}`;
+      if (season && isTheme(season) && !own) return `${season}/${chosen}`;
+      return chosen;
     },
   };
 }

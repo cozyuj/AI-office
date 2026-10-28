@@ -3,7 +3,8 @@
 //
 // 방·가구·벽·슬롯은 층 레이아웃(layouts.js, FE-35)에서 온다. 아래 export 들은 live 컨테이너라 setLayout() 이 내용을 통째로
 // 바꿔 끼운다 (참조는 그대로). 색은 층 인테리어 프리셋(floorStyle.js, FE-34) + 테마가 정하고 applyPalette() 가 덮어쓴다.
-import { palette, presetById, DEFAULT_PRESET } from './floorStyle.js';
+import { palette, presetById, splitStyle, DEFAULT_PRESET } from './floorStyle.js';
+import { planDecor } from './decorPlan.js';
 import { buildLayout, DEFAULT_LAYOUT, LAYOUTS, resolveRoom as resolveIn, roomLabelIn, GRID as LAYOUT_GRID } from './layouts.js';
 
 export const TW = 64;  // 타일 가로 (월드 px)
@@ -24,10 +25,13 @@ export const SPAWN = { x: 24, y: 19 };
 export const AMBIENT_SPOTS = [];  // 쉬는 캐릭터의 자율 행동 목적지 { tile, icon, bubble, stay }
 export const REST_SPOTS = {};     // 서버 휴식 방 id(lounge/cafe/terrace) → 방 안 명소 목록
 export const LAMPS = [];          // 야외 조명 점 { x, y, z } (시간대 조명)
+export const DECOR = [];          // 테마 층 소품 (FE-60, decorPlan.js). 테마가 없으면 비어 있다
+export let SKIN = null;           // 지금 테마 id (halloween|christmas|summer) 또는 null
 export let LAYOUT = null;         // 현재 레이아웃 id
 export let LAYOUT_DATA = null;    // buildLayout() 결과
 
 let blocked = new Set();
+let layoutBlocked = new Set(); // 레이아웃 가구만으로 막힌 타일 (테마 소품을 다시 놓을 때 여기서 시작)
 let blockedEdges = new Set();
 const edgeKey = (x, y, nx, ny) => `${x},${y}>${nx},${ny}`;
 
@@ -39,7 +43,7 @@ export function setLayout(id) {
   const L = buildLayout(LAYOUTS[id] ? id : DEFAULT_LAYOUT);
   if (LAYOUT === L.id) return false;
   LAYOUT = L.id; LAYOUT_DATA = L;
-  replaceArray(ROOMS, L.rooms.map((r) => ({ ...r })));
+  replaceArray(ROOMS, L.rooms.map((r) => ({ ...r, basePattern: r.pattern })));
   replaceArray(FURNITURE, L.furniture);
   replaceArray(WALLS, L.walls);
   replaceArray(DOORS, L.doors);
@@ -63,6 +67,7 @@ export function setLayout(id) {
     }
   }
   replaceArray(AMBIENT_SPOTS, L.ambient.filter((s) => isWalkable(s.tile[0], s.tile[1])));
+  layoutBlocked = new Set(blocked);
   applyPalette();
   return true;
 }
@@ -77,29 +82,76 @@ export let THEME = 'light';
 export let STYLE = DEFAULT_PRESET;
 export const ACCENT = { leaf: ['#4e9a55', '#5fae6a', '#3f8a49', '#6bbd77'], sofa: '#f28c38', parasol: '#e8785a', wood: '#d9b382', text: '#4a515a' };
 export const LABEL = { text: '#4a515a', bg: 'rgba(255,255,255,0.86)', border: '#e4e7ec' };
+// 벽 색·무늬 (테마 층은 통나무·벽지·판자), 장면 틴트 (sprites.js / render.js 가 읽는다)
+export const WALL = { face: '#fbfbfc', top: '#ffffff', left: '#e9ebf0', right: '#d8dbe2', lines: null, band: null };
+export const SCENE = { tint: null };
 function applyPalette() {
   const pal = palette(STYLE, THEME);
-  for (const r of ROOMS) { const c = pal.rooms[r.id]; if (!c) continue; r.floor = c.floor; r.trim = c.trim; if (r.pattern === 'checker') r.alt = c.alt; }
+  for (const r of ROOMS) {
+    const c = pal.rooms[r.id]; if (!c) continue;
+    r.floor = c.floor; r.trim = c.trim;
+    r.pattern = pal.floorPattern && !r.outdoor && r.id !== 'elevator' ? pal.floorPattern : r.basePattern;
+    if (r.pattern === 'checker') r.alt = c.alt;
+    if (r.pattern === 'wood' && pal.floorPattern) r.trim = null;
+  }
   Object.assign(CORRIDOR, pal.corridor);
   Object.assign(ACCENT, pal.accent);
   Object.assign(LABEL, pal.label);
+  Object.assign(WALL, pal.wall);
+  SCENE.tint = pal.tint || null;
 }
 export function setTheme(theme) {
   THEME = theme === 'dark' ? 'dark' : 'light';
   applyPalette();
 }
 /** 프리셋 → 레이아웃 id */
-export function layoutOfPreset(presetId) { const p = presetById(presetId) || presetById(DEFAULT_PRESET); return LAYOUTS[p.layout] ? p.layout : DEFAULT_LAYOUT; }
+export function layoutOfPreset(presetId) {
+  const sp = splitStyle(presetId);
+  const p = presetById(sp ? sp.base : presetId) || presetById(DEFAULT_PRESET);
+  return LAYOUTS[p.layout] ? p.layout : DEFAULT_LAYOUT;
+}
 /**
  * 층 인테리어 프리셋 교체: 색 + 레이아웃. 돌려주는 값: 0 = 그대로, 1 = 색만 바뀜, 2 = 레이아웃도 바뀜 (호출자가 캐시를 비운다)
  */
 export function setFloorStyle(presetId) {
-  const id = presetById(presetId) ? presetId : DEFAULT_PRESET;
+  const id = splitStyle(presetId) ? presetId : DEFAULT_PRESET;
   const layoutChanged = setLayout(layoutOfPreset(id));
-  if (id === STYLE) return layoutChanged ? 2 : 0;
+  const skin = splitStyle(id).theme;
+  const skinChanged = skin !== SKIN;
+  if (layoutChanged || skinChanged) { SKIN = skin; placeDecor(); }
+  if (id === STYLE && !layoutChanged && !skinChanged) return 0;
   STYLE = id;
   applyPalette();
-  return layoutChanged ? 2 : 1;
+  return layoutChanged || skinChanged ? 2 : 1;
+}
+
+/** 테마 소품을 놓는다. 큰 소품(solid)은 막아도 모든 자리·명소에 길이 남을 때만 막고, 아니면 지나갈 수 있게 둔다 */
+function placeDecor() {
+  blocked = new Set(layoutBlocked);
+  const items = planDecor(SKIN, { rooms: ROOMS, walls: WALLS, slots: SLOTS, ambient: AMBIENT_SPOTS, restSpots: REST_SPOTS, userSeat: USER_SEAT, spawn: SPAWN, isWalkable, grid: GRID });
+  const targets = [...Object.values(SLOTS).flat(), ...AMBIENT_SPOTS.map((s) => s.tile), ...Object.values(REST_SPOTS).flat().map((s) => s.tile), [USER_SEAT.x, USER_SEAT.y]];
+  const reach = () => {
+    const seen = new Set([`${SPAWN.x},${SPAWN.y}`]), q = [[SPAWN.x, SPAWN.y]];
+    while (q.length) {
+      const [x, y] = q.pop();
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, k = `${nx},${ny}`;
+        if (!seen.has(k) && canStep(x, y, nx, ny)) { seen.add(k); q.push([nx, ny]); }
+      }
+    }
+    return seen;
+  };
+  const before = reach();
+  const must = targets.filter(([x, y]) => before.has(`${x},${y}`));
+  for (const it of items) {
+    if (!it.solid) continue;
+    const tiles = [];
+    for (let x = it.x; x < it.x + (it.w || 1); x++) for (let y = it.y; y < it.y + (it.d || 1); y++) tiles.push(`${x},${y}`);
+    for (const t of tiles) blocked.add(t);
+    const now = reach();
+    if (!must.every(([x, y]) => now.has(`${x},${y}`))) { for (const t of tiles) blocked.delete(t); it.solid = false; }
+  }
+  replaceArray(DECOR, items);
 }
 setLayout(DEFAULT_LAYOUT);
 

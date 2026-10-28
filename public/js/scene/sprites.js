@@ -1,6 +1,6 @@
 // 가구·벽을 코드로 그린다 — 플랫 벡터 아이소메트릭 스타일. 외부 이미지 없음.
 // 좌표는 타일 단위, ctx 는 월드 변환이 걸린 상태.
-import { project, ZH, ACCENT } from './map.js';
+import { project, ZH, ACCENT, WALL } from './map.js';
 import { palette as daylight } from './daylight.js';
 
 export const FONT = "'D2Coding','NanumSquare',-apple-system,'Apple SD Gothic Neo',sans-serif";
@@ -15,7 +15,7 @@ export function shade(hex, f) {
   return `rgb(${c((n >> 16) & 255)},${c((n >> 8) & 255)},${c(n & 255)})`;
 }
 
-function poly(ctx, pts, fill, stroke) {
+export function poly(ctx, pts, fill, stroke) {
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
@@ -52,17 +52,17 @@ export function shadow(ctx, cx, cy, rx = 0.34, ry = 0.17, alpha = 0.16) {
   ctx.restore();
 }
 
-function circle(ctx, tx, ty, z, r, fill) {
+export function circle(ctx, tx, ty, z, r, fill) {
   const p = project(tx, ty, z);
   ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill();
 }
-function ellipse(ctx, tx, ty, z, rx, ry, fill) {
+export function ellipse(ctx, tx, ty, z, rx, ry, fill) {
   const p = project(tx, ty, z);
   ctx.beginPath(); ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill();
 }
-function faceY(ctx, x0, x1, y, z0, z1, fill) { poly(ctx, [project(x0, y, z0), project(x1, y, z0), project(x1, y, z1), project(x0, y, z1)], fill); }
-function faceX(ctx, x, y0, y1, z0, z1, fill) { poly(ctx, [project(x, y0, z0), project(x, y1, z0), project(x, y1, z1), project(x, y0, z1)], fill); }
-function post(ctx, x, y, h, color) { box(ctx, x - 0.04, y - 0.04, 0.08, 0.08, h, color); }
+export function faceY(ctx, x0, x1, y, z0, z1, fill) { poly(ctx, [project(x0, y, z0), project(x1, y, z0), project(x1, y, z1), project(x0, y, z1)], fill); }
+export function faceX(ctx, x, y0, y1, z0, z1, fill) { poly(ctx, [project(x, y0, z0), project(x, y1, z0), project(x, y1, z1), project(x, y0, z1)], fill); }
+export function post(ctx, x, y, h, color) { box(ctx, x - 0.04, y - 0.04, 0.08, 0.08, h, color); }
 
 // ---------- 팔레트 ----------
 const CREAM = { top: '#f6f2ea', left: '#ece6da', right: '#ddd6c8' };
@@ -573,7 +573,8 @@ export function wallPieces(w) {
 
 export function drawWallPiece(ctx, p) {
   if (p.rail) { drawRail(ctx, p); return; }
-  box(ctx, p.x, p.y, p.w, p.d, p.h, '#fbfbfc', { top: '#ffffff', left: '#e9ebf0', right: '#d8dbe2' });
+  box(ctx, p.x, p.y, p.w, p.d, p.h, WALL.face, { top: WALL.top, left: WALL.left, right: WALL.right });
+  if (WALL.lines || WALL.band) wallSkin(ctx, p);
   if (p.win && p.dir === 'h') {
     // 유리창: 벽 앞면(남쪽)에 틀 + 유리 + 사선 하이라이트. 유리 색은 시간대(daylight.js)에 따라 다르다
     const y = p.y + p.d + 0.001, x0 = p.x + 0.1, x1 = p.x + 0.9, z0 = 0.45, z1 = p.h - 0.2;
@@ -606,6 +607,20 @@ export function drawWallPiece(ctx, p) {
     faceY(ctx, mx - 0.015, mx + 0.015, y + 0.001, z0, z1, '#cfd6e0');
     faceY(ctx, x0 + 0.05, x1 - 0.05, y + 0.001, mz - 0.012, mz + 0.012, '#cfd6e0');
   }
+}
+
+/** 테마 층 벽 무늬 (FE-60): 보이는 앞면에 통나무 줄 · 세로 벽지 줄 · 판자 줄, 아래 띠 */
+function wallSkin(ctx, p) {
+  const h = p.dir === 'h';
+  const face = (u0, u1, z0, z1, col) => (h ? faceY(ctx, p.x + u0, p.x + u1, p.y + p.d + 0.001, z0, z1, col) : faceX(ctx, p.x + p.w + 0.001, p.y + u0, p.y + u1, z0, z1, col));
+  const line = (z, col, w) => {
+    const a = h ? project(p.x, p.y + p.d + 0.002, z) : project(p.x + p.w + 0.002, p.y, z), b = h ? project(p.x + 1, p.y + p.d + 0.002, z) : project(p.x + p.w + 0.002, p.y + 1, z);
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  };
+  if (WALL.band) face(0, 1, 0, Math.min(0.22, p.h * 0.35), WALL.band);
+  if (WALL.lines === 'logs') for (let z = 0.25; z < p.h - 0.05; z += 0.27) { line(z, 'rgba(70,35,15,0.45)', 1.2); line(z + 0.06, 'rgba(255,210,160,0.16)', 1); }
+  else if (WALL.lines === 'planks') for (let z = 0.3; z < p.h - 0.05; z += 0.26) line(z, 'rgba(120,160,170,0.28)', 0.8);
+  else if (WALL.lines === 'stripes') for (const u of [0.2, 0.7]) face(u, u + 0.1, WALL.band ? 0.22 : 0, p.h, 'rgba(255,255,255,0.07)');
 }
 
 /** 난간: 기둥 + 가로대 두 줄 (테라스 가장자리) */

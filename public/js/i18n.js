@@ -70,6 +70,10 @@ const DICT = {
   '그림이 너무 큽니다 — 한 변 8192px 이하로 올려 주세요': 'Picture is too large — each side must be 8192 px or less', '이미지를 읽지 못했습니다 — 다른 파일로 해 보세요': 'Could not read the image — try another file', '그림이 전부 투명합니다': 'The picture is fully transparent',
   '커스텀 캐릭터가 너무 많습니다 — 안 쓰는 것을 지워 주세요': 'Too many custom characters — delete ones you no longer use', '저장 공간이 부족합니다 — 안 쓰는 커스텀 캐릭터를 지워 주세요': 'Out of storage space — delete custom characters you no longer use',
   '배경이 투명하지 않은 그림이라 사각형 그대로 보입니다': 'The background is not transparent, so it shows as a rectangle', '추가했습니다 — 저장을 누르면 이 대상에 적용됩니다': 'Added — press Save to use it for this target',
+  // 테마 층 (FE-60)
+  '테마 층': 'Theme floors', '🎨 직접 고르기': '🎨 Pick manually', '📅 날짜에 맞춰 자동': '📅 Auto by date', '테마': 'Themes', '할로윈': 'Halloween', '크리스마스': 'Christmas', '여름휴가': 'Summer vacation',
+  '할로윈·크리스마스·여름휴가 테마 층 — 직접 고르기는 🎨 에서 층마다, 날짜에 맞춰 자동은 10/15~11/1 할로윈 · 12/1~12/26 크리스마스 · 7/15~8/31 여름휴가 (직접 고른 층은 그대로)': 'Halloween · Christmas · Summer vacation theme floors — pick per floor from 🎨, or auto by date: Halloween 10/15–11/1 · Christmas 12/1–12/26 · Summer 7/15–8/31 (floors you picked stay as they are)',
+  '— 구조는 그대로, 색과 소품만': '— same layout, new colors and decorations',
   // 파트 바꾸기 (FE-57)
   '파트 바꾸기': 'Mix parts', '— 머리·몸을 섞고 색·소품 고르기': '— mix heads and bodies, pick colors and accessories', '— 지금 캐릭터에서 시작합니다': '— starts from the current character',
   '머리': 'Head', '몸': 'Body', '머리카락': 'Hair', '상의': 'Top', '하의': 'Bottom', '소품': 'Accessory', '원래': 'Original', '원래 색': 'Original color', '다른 색 고르기': 'Pick another color',
