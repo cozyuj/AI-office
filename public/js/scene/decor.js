@@ -20,10 +20,11 @@ const BULB = ['#ff4d4d', '#ffd34d', '#4dd17a', '#4da6ff'];
 export const DECOR_HEIGHT = {
   pumpkin: 0.55, pumpkins: 0.7, candles: 0.6, ghost: 1.9, tombstone: 0.95, cauldron: 0.9, bat: 2.6, cobweb: 1.75, hbunting: 1.7,
   xmastree: 2.9, gifts: 0.55, snowman: 2.0, fireplace: 1.9, wreath: 1.55, xlights: 1.75,
+  lantern: 0.5, torch: 1.6,
   beachumbrella: 2.1, lounger: 1.0, beachball: 0.45, cooler: 0.7, floatring: 0.12, surfboard: 2.1, pool: 0.05, lifebuoy: 1.5, bunting: 1.7,
 };
 export const DECOR_PAD = { xmastree: 60, beachumbrella: 70, ghost: 40, bat: 40, cauldron: 44, pumpkin: 36, pumpkins: 40, candles: 30, fireplace: 50, cobweb: 40, pool: 30 };
-export const DECOR_DYNAMIC = new Set(['ghost', 'bat', 'cauldron', 'candles', 'xlights', 'xmastree', 'fireplace']);
+export const DECOR_DYNAMIC = new Set(['ghost', 'bat', 'cauldron', 'candles', 'xlights', 'xmastree', 'fireplace', 'lantern', 'torch']);
 
 // ---------- 할로윈 ----------
 function pumpkinAt(ctx, x, y, z, s) {
@@ -68,9 +69,10 @@ function garland(ctx, pts, color, each) {
     each(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t + 7 * 4 * t * (1 - t) * 0.5, k++);
   }
 }
-/** 벽 소품의 점들: 바깥벽 앞면을 따라 len 칸, 높이 z */
-function wallPoints(it, z) {
-  return Array.from({ length: it.len + 1 }, (_, i) => (it.dir === 'h' ? P(it.x + i, it.y + 0.12, z) : P(it.x + 0.12, it.y + i, z)));
+/** 벽 소품의 점들: 벽 앞면을 따라 len 칸. 높이는 그 벽 꼭대기 조금 아래 (it.z 가 없으면 바깥벽 높이) */
+function wallPoints(it) {
+  const z = (it.z || 1.6) - (it.z && it.z < 1 ? 0.04 : 0.1), off = it.rail ? 0 : it.outer || !it.z ? 0.12 : 0.08;
+  return Array.from({ length: it.len + 1 }, (_, i) => (it.dir === 'h' ? P(it.x + i, it.y + off, z) : P(it.x + off, it.y + i, z)));
 }
 function flag(ctx, x, y, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y + 1); ctx.lineTo(x, y + 9); ctx.closePath(); ctx.fill(); }
 
@@ -138,7 +140,7 @@ const DRAW = {
     if (it.dir === 'h') web(ctx, P(it.x, it.y + 0.11, 1.6), 30, 0.2, 2.9);
     else web(ctx, P(it.x + 0.11, it.y, 1.6), 30, 0.2, 2.9);
   },
-  hbunting(ctx, it) { garland(ctx, wallPoints(it, 1.5), '#2a1f3a', (x, y, k) => flag(ctx, x, y, k % 2 ? '#8a4fd1' : '#ff8a1f')); },
+  hbunting(ctx, it) { garland(ctx, wallPoints(it), '#2a1f3a', (x, y, k) => flag(ctx, x, y, k % 2 ? '#8a4fd1' : '#ff8a1f')); },
 
   // ---------- 크리스마스 ----------
   xmastree(ctx, it, now) {
@@ -219,7 +221,7 @@ const DRAW = {
     ctx.fillStyle = '#d42a32'; ctx.beginPath(); ctx.ellipse(p.x - 4, p.y + 11, 4.5, 2.6, -0.5, 0, Math.PI * 2); ctx.ellipse(p.x + 4, p.y + 11, 4.5, 2.6, 0.5, 0, Math.PI * 2); ctx.fill();
   },
   xlights(ctx, it, now) {
-    garland(ctx, wallPoints(it, 1.58), '#2e3a2e', (x, y, k) => {
+    garland(ctx, wallPoints(it), '#2e5a32', (x, y, k) => {
       const on = Math.floor(now / 600 + k) % 2 === 0, col = BULB[k % 4];
       if (on) glow(ctx, { x, y }, 8, col === '#ff4d4d' ? '255,77,77' : col === '#ffd34d' ? '255,211,77' : col === '#4dd17a' ? '77,209,122' : '77,166,255', 0.7);
       ctx.fillStyle = on ? col : shade(col, 0.55); ctx.beginPath(); ctx.ellipse(x, y + 2, 1.7, 2.4, 0, 0, Math.PI * 2); ctx.fill();
@@ -288,7 +290,62 @@ const DRAW = {
     ctx.lineWidth = 5.5;
     for (let i = 0; i < 8; i++) { ctx.strokeStyle = i % 2 ? '#ffffff' : '#ff5a4a'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 8.5, 10, 0, i * Math.PI / 4, (i + 1) * Math.PI / 4); ctx.stroke(); }
   },
-  bunting(ctx, it) { const C = ['#ff7a59', '#ffd34d', '#22a7c4', '#5ac487', '#e48bb4']; garland(ctx, wallPoints(it, 1.5), '#6a7a80', (x, y, k) => flag(ctx, x, y, C[k % 5])); },
+  bunting(ctx, it) { const C = ['#ff7a59', '#ffd34d', '#22a7c4', '#5ac487', '#e48bb4']; garland(ctx, wallPoints(it), '#6a7a80', (x, y, k) => flag(ctx, x, y, C[k % 5])); },
+
+  // ---------- 바닥에 까는 것 (FE-63): 바닥 캐시에 그린다 ----------
+  rugweb(ctx, it) { // 거미줄 무늬 둥근 러그
+    const p = P(it.x, it.y), rx = it.w * 23, ry = it.d * 11.5;
+    ctx.fillStyle = 'rgba(30,18,46,0.75)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,190,230,0.45)'; ctx.lineWidth = 0.8;
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + Math.cos(a) * rx, p.y + Math.sin(a) * ry); ctx.stroke(); }
+    for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.ellipse(p.x, p.y, rx * k / 3.4, ry * k / 3.4, 0, 0, Math.PI * 2); ctx.stroke(); }
+  },
+  rugplaid(ctx, it) { // 빨강·초록 체크 러그
+    const x0 = it.x - it.w / 2, y0 = it.y - it.d / 2, x1 = it.x + it.w / 2, y1 = it.y + it.d / 2;
+    poly(ctx, [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)], '#b83a3a');
+    const n = 6;
+    for (let i = 1; i < n; i += 2) {
+      const u = x0 + (x1 - x0) * i / n, v = y0 + (y1 - y0) * i / n;
+      poly(ctx, [P(u - 0.07, y0), P(u + 0.07, y0), P(u + 0.07, y1), P(u - 0.07, y1)], 'rgba(47,122,69,0.75)');
+      poly(ctx, [P(x0, v - 0.07), P(x1, v - 0.07), P(x1, v + 0.07), P(x0, v + 0.07)], 'rgba(47,122,69,0.75)');
+    }
+    ctx.strokeStyle = 'rgba(255,240,220,0.7)'; ctx.lineWidth = 1.2;
+    const c = [P(x0 + 0.08, y0 + 0.08), P(x1 - 0.08, y0 + 0.08), P(x1 - 0.08, y1 - 0.08), P(x0 + 0.08, y1 - 0.08)];
+    ctx.beginPath(); c.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.closePath(); ctx.stroke();
+  },
+  towels(ctx, it) { // 줄무늬 비치 타월 두 장
+    const C = [['#ff7a59', '#ffffff'], ['#22a7c4', '#ffd34d']];
+    [[-0.55, -0.1], [0.45, 0.15]].forEach(([dx, dy], k) => {
+      const x0 = it.x + dx - 0.4, y0 = it.y + dy - 0.75;
+      for (let i = 0; i < 5; i++) poly(ctx, [P(x0 + i * 0.16, y0), P(x0 + (i + 1) * 0.16, y0), P(x0 + (i + 1) * 0.16, y0 + 1.5), P(x0 + i * 0.16, y0 + 1.5)], C[(k + it.seed) % 2][i % 2]);
+    });
+  },
+  fog(ctx, it) { // 바닥에 낮게 깔린 안개
+    const p = P(it.x, it.y);
+    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 0.5);
+    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 70);
+    g.addColorStop(0, 'rgba(220,210,245,0.32)'); g.addColorStop(1, 'rgba(220,210,245,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 70, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+
+  // ---------- 복도 소품 (FE-63) ----------
+  lantern(ctx, it, now) { // 촛불 랜턴
+    const x = it.x + 0.5, y = it.y + 0.5; shadow(ctx, x, y, 0.2, 0.1, 0.18);
+    box(ctx, x - 0.12, y - 0.12, 0.24, 0.24, 0.05, '#3a2a20');
+    box(ctx, x - 0.1, y - 0.1, 0.2, 0.2, 0.32, 'rgba(255,220,150,0.55)', { z0: 0.05, top: '#3a2a20', left: 'rgba(255,214,140,0.6)', right: 'rgba(240,190,110,0.6)' });
+    flame(ctx, P(x, y, 0.22), 0.9, now, it.seed);
+    box(ctx, x - 0.13, y - 0.13, 0.26, 0.26, 0.04, '#3a2a20', { z0: 0.37 });
+  },
+  torch(ctx, it, now) { // 대나무 횃불
+    const x = it.x + 0.5, y = it.y + 0.5; shadow(ctx, x, y, 0.18, 0.09, 0.18);
+    box(ctx, x - 0.035, y - 0.035, 0.07, 0.07, 1.2, '#b58b5a', { top: '#c99d6a' });
+    box(ctx, x - 0.07, y - 0.07, 0.14, 0.14, 0.14, '#8a6a48', { z0: 1.2 });
+    const f = P(x, y, 1.42), k = 1 + Math.sin(now / 100 + it.seed) * 0.15;
+    glow(ctx, f, 22, '255,170,70', 0.5);
+    ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.moveTo(f.x - 5, f.y + 4); ctx.quadraticCurveTo(f.x, f.y - 14 * k, f.x + 5, f.y + 4); ctx.fill();
+    ctx.fillStyle = '#ffd060'; ctx.beginPath(); ctx.moveTo(f.x - 2.5, f.y + 4); ctx.quadraticCurveTo(f.x, f.y - 7 * k, f.x + 2.5, f.y + 4); ctx.fill();
+  },
 };
 
 /** 소품 하나 그리기 */
@@ -301,7 +358,8 @@ export function drawDecor(ctx, it, now = 0) {
 export function decorBox(it) {
   const z1 = DECOR_HEIGHT[it.type] || 1;
   if (it.kind === 'wall') {
-    const len = it.len || 1, z0 = it.type === 'cobweb' ? 1.2 : 0.9;
+    const len = it.len || 1, z0 = it.type === 'cobweb' ? 1.2 : it.z ? it.z - 0.35 : 0.9;
+    if (it.z) return it.dir === 'h' ? { x0: it.x, y0: it.y + 0.07, x1: it.x + len, y1: it.y + 0.12, z0, z1: it.z + 0.05 } : { x0: it.x + 0.07, y0: it.y, x1: it.x + 0.12, y1: it.y + len, z0, z1: it.z + 0.05 };
     return it.dir === 'h' ? { x0: it.x, y0: it.y + 0.11, x1: it.x + len, y1: it.y + 0.16, z0, z1 } : { x0: it.x + 0.11, y0: it.y, x1: it.x + 0.16, y1: it.y + len, z0, z1 };
   }
   if (it.kind === 'air') return { x0: it.x - 0.3, y0: it.y - 0.1, x1: it.x + 1.3, y1: it.y + 1.1, z0: 1.9, z1 };

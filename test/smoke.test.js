@@ -132,8 +132,9 @@ test('scene: 테마 층(FE-60) × 모든 구조 × 라이트·다크에서 소�
       R.setTheme(theme);
       resetLog();
       const ctx = fakeCtx();
+      R.drawFloorRaw(ctx);
       R.drawFloor(ctx, 1);
-      for (const now of [0, 777, 12345]) R.drawEntities(ctx, now, [], 1);
+      for (const now of [0, 777, 12345]) { R.drawThemeBackdrop(ctx, 1600, 900, now); R.drawEntities(ctx, now, [], 1); }
       for (const mode of ['theme', 'rain', 'snow']) { R.setWeather({ mode, real: null }); R.drawWeatherFloor(ctx); R.drawWeather(ctx, 4321); }
       R.setWeather({ mode: 'theme', real: null });
       R.drawDaylightTint(ctx, 1600, 900);

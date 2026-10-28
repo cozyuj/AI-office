@@ -62,6 +62,7 @@ export function drawFloorRaw(ctx) {
     }
   }
   for (const d of DOORS) drawDoorMat(ctx, d);
+  for (const it of DECOR) if (it.kind === 'flat') drawDecor(ctx, it, 0); // 테마 러그·안개 (FE-63)
   ctx.lineWidth = 1.2;
   for (const r of ROOMS) {
     const a = project(r.x0, r.y0), b = project(r.x1 + 1, r.y0), c = project(r.x1 + 1, r.y1 + 1), d = project(r.x0, r.y1 + 1);
@@ -203,6 +204,49 @@ export function drawDaylightLamps(ctx) {
   }
 }
 
+// ---------- 테마 배경 하늘 (FE-63): 사무실 밖을 테마로 (화면 공간, 맨 먼저) ----------
+const srnd = (i, s) => { const x = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453; return x - Math.floor(x); };
+export function drawThemeBackdrop(ctx, w, h, now) {
+  const t = MAP.SKIN;
+  if (!t) return;
+  const sky = { halloween: ['#1a1230', '#2e1a3e'], christmas: ['#16203a', '#2a2346'], summer: ['#8fd3f4', '#dff4fb'] }[t];
+  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  const sec = now / 1000;
+  if (t !== 'summer') for (let i = 0; i < 110; i++) { // 별
+    const tw = 0.35 + 0.5 * Math.abs(Math.sin(sec * 0.8 + i));
+    ctx.fillStyle = `rgba(255,245,225,${tw * 0.8})`; ctx.fillRect(srnd(i, 1) * w, srnd(i, 2) * h, 1 + (i % 3 === 0), 1 + (i % 3 === 0));
+  }
+  const mx = w * 0.86, my = h * 0.14;
+  if (t === 'halloween' || t === 'christmas') { // 달
+    const r = Math.min(w, h) * (t === 'halloween' ? 0.07 : 0.045);
+    const gl = ctx.createRadialGradient(mx, my, r * 0.6, mx, my, r * 3.2); gl.addColorStop(0, 'rgba(255,236,190,0.35)'); gl.addColorStop(1, 'rgba(255,236,190,0)');
+    ctx.fillStyle = gl; ctx.fillRect(mx - r * 3.2, my - r * 3.2, r * 6.4, r * 6.4);
+    ctx.fillStyle = t === 'halloween' ? '#ffe9b8' : '#f4f1e4'; ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(200,180,140,0.35)'; for (const [dx, dy, k] of [[-0.3, -0.25, 0.22], [0.35, 0.25, 0.16], [-0.05, 0.4, 0.1]]) { ctx.beginPath(); ctx.arc(mx + dx * r, my + dy * r, r * k, 0, Math.PI * 2); ctx.fill(); }
+  }
+  if (t === 'halloween') for (let i = 0; i < 5; i++) { // 달 앞을 지나는 박쥐 떼
+    const ph = (sec / (14 + i * 3) + srnd(i, 4)) % 1, x = -40 + ph * (w + 80), y = h * (0.08 + srnd(i, 5) * 0.3) + Math.sin(sec * 2 + i) * 10, f = Math.sin(now / 90 + i);
+    ctx.save(); ctx.translate(x, y); ctx.fillStyle = '#0d0818';
+    for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(d * 9, -11 * f - 2, d * 18, -4 * f); ctx.quadraticCurveTo(d * 13, 0, d * 11, 3); ctx.quadraticCurveTo(d * 6, 1, d * 3, 4); ctx.closePath(); ctx.fill(); }
+    ctx.beginPath(); ctx.ellipse(0, 1, 4, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  if (t === 'christmas') for (let i = 0; i < 140; i++) { // 눈송이
+    const ph = (sec / (9 + srnd(i, 6) * 6) + srnd(i, 7)) % 1, x = srnd(i, 8) * w + Math.sin(sec * 0.7 + i) * 14, y = ph * (h + 20) - 10;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(x, y, 1.2 + (i % 3) * 0.7, 0, Math.PI * 2); ctx.fill();
+  }
+  if (t === 'summer') {
+    const gl = ctx.createRadialGradient(mx, my, 10, mx, my, Math.min(w, h) * 0.5); gl.addColorStop(0, 'rgba(255,245,190,0.75)'); gl.addColorStop(0.25, 'rgba(255,240,170,0.25)'); gl.addColorStop(1, 'rgba(255,240,170,0)');
+    ctx.fillStyle = gl; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(mx, my, Math.min(w, h) * 0.045, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 6; i++) { // 흘러가는 구름
+      const s = 0.7 + srnd(i, 9) * 0.8, x = ((srnd(i, 10) * (w + 300) + sec * (6 + i * 2)) % (w + 300)) - 150, y = h * (0.06 + srnd(i, 11) * 0.85);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (const [dx, dy, r] of [[0, 0, 26], [28, -10, 32], [60, 0, 24], [30, 9, 26]]) { ctx.beginPath(); ctx.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+}
+
 // ---------- 야외 날씨 (FE-61) ----------
 const weather = { mode: 'theme', real: null };
 /** { mode, real } — 지금 내릴 것은 층 테마와 합쳐 매 프레임 정한다 (effectiveWeather) */
@@ -330,6 +374,7 @@ function buildStatic() {
   }
   // 테마 소품 (FE-60): 반짝이·흔들리는 것은 매 프레임, 나머지는 같은 모양끼리 스프라이트 공유
   for (const it of DECOR) {
+    if (it.kind === 'flat') continue; // 바닥 캐시에 그린다
     const dynamic = DECOR_DYNAMIC.has(it.type);
     S.push(makeEntity(decorBox(it), (ctx, now) => drawDecor(ctx, it, now), {
       label: `decor:${it.type}`, dynamic, pad: DECOR_PAD[it.type] || 28,

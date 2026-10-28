@@ -51,11 +51,13 @@ test('소품 배치: 모든 구조 × 테마에서 방 안 · 자리·명소·�
     assert.ok(M.DECOR.length >= 10, `${t}/${preset}: 소품 ${M.DECOR.length}`);
     const slotTiles = new Set(Object.values(M.SLOTS).flat().map(([x, y]) => `${x},${y}`));
     for (const it of M.DECOR) {
-      assert.ok(M.inGrid(it.x, it.y), `${t}/${preset} ${it.type} 격자 안`);
+      // 벽 소품은 격자 가장자리 벽(x1+1, y1+1)에도 걸린다
+      const gx = Math.floor(it.x) - (it.kind === 'wall' && it.x === M.GRID.x1 + 1 ? 1 : 0), gy = Math.floor(it.y) - (it.kind === 'wall' && it.y === M.GRID.y1 + 1 ? 1 : 0);
+      assert.ok(M.inGrid(gx, gy), `${t}/${preset} ${it.type} 격자 안`);
       if (it.kind !== 'floor') continue;
       for (let x = it.x; x < it.x + (it.w || 1); x++) for (let y = it.y; y < it.y + (it.d || 1); y++) {
         assert.ok(!slotTiles.has(`${x},${y}`), `${t}/${preset} ${it.type} 가 자리 (${x},${y}) 를 막지 않는다`);
-        assert.ok(M.roomAt(x, y), `${t}/${preset} ${it.type} 방 안`);
+        assert.ok(it.corridor ? M.isWalkable(x, y) && !M.roomAt(x, y) : M.roomAt(x, y), `${t}/${preset} ${it.type} 방 안 (복도 소품은 복도)`);
       }
     }
     for (const [x, y] of Object.values(M.SLOTS).flat()) {
