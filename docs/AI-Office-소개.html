@@ -72,19 +72,19 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
 </nav>
 
 <main>
-<div class="eyebrow">AI Office · v0.31.0 · 2026-10-26</div>
+<div class="eyebrow">AI Office · v0.32.1 · 2026-10-28</div>
 <h1>Claude Code 세션을 아이소메트릭 사무실로 보여주는 로컬 뷰어</h1>
-<p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실, 질문이 생기면 내 자리에서 손을 듭니다. git 프로젝트마다 층이 하나씩 생기고, 여러 저장소를 묶은 폴더에서 연 세션은 실제로 작업하는 저장소 층으로 옮겨 갑니다. 웹 버전은 npm 과 Homebrew 로, 맥·Windows 앱은 GitHub Release 와 Homebrew 로 배포되고 앱은 스스로 업데이트합니다.</p>
+<p class="lead">터미널에서 돌아가는 Claude Code 세션들이 훅(hook) 이벤트를 보내면, 세션마다 캐릭터 한 명이 사무실에서 실시간으로 움직입니다. 파일을 읽으면 자료실, 명령을 돌리면 서버실로 걸어가 타이핑하고, 질문이 생기면 내 자리로 와서 머리 위에 느낌표를 띄운 채 끄덕이며 기다립니다. git 프로젝트마다 층이 하나씩 생기고, 여러 저장소를 묶은 폴더에서 연 세션은 실제로 작업하는 저장소 층으로 옮겨 갑니다. 웹 버전은 npm 과 Homebrew 로, 맥·Windows 앱은 GitHub Release 와 Homebrew 로 배포되고 앱은 스스로 업데이트합니다.</p>
 
 <section id="overview">
 <h2>1. 한눈에</h2>
-<figure><img src="screenshots/fe-30-overview.jpg" alt="AI Office 전체 화면: 왼쪽 층별 안내, 가운데 아이소메트릭 사무실, 오른쪽 세션 정보·사람·로그"><figcaption>전체 화면. 왼쪽 층별 안내(프로젝트 = 층), 가운데 사무실 캔버스, 오른쪽 세션 카드·사람·활동 로그.</figcaption></figure>
+<figure><img src="screenshots/fe-55-overview.jpg" alt="AI Office 전체 화면: 왼쪽 층별 안내, 가운데 아이소메트릭 사무실, 오른쪽 세션 정보·사람·로그"><figcaption>전체 화면. 왼쪽 층별 안내(프로젝트 = 층), 가운데 사무실 캔버스, 오른쪽 세션 카드·사람·활동 로그.</figcaption></figure>
 <div class="facts">
   <div class="fact"><b>0</b><span>런타임 의존성 (Node 18+ 표준 모듈만)</span></div>
   <div class="fact"><b>12</b><span>처리하는 훅 이벤트 종류</span></div>
   <div class="fact"><b>11 + α</b><span>방 (업무 9 + 휴식 편의시설, 프리셋마다 교체)</span></div>
   <div class="fact"><b>122</b><span>node --test 테스트 · CI 3 OS + 앱 컴파일 맥·Windows</span></div>
-  <div class="fact"><b>530 KB</b><span>npm 패키지 claude-ai-office (54 파일)</span></div>
+  <div class="fact"><b>1.7 MB</b><span>npm 패키지 claude-ai-office (68 파일, 캐릭터 시트 1.1 MB 포함)</span></div>
   <div class="fact"><b>40 / 25 MB</b><span>맥 DMG / Windows 설치 파일 (Node 22 내장)</span></div>
   <div class="fact"><b>5</b><span>설치 경로: npm · Homebrew 2종 · Release · 자동 업데이트</span></div>
   <div class="fact"><b>2</b><span>화면 언어: 한국어 · English</span></div>
@@ -92,7 +92,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
 <h3>기술 스택</h3>
 <dl class="kv">
   <dt>서버</dt><dd>Node.js 18+ · <code>http</code> 표준 모듈만 · 상태 머신 + JSONL 저널 · SSE 푸시</dd>
-  <dt>프런트</dt><dd>바닐라 ES 모듈 · Canvas 2D 아이소메트릭 렌더러(빌드 없음, 번들러 없음) · 폰트 D2Coding + NanumSquare</dd>
+  <dt>프런트</dt><dd>바닐라 ES 모듈 · Canvas 2D 아이소메트릭 렌더러(빌드 없음, 번들러 없음) · 캐릭터는 미리 구운 webp 스프라이트 시트(Kenney Mini Characters, CC0) · 폰트 D2Coding + NanumSquare</dd>
   <dt>데스크톱 앱</dt><dd>Tauri 2 (Rust) 메뉴바·트레이 앱 · macOS(Apple Silicon)·Windows(x64) · Node 22.12 사이드카 번들 · tauri-plugin-updater 자동 업데이트(서명 검증)</dd>
   <dt>입력</dt><dd>Claude Code 훅 11종 등록 (<code>~/.claude/settings.json</code>, <code>hooks/emit.js</code> 가 POST). 상태 머신은 TaskCompleted 까지 12종을 처리</dd>
   <dt>배포</dt><dd>npm <code>claude-ai-office</code> · Homebrew tap <code>cozyuj/tap</code>(cask <code>ai-office</code>, formula <code>claude-ai-office</code>) · GitHub Release(DMG·NSIS·<code>latest.json</code>, 고정 이름 링크)</dd>
@@ -260,9 +260,9 @@ LogEntry{ t, floorId, sessionId, agentId, agentName, icon, text }   // 최근 50
 <tr><td><code>scene/sprites.js</code></td><td>가구·벽·유리창·난간·파라솔 등을 코드로 그리는 플랫 벡터 스프라이트(외부 이미지 없음)</td></tr>
 <tr><td><code>scene/render.js</code></td><td>바닥 캐시, 종류별 공유 스프라이트 캐시, AABB 위상 정렬, 방 이름표, 시간대 틴트·조명</td></tr>
 <tr><td><code>scene/pathfind.js</code></td><td>A*. 방은 문으로만 드나들고 가구 타일은 막힘</td></tr>
-<tr><td><code>scene/actors.js</code> · <code>avatar.js</code></td><td>캐릭터 상태(이동·바운스·호흡·깜빡임·타이핑), 치비 아바타(몸 종류 4 · 머리·옷·안경·모자·악세사리), 말풍선 스태킹, 휴식 방 안 배회</td></tr>
+<tr><td><code>scene/actors.js</code> · <code>characters.js</code></td><td>캐릭터 상태(이동·앉기·타이핑·답 대기) → 스프라이트 시트의 동작 행·칸, 서브에이전트 안전모, 말풍선 스태킹, 휴식 방 안 배회</td></tr>
 <tr><td><code>overview.js</code></td><td>🏢 전체 보기: 층을 건물 단면처럼 쌓고 미니 사무실 + 캐릭터 점</td></tr>
-<tr><td><code>customize.js</code> · <code>floorStylePicker.js</code></td><td>외형 모달(프리셋·파츠·색·이름), 층 인테리어 팝오버</td></tr>
+<tr><td><code>customize.js</code> · <code>avatarStore.js</code> · <code>floorStylePicker.js</code></td><td>캐릭터 고르기 모달(대상별 12명 중 하나 / 자동, 세션 이름)과 그 저장소(localStorage), 층 인테리어 팝오버</td></tr>
 </table></div>
 <h3>아이소메트릭 투영과 깊이 정렬</h3>
 <pre><code>// 타일 (tx, ty), 높이 z → 월드 px.  TW=64, TH=32, ZH=26
@@ -287,13 +287,24 @@ y = (tx + ty) * TH/2 - z * ZH
 <h3>층과 세션</h3>
 <p>git 저장소마다 층. 같은 저장소의 세션(worktree 포함)은 한 층에 모이고 세션 색으로 구분됩니다. 여러 저장소를 묶은 폴더에서 연 세션은 고치거나 읽는 저장소 층으로 옮겨 갑니다(3절). 왼쪽 층별 안내에서 층·세션을 고르고, 숫자 키로 층 번호(<kbd>7</kbd> → 7F, 12F 는 <kbd>1</kbd> <kbd>2</kbd> 연타), 화살표로 이전·다음 층. "최근 세션 자동으로 따라가기" 를 켜면 마지막으로 활동한 세션이 자동 선택됩니다. 세션 제목은 Claude Code 의 세션 이름을 따라가므로, 다른 세션에서 분리된 세션도 부모 제목이 아니라 자기 이름으로 보이고 이름을 바꾸면 1분 안에 반영됩니다(로그에 🏷️). 층 행의 이름·상태 줄은 한 줄로 두고 넘치면 말줄임합니다. 기본은 선택한 층만 세션 목록이 열리고, 머리의 <strong>모두 펼치기 ↔ 모두 접기</strong> 로 모든 층을 한꺼번에 열고 닫습니다(<code>store.floorFold</code>: auto · all · none, 브라우저에 기억).</p>
 <div class="grid2">
-<figure><img src="screenshots/fe-05-waiting.jpg" alt="답을 기다리는 세션이 내 자리에서 손을 든 화면"><figcaption>질문·허락 대기: 내 자리에서 손을 들고, 층·세션에 빨간 배지, 탭 제목에 <code>(nF)</code>, 브라우저 알림·차임.</figcaption></figure>
+<figure><img src="screenshots/fe-55-waiting.jpg" alt="답을 기다리는 세션의 캐릭터가 내 자리에서 기다리는 화면"><figcaption>질문·허락 대기: 내 자리로 와서 끄덕이며 기다리고, 층·세션에 빨간 배지, 탭 제목에 <code>(nF)</code>, 브라우저 알림·차임. 왼쪽 위 노란 안전모는 서브에이전트.</figcaption></figure>
 <figure><img src="screenshots/fe-36-log.jpg" alt="활동 로그와 세션 카드"><figcaption>세션 카드(프로젝트·브랜치·이어가기 명령 복사·캐릭터 이름·치우기)와 활동 로그(검색·선택 세션만 필터).</figcaption></figure>
 </div>
 
-<h3>캐릭터와 외형, 이름</h3>
-<p>치비 스타일 아바타를 코드로 그립니다. 몸 종류(사람·로봇·고양이·곰), 머리 모양·색, 상의·하의·신발 색, 안경·모자·악세사리를 고르고 프리셋 10개가 있습니다. 역할(나·Claude·서브에이전트)별 기본 외형에 더해 세션마다 다른 외형과 이름을 줄 수 있고, 이름이 없는 세션은 별명 풀(Alex·Sam·Mia …)에서 자동으로 받습니다. 모두 브라우저 localStorage 에 저장됩니다.</p>
-<figure><img src="screenshots/fe-30-customize.jpg" alt="캐릭터 외형 모달"><figcaption>외형 모달. 왼쪽 미리보기, 프리셋 칩, 파츠·색 선택, 세션 캐릭터 이름 입력.</figcaption></figure>
+<h3>캐릭터와 이름 (v0.32.0, FE-54)</h3>
+<p>캐릭터는 <a href="https://kenney.nl/assets/mini-characters">Kenney Mini Characters</a>(CC0) 12명(female-a~f, male-a~f)입니다. 3D 모델을 브라우저에서 돌리지 않고, 개발 때 헤드리스 크롬 + three.js 로 사무실과 같은 2:1 아이소메트릭 카메라(방위 45°, 고도 30°)에서 미리 구워 한 명당 webp 스프라이트 시트 한 장으로 둡니다(<code>public/assets/characters/</code>, 12장 합 약 1.1 MB). 프레임은 224×248 이고, 시트의 행마다 동작이 하나씩 들어 있습니다.</p>
+<div class="tbl"><table>
+<tr><th>행</th><th>원본 애니메이션</th><th>프레임</th><th>언제</th></tr>
+<tr><td><code>idle</code></td><td>idle</td><td>4</td><td>서 있을 때(고민 중 등)</td></tr>
+<tr><td><code>walk</code></td><td>walk</td><td>8</td><td>방과 방 사이를 이동할 때</td></tr>
+<tr><td><code>sit</code></td><td>sit</td><td>1</td><td>휴식 방에서 쉴 때</td></tr>
+<tr><td><code>type</code></td><td>interact-right</td><td>4</td><td>편집·작업·명령 실행 중</td></tr>
+<tr><td><code>nod</code></td><td>emote-yes</td><td>4</td><td>질문·허락을 기다릴 때 (머리 위 빨간 느낌표와 함께)</td></tr>
+</table></div>
+<p>모델은 화면 왼쪽 아래를 보도록 구웠고 오른쪽으로 갈 때는 좌우를 뒤집어 그립니다. 서브에이전트는 같은 캐릭터에 <strong>노란 안전모</strong>를 씌우는데, 동작마다 머리 높이와 위치가 달라서 시트를 처음 불러올 때 칸마다 머리 꼭대기(불투명 픽셀의 맨 위)와 그 근처 가운데를 찾아 두고 그 자리에 얹습니다. v1 의 손 소품(노트북·책·컵)은 없앴고, 동작이 그 역할을 대신합니다. 시트 구성(프레임 크기·동작 행)은 <code>characters.js</code> 의 <code>SHEET</code> 한 곳에서 정하고, 굽기 스크립트(<code>scripts/bake-characters/</code>)도 같은 값을 읽으며 프레임 밖으로 잘린 칸이 있으면 실패합니다.</p>
+<figure><img src="screenshots/fe-54-characters.jpg" alt="캐릭터 한 명의 다섯 동작과 12명 전체, 안전모를 쓴 서브에이전트"><figcaption>위: 한 캐릭터의 서기·걷기·앉기(휴식)·타이핑(편집·실행)·끄덕임(답 기다림). 아래: 12명, 오른쪽 3명은 서브에이전트(안전모).</figcaption></figure>
+<p>⚙️ 설정 → 캐릭터 외형에서 <strong>나 / Claude 기본 / 서브에이전트 기본 / 지금 보는 층의 Claude</strong> 네 대상마다 12명 중 한 명을 고릅니다. Claude·서브에이전트·층별 대상은 기본이 <strong>자동</strong>으로, 세션(서브에이전트는 에이전트) 키의 해시로 12명 중 하나를 정하므로 세션마다 다른 캐릭터가 되고 어느 브라우저에서 봐도 같은 세션은 같은 캐릭터입니다. 나는 자동이 없고 기본은 <code>male-a</code>. 층별 설정이 있으면 Claude 기본보다 먼저 씁니다. 고른 값은 이 브라우저의 localStorage(<code>aiOffice.characters.v1</code>)에만 저장됩니다. 세션마다 이름도 줄 수 있고, 이름이 없는 세션은 별명 풀(Alex·Sam·Mia …)에서 자동으로 받습니다.</p>
+<figure><img src="screenshots/fe-55-customize.jpg" alt="캐릭터 고르기 모달"><figcaption>캐릭터 고르기 모달. 왼쪽 대상(나·Claude 기본·서브에이전트 기본·지금 보는 층)과 걷는 미리보기, 오른쪽 지금 보는 세션의 캐릭터 이름과 🎲 자동 + 12명.</figcaption></figure>
 
 <h3>사무실 공간: 카페·테라스와 층별 다른 구조</h3>
 <p>업무 방 9개(자료실·개발실·정보검색실·회의실·휴게실·서버실·내 자리·로비·엘리베이터)에 휴식용 편의시설 두 곳이 더해집니다. 층마다 인테리어 프리셋(따뜻한 우드·쿨 그레이·민트·라벤더·샌드·파스텔)이 배정되고, 프리셋은 색과 함께 방 배치·편의시설을 정합니다. 층 행의 🎨 또는 ⚙️ 설정 → 층 인테리어에서 직접 고르면 서버에 저장되어 모든 브라우저가 같은 층을 봅니다.</p>
@@ -404,8 +415,8 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
 <tr><td><code>journal.test.js</code> · <code>cli.test.js</code> · <code>hookport.test.js</code> · <code>bump.test.js</code> · <code>project.test.js</code></td><td>저널 slim/replay/compact, CLI 설치·compact, 훅 포트 파싱, 버전 올림(Cargo.lock 포함), git 루트 탐지</td></tr>
 <tr><td><code>server.test.js</code> · <code>api.test.js</code></td><td>실제 server.js 프로세스: 데모 훅 무시·저널 제외, 부모 SIGKILL 후 8초 안 종료, 세션 치우기 API, 치운 세션이 재시작 뒤에도 없음, 다른 Origin·Host·<code>null</code> 은 403 이고 가짜 세션이 생기지 않음, 앱·자기 화면 Origin 은 허용</td></tr>
 <tr><td><code>nodepath.test.js</code></td><td>앱 Node 우선, Homebrew 버전 폴더 → opt 링크(<code>node@22</code> 포함), Windows 경로 구분자</td></tr>
-<tr><td><code>smoke.test.js</code></td><td>가짜 2D 컨텍스트(NaN 인자 감지)·최소 DOM 으로 프리셋×테마×시간대 60여 조합 그리기, 아바타 전 파츠, 캐릭터 400프레임, 패널 템플릿, 전체 보기, store</td></tr>
-<tr><td><code>avatar.test.js</code> · <code>names.test.js</code> · <code>floorStyle*.test.js</code> · <code>daylight.test.js</code></td><td>외형 정규화, 별명 배정, 프리셋 배정 결정성, 시간대 판정</td></tr>
+<tr><td><code>smoke.test.js</code></td><td>가짜 2D 컨텍스트(NaN 인자 감지)·최소 DOM 으로 프리셋×테마×시간대 60여 조합 그리기, 캐릭터 12명 × 동작 5 × 좌우 × 안전모, 사무실 400프레임, 패널 템플릿, 전체 보기, store</td></tr>
+<tr><td><code>characters.test.js</code> · <code>names.test.js</code> · <code>floorStyle*.test.js</code> · <code>daylight.test.js</code></td><td>캐릭터 시트 12장의 크기가 <code>SHEET</code> 행·열과 맞음, 자동 배정(해시)의 결정성과 고른 분포, 동작 우선순위, 대상별 저장·층 설정 우선, 별명 배정, 프리셋 배정 결정성, 시간대 판정</td></tr>
 <tr><td><code>i18n.test.js</code></td><td>번역 규칙, 사용자 글 보존, 언어 전환, <code>index.html</code> 의 모든 한글 문구가 사전에 있는지</td></tr>
 <tr><td>CI <code>test.yml</code> · <code>app-check.yml</code> · <code>release.yml</code> · <code>homebrew.yml</code></td><td>3 OS 테스트, 앱 코드 PR 마다 맥·Windows 컴파일 검사, 태그마다 맥·Windows 빌드 + Windows 설치 스모크, 릴리스 뒤 Homebrew tap 갱신</td></tr>
 </table></div>
@@ -417,7 +428,7 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
 <tr><td>정적 레이어 프레임</td><td>1.7 ms</td><td>0.3 ms</td></tr>
 <tr><td>전체 프레임 (캐릭터 포함)</td><td colspan="2">약 1.4 ms, 전체 보기 1 ms, 층 전환 첫 프레임 6 ms 이하</td></tr>
 <tr><td>유휴 프레임</td><td>항상 60fps</td><td>움직임 없으면 20fps</td></tr>
-<tr><td>npm 패키지 (0.31.0)</td><td colspan="2">217 KB (압축) / 530 KB, 54 파일</td></tr>
+<tr><td>npm 패키지 (0.32)</td><td colspan="2">1.3 MB (압축) / 1.7 MB, 68 파일. 캐릭터 시트 webp 12장이 1.1 MB (0.31.0 은 217 KB / 530 KB)</td></tr>
 <tr><td>앱 배포 파일 (0.31.0)</td><td colspan="2">맥 DMG 41.6 MB · updater .app.tar.gz 42.8 MB · Windows 설치 파일 24.8 MB</td></tr>
 </table></div>
 </section>
@@ -426,8 +437,8 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
 <h2>11. 설계 결정과 로드맵</h2>
 <ul>
   <li><strong>의존성 0.</strong> 훅마다 프로세스가 뜨므로 <code>emit.js</code> 는 표준 모듈만 쓰고 1초 안에 끝나야 합니다. 서버도 같은 이유로 가볍게 유지했습니다.</li>
-  <li><strong>서버가 진실.</strong> 휴식 방, 인테리어 프리셋, 세션 제거처럼 "모든 브라우저가 같은 것을 봐야 하는" 결정은 서버에서 하고, 외형·이름·테마처럼 보는 사람의 취향은 브라우저에 둡니다.</li>
-  <li><strong>이미지 없이 코드로 그리기.</strong> 플랫 벡터 스프라이트와 치비 아바타는 전부 Canvas 코드라 팔레트·레이아웃을 바꾸기 쉽고 패키지가 작습니다. 대신 캐시 전략이 중요해 종류별 공유 캐시를 넣었습니다.</li>
+  <li><strong>서버가 진실.</strong> 휴식 방, 인테리어 프리셋, 세션 제거처럼 "모든 브라우저가 같은 것을 봐야 하는" 결정은 서버에서 하고, 캐릭터·이름·테마처럼 보는 사람의 취향은 브라우저에 둡니다. 캐릭터 자동 배정도 세션 키 해시라 서버 없이 모든 브라우저에서 같습니다.</li>
+  <li><strong>가구는 코드로, 캐릭터는 미리 구운 시트로.</strong> 가구·벽·방은 전부 Canvas 코드라 팔레트·레이아웃을 바꾸기 쉽고, 대신 캐시 전략이 중요해 종류별 공유 캐시를 넣었습니다. 캐릭터는 v0.32 에서 코드로 그린 치비 아바타를 3D 모델 스프라이트로 바꿨습니다. 런타임에 three.js 를 싣지 않고 개발 때 한 번 구워 이미지만 배포하므로 의존성 0 과 빌드 없음은 그대로이고, 대가는 패키지 1.1 MB 입니다.</li>
   <li><strong>층 = git 루트, 묶음 폴더는 작업 기준.</strong> cwd 가 바뀔 때마다 층이 늘어나는 문제를 피하고 worktree 를 한 층에 모읍니다. git 이 아닌 묶음 폴더에서 연 세션만 고친 파일(없으면 본 파일)이 많은 저장소로 옮기고, 동점에는 움직이지 않아 층을 오가며 깜빡이지 않습니다. 저장소 안에서 연 세션은 다른 저장소를 고쳐도 고정입니다(그 저장소가 주 작업이라는 뜻이므로).</li>
   <li><strong>잔류 방지.</strong> 앱·CLI 가 띄운 서버는 부모를 감시해 스스로 끝나고, 데모 이벤트는 저널에 남기지 않습니다.</li>
   <li><strong>번역은 틀만.</strong> 사전과 패턴 규칙으로 알려진 문구만 바꾸고, 그 안의 사용자 글은 건드리지 않습니다. 구절 치환을 쓰지 않는 이유는 세션 제목 같은 사용자 글을 망가뜨리기 때문입니다.</li>
@@ -438,7 +449,7 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
   <li><strong>항상 최신 링크.</strong> 릴리스마다 버전 없는 이름의 사본을 올려 README·문서의 다운로드 링크를 고칠 필요가 없게 했습니다.</li>
 </ul>
 <h3>보류·다음</h3>
-<p>v0.25 에서 끝낸 것: 자동 업데이트, 맥·Windows CI 릴리스, Windows 설치 스모크, 영어 UI·README, npm 배포, Homebrew cask·formula. v0.29 까지 더한 것: 받기만 하는 업데이트와 재시도, 빨간 점(메뉴바·Dock·작업 표시줄), 왼쪽 클릭 메뉴, 로그인 시 자동 실행, 층 모두 펼치기·접기, 세션 제목·첫 요청 추적, 훅 Node 경로 안정화, 앱 컴파일 검사 CI. v0.29.5: 다른 웹사이트 접근 차단(Host·Origin 검사), Homebrew cask·formula 자동 갱신. v0.31.0: 업데이트 진행 창(다운로드 막대·취소·설치 중), 묶음 폴더 세션의 저장소 층 이동.</p>
+<p>v0.25 에서 끝낸 것: 자동 업데이트, 맥·Windows CI 릴리스, Windows 설치 스모크, 영어 UI·README, npm 배포, Homebrew cask·formula. v0.29 까지 더한 것: 받기만 하는 업데이트와 재시도, 빨간 점(메뉴바·Dock·작업 표시줄), 왼쪽 클릭 메뉴, 로그인 시 자동 실행, 층 모두 펼치기·접기, 세션 제목·첫 요청 추적, 훅 Node 경로 안정화, 앱 컴파일 검사 CI. v0.29.5: 다른 웹사이트 접근 차단(Host·Origin 검사), Homebrew cask·formula 자동 갱신. v0.31.0: 업데이트 진행 창(다운로드 막대·취소·설치 중), 묶음 폴더 세션의 저장소 층 이동. v0.32.0: 캐릭터 v2(Kenney Mini Characters 스프라이트, 동작 5종, 12명 중 고르기·자동 배정).</p>
 <ul>
   <li>맥 앱 서명·공증(Apple Developer 계정 필요). 지금은 우클릭 → 열기, Homebrew 는 격리 해제로 우회</li>
   <li>Windows 코드 서명(SmartScreen 경고 제거)과 실제 Windows 기기에서 화면·트레이·업데이트 진행 창 확인</li>
@@ -448,6 +459,6 @@ gh workflow run homebrew.yml -f version=X.Y.Z   # npm tarball sha256 → formula
 </ul>
 </section>
 
-<footer>AI Office v0.31.0 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
+<footer>AI Office v0.32.1 · <a href="https://github.com/cozyuj/AI-office">github.com/cozyuj/AI-office</a> · <a href="https://www.npmjs.com/package/claude-ai-office">npm claude-ai-office</a> · <a href="https://github.com/cozyuj/homebrew-tap">Homebrew tap</a> · MIT</footer>
 </main>
 </div>
