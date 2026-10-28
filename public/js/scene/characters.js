@@ -1,15 +1,20 @@
 // 캐릭터 v2: Kenney Mini Characters (CC0, www.kenney.nl) 를 사무실 카메라로 구운 스프라이트 시트.
 // 시트는 scripts/bake-characters 로 다시 만든다. 한 장에 한 명, 행마다 동작 하나.
 // 커스텀 캐릭터(FE-56): 사용자가 올린 배경 없는 그림 한 장. 값은 'custom:<id>', 그림은 setCustomCharacters 로 받는다.
+// 파트 조합(FE-57): 머리·몸통 레이어를 따로 그려 섞고, 마스크로 머리카락·상의·하의 색을 바꾸고, 얼굴 소품을 얹는다.
+//   값은 'mix:<머리>.<몸통>.<머리카락색>.<상의색>.<하의색>.<소품>' (색은 6자리 hex 또는 '-', 소품은 ACCESSORIES 의 id 또는 '-')
 
 export const CHARACTERS = [
   'female-a', 'female-b', 'female-c', 'female-d', 'female-e', 'female-f',
   'male-a', 'male-b', 'male-c', 'male-d', 'male-e', 'male-f',
 ];
 
-// 프레임 W×H, 발 가운데가 (W/2, FOOT), 머리 꼭대기까지 HEIGHT px. 굽기 스크립트도 이 값을 쓴다
+// 프레임 W×H, 발 가운데가 (W/2, FOOT), 가장 큰 캐릭터의 머리 꼭대기까지 HEIGHT px (모두 같은 배율). 굽기 스크립트도 이 값을 쓴다.
+// <이름>.webp = 머리 레이어 행들 + 몸통 레이어 행들, <이름>.mask.webp = 머리카락·상의·하의 음영 행들 (MASK_BASE = 흰 알베도 대신 쓴 밝기)
 export const SHEET = {
-  W: 224, H: 248, FOOT: 200, HEIGHT: 200,
+  W: 224, H: 248, FOOT: 200, HEIGHT: 200, MASK_BASE: 0.4,
+  PARTS: ['head', 'body'],
+  MASKS: [{ id: 'hair', part: 'head' }, { id: 'top', part: 'body' }, { id: 'bottom', part: 'body' }],
   ROWS: [
     { id: 'idle', anim: 'idle', frames: 4 },
     { id: 'walk', anim: 'walk', frames: 8 },
@@ -19,6 +24,14 @@ export const SHEET = {
   ],
 };
 const ROW = Object.fromEntries(SHEET.ROWS.map((r, i) => [r.id, { i, n: r.frames }]));
+
+// 얼굴 소품 (Kenney 팩의 aid-*): 머리 뼈 기준 위치 at 에 붙여 acc-<id>.webp 로 굽는다
+export const ACCESSORIES = [
+  { id: 'glasses', label: '안경', glb: 'aid-glasses', at: [0, 0.085, 0.08] },
+  { id: 'sunglasses', label: '선글라스', glb: 'aid-sunglasses', at: [0, 0.085, 0.08] },
+  { id: 'mask', label: '마스크', glb: 'aid-mask', at: [0, 0, 0] },
+  { id: 'hearing', label: '보청기', glb: 'aid_hearing', at: [0.23, 0.08, 0] },
+];
 
 /** 사무실 배율 1 에서 캐릭터 키(px). 바닥 타일 64×32 에 맞춘 값 */
 export const OFFICE_HEIGHT = 60;
@@ -30,30 +43,102 @@ export function isCustomCharacter(v) {
   return typeof v === 'string' && /^custom:[a-z0-9]{1,32}$/.test(v);
 }
 
-/** 저장값 → 캐릭터 이름, 'custom:<id>' 또는 'auto'. 모르는 값은 기본값 (커스텀이 아직 있는지는 avatarStore 가 본다) */
+// ---------- 파트 조합 ----------
+export const LOOK_PARTS = ['hair', 'top', 'bottom'];
+const HEX = /^[0-9a-f]{6}$/;
+/** 'male-a' 또는 'mix:...' → { head, body, hair, top, bottom, acc } (색·소품은 없으면 null). 아니면 null */
+export function parseLook(v) {
+  if (CHARACTERS.includes(v)) return { head: v, body: v, hair: null, top: null, bottom: null, acc: null };
+  if (typeof v !== 'string' || !v.startsWith('mix:')) return null;
+  const [head, body, hair, top, bottom, acc, ...rest] = v.slice(4).split('.');
+  if (rest.length || !CHARACTERS.includes(head) || !CHARACTERS.includes(body)) return null;
+  const color = (c) => (c === '-' ? null : HEX.test(c) ? c : undefined);
+  const look = { head, body, hair: color(hair), top: color(top), bottom: color(bottom), acc: acc === '-' ? null : ACCESSORIES.some((a) => a.id === acc) ? acc : undefined };
+  return Object.values(look).includes(undefined) ? null : look;
+}
+/** 조합 → 저장값. 바꾼 게 없으면 캐릭터 이름 그대로 */
+export function lookValue(l) {
+  if (l.head === l.body && !l.hair && !l.top && !l.bottom && !l.acc) return l.head;
+  return `mix:${l.head}.${l.body}.${l.hair || '-'}.${l.top || '-'}.${l.bottom || '-'}.${l.acc || '-'}`;
+}
+const isLook = (v) => parseLook(v) !== null;
+
+/** 저장값 → 캐릭터 이름, 'mix:...', 'custom:<id>' 또는 'auto'. 모르는 값은 기본값 (커스텀이 아직 있는지는 avatarStore 가 본다) */
 export function normalizeCharacter(v, fallback = 'auto') {
-  return v === 'auto' || CHARACTERS.includes(v) || isCustomCharacter(v) ? v : fallback;
+  if (v === 'auto' || isCustomCharacter(v)) return v;
+  const l = parseLook(v);
+  return l ? lookValue(l) : fallback;
 }
 
 /** 'auto' 를 키(세션/에이전트) 해시로 풀어 12명 중 하나로. 같은 세션은 어느 브라우저에서도 같은 캐릭터. 커스텀은 자동에 섞지 않는다 */
 export function resolveCharacter(v, key = '') {
-  if (CHARACTERS.includes(v) || isCustomCharacter(v)) return v;
+  if (isLook(v) || isCustomCharacter(v)) return v;
   let h = 0;
   for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return CHARACTERS[h % CHARACTERS.length];
 }
 
 // ---------- 시트 불러오기 (브라우저에서만) ----------
-const sheets = new Map(); // name → HTMLImageElement
-function sheetOf(name) {
+const sheets = new Map(); // 파일 이름 → HTMLImageElement
+function imageOf(file) {
   if (typeof Image === 'undefined') return null; // Node 테스트
-  let im = sheets.get(name);
+  let im = sheets.get(file);
   if (!im) {
     im = new Image();
-    im.src = new URL(`../../assets/characters/${name}.webp`, import.meta.url).href;
-    sheets.set(name, im);
+    im.src = new URL(`../../assets/characters/${file}.webp`, import.meta.url).href;
+    sheets.set(file, im);
   }
   return im.complete && im.naturalWidth ? im : null;
+}
+const sheetOf = (name) => imageOf(name);            // 머리 행들 + 몸통 행들
+const maskOf = (name) => imageOf(`${name}.mask`);   // 머리카락·상의·하의 음영 행들
+const accOf = (id) => imageOf(`acc-${id}`);
+
+// 색 바꾸기: 레이어(머리 또는 몸통 행 묶음)를 복사해 마스크 음영 × 새 색으로 칠한다 (선형 색공간). 같은 조합은 캐시
+const PART_ROWS = SHEET.ROWS.length;
+const LIN = Array.from({ length: 256 }, (_, i) => { const c = i / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+const SRGB = Array.from({ length: 4096 }, (_, i) => { const l = i / 4095; return Math.round(255 * (l <= 0.0031308 ? l * 12.92 : 1.055 * l ** (1 / 2.4) - 0.055)); });
+const toSrgb = (l) => SRGB[Math.min(4095, Math.max(0, Math.round(l * 4095)))];
+const hexLin = (h) => [0, 2, 4].map((i) => LIN[parseInt(h.slice(i, i + 2), 16)]);
+const tints = new Map(); // `${name}|${part}|${색들}` → canvas (최근 것만)
+const TINT_KEEP = 16;
+/** 레이어 그림과 그 안의 y 시작. 색을 바꿀 게 없거나 마스크가 아직 없으면 원래 시트 */
+function layerOf(name, part, colors) {
+  const im = sheetOf(name);
+  if (!im) return null;
+  const pi = SHEET.PARTS.indexOf(part);
+  const plain = { im, y0: pi * PART_ROWS * SHEET.H };
+  const want = SHEET.MASKS.map((m, mi) => [m, mi]).filter(([m]) => m.part === part && colors[m.id]);
+  if (!want.length) return plain;
+  const key = `${name}|${part}|${want.map(([m]) => colors[m.id]).join(',')}`;
+  let c = tints.get(key);
+  if (c) { tints.delete(key); tints.set(key, c); return { im: c, y0: 0 }; }
+  const mask = maskOf(name);
+  if (!mask) return plain;
+  try {
+    const w = im.naturalWidth, h = PART_ROWS * SHEET.H;
+    c = document.createElement('canvas'); c.width = w; c.height = h;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+    const mx = mc.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(im, 0, plain.y0, w, h, 0, 0, w, h);
+    const out = cx.getImageData(0, 0, w, h), px = out.data;
+    for (const [m, mi] of want) {
+      mx.clearRect(0, 0, w, h);
+      mx.drawImage(mask, 0, mi * h, w, h, 0, 0, w, h);
+      const md = mx.getImageData(0, 0, w, h).data, t = hexLin(colors[m.id]);
+      for (let p = 0; p < px.length; p += 4) {
+        const a = md[p + 3];
+        if (!a) continue;
+        const f = a / 255, shade = LIN[md[p]] / SHEET.MASK_BASE;
+        for (let k = 0; k < 3; k++) px[p + k] = px[p + k] * (1 - f) + toSrgb(t[k] * shade) * f;
+      }
+    }
+    cx.putImageData(out, 0, 0);
+  } catch { return plain; }
+  tints.set(key, c);
+  while (tints.size > TINT_KEEP) tints.delete(tints.keys().next().value);
+  return { im: c, y0: 0 };
 }
 
 // 머리 꼭대기 y 와 그 근처 가운데 x. 안전모를 머리에 맞춰 얹는 데 쓴다
@@ -75,7 +160,7 @@ function pixelsOf(im) {
   cx.drawImage(im, 0, 0);
   return cx.getImageData(0, 0, c.width, c.height).data;
 }
-const heads = new Map(); // name → [[{ top, cx }]] (행·칸)
+const heads = new Map(); // name → [[{ top, cx }]] (머리 레이어의 행·칸)
 const HEAD_FALLBACK = { top: SHEET.FOOT - SHEET.HEIGHT * 0.92, cx: SHEET.W / 2 };
 function headOf(name, im, row, col) {
   let h = heads.get(name);
@@ -120,8 +205,11 @@ function customHead(c) {
   return c.head;
 }
 
-/** 미리 불러 두기 (첫 프레임에 빈 캐릭터가 덜 보이게) */
-export function preloadCharacters() { for (const n of CHARACTERS) sheetOf(n); }
+/** 미리 불러 두기 (첫 프레임에 빈 캐릭터가 덜 보이게). parts 면 마스크·소품도 */
+export function preloadCharacters(parts = false) {
+  for (const n of CHARACTERS) { sheetOf(n); if (parts) maskOf(n); }
+  if (parts) for (const a of ACCESSORIES) accOf(a.id);
+}
 
 /**
  * 상태 → 시트의 행·칸.
@@ -142,18 +230,23 @@ export function frameOf(o) {
  */
 export function drawCharacter(ctx, fx, fy, name, o = {}) {
   if (isCustomCharacter(name)) return drawCustom(ctx, fx, fy, name, o);
-  const im = sheetOf(name);
-  if (!im) return false;
+  const look = parseLook(name);
+  if (!look) return false;
+  // 몸통 → 머리(팔이 앞에 오는 곳은 구울 때 잘려 있다) → 소품. 셋 다 같은 칸
+  const body = layerOf(look.body, 'body', look);
+  const head = layerOf(look.head, 'head', look);
+  if (!body || !head) return false;
+  const acc = look.acc ? accOf(look.acc) : null;
   const { W, H, FOOT, HEIGHT } = SHEET;
   const k = OFFICE_HEIGHT / HEIGHT * (o.scale || 1);
   const { row, col } = frameOf(o);
   ctx.save();
   ctx.translate(fx, fy);
   if (o.faceRight) ctx.scale(-1, 1); // 모델은 화면 왼쪽 아래를 본다
-  ctx.drawImage(im, col * W, row * H, W, H, -W * k / 2, -FOOT * k, W * k, H * k);
+  for (const l of [body, head, acc && { im: acc, y0: 0 }]) if (l) ctx.drawImage(l.im, col * W, l.y0 + row * H, W, H, -W * k / 2, -FOOT * k, W * k, H * k);
   ctx.restore();
   if (o.hardHat) {
-    const head = headOf(name, im, row, col);
+    const head = headOf(look.head, sheetOf(look.head), row, col);
     const dx = (head.cx - W / 2) * k * (o.faceRight ? -1 : 1);
     drawHardHat(ctx, fx + dx, fy + (head.top - FOOT) * k, k * HEIGHT / OFFICE_HEIGHT, o.faceRight);
   }
