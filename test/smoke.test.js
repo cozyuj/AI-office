@@ -156,7 +156,8 @@ test('characters: 12명 × 모든 동작 × 좌우 · 서브에이전트 안전�
     drawn++;
   }
   // 파트 조합(FE-57): 머리·몸 섞기 × 색 × 소품 (Node 엔 document 가 없어 색은 원래 시트로 그린다)
-  const mixes = ['mix:female-b.male-d.c4532f.4f7fd0.-.sunglasses', 'mix:male-c.female-e.-.-.2f3b66.mask', ...C.ACCESSORIES.map((a) => `mix:male-a.male-a.-.-.-.${a.id}`)];
+  const mixes = ['mix:female-b.male-d.c4532f.4f7fd0.-.sunglasses', 'mix:male-c.female-e.-.-.2f3b66.mask', ...C.ACCESSORIES.map((a) => `mix:male-a.male-a.-.-.-.${a.id}`),
+    ...C.SPECIALS.map((c) => c.id), 'mix:zombie.female-a.-.-.-.pumpkin', 'mix:snowman.snowman.-.-.-.santa', 'mix:reindeer.reindeer.-.-.-.antlers'];
   for (const v of mixes) for (const st of states) for (const faceRight of [false, true]) {
     assert.equal(C.drawCharacter(ctx, 10, 20, v, { ...st, faceRight, hardHat: true, now: 999, scale: 1 }), true, v);
     drawn++;

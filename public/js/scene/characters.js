@@ -25,13 +25,32 @@ export const SHEET = {
 };
 const ROW = Object.fromEntries(SHEET.ROWS.map((r, i) => [r.id, { i, n: r.frames }]));
 
-// 얼굴 소품 (Kenney 팩의 aid-*): 머리 뼈 기준 위치 at 에 붙여 acc-<id>.webp 로 굽는다
+// 얼굴 소품 (Kenney 팩의 aid-*): 머리 뼈 기준 위치 at 에 붙여 acc-<id>.webp 로 굽는다.
+// draw: 굽지 않고 프레임마다 머리 위치에 직접 그리는 코스튬 (FE-62)
 export const ACCESSORIES = [
   { id: 'glasses', label: '안경', glb: 'aid-glasses', at: [0, 0.085, 0.08] },
   { id: 'sunglasses', label: '선글라스', glb: 'aid-sunglasses', at: [0, 0.085, 0.08] },
   { id: 'mask', label: '마스크', glb: 'aid-mask', at: [0, 0, 0] },
   { id: 'hearing', label: '보청기', glb: 'aid_hearing', at: [0.23, 0.08, 0] },
+  { id: 'santa', label: '산타 모자', draw: true },
+  { id: 'antlers', label: '루돌프 뿔', draw: true },
+  { id: 'pumpkin', label: '호박 탈', draw: true },
 ];
+
+// 테마 캐릭터 (FE-62): Kenney Graveyard Kit · Holiday Kit (CC0). 시트 모양은 12명과 같다 (머리 행 + 몸통 행, 마스크 없음 → 색 바꾸기 없음).
+// mix: 머리·몸을 다른 캐릭터와 섞을 수 있다. still: 동작이 없는 정지 모델 — 올린 그림처럼 몸 전체를 움직여 보인다
+export const SPECIALS = [
+  { id: 'vampire', label: '뱀파이어', kit: 'graveyard', glb: 'character-vampire', mix: true },
+  { id: 'zombie', label: '좀비', kit: 'graveyard', glb: 'character-zombie', mix: true },
+  { id: 'skeleton', label: '해골', kit: 'graveyard', glb: 'character-skeleton', mix: true },
+  { id: 'ghost', label: '유령', kit: 'graveyard', glb: 'character-ghost' },
+  { id: 'snowman', label: '눈사람', kit: 'holiday', glb: 'snowman-hat', still: true },
+  { id: 'reindeer', label: '루돌프', kit: 'holiday', glb: 'reindeer', still: true },
+];
+const SPECIAL_IDS = SPECIALS.map((c) => c.id);
+const STILL = new Set(SPECIALS.filter((c) => c.still).map((c) => c.id));
+/** 머리·몸으로 섞을 수 있는 캐릭터: 12명 + 테마 캐릭터 중 mix */
+export const MIX_PARTS = [...CHARACTERS, ...SPECIALS.filter((c) => c.mix).map((c) => c.id)];
 
 /** 사무실 배율 1 에서 캐릭터 키(px). 바닥 타일 64×32 에 맞춘 값 */
 export const OFFICE_HEIGHT = 60;
@@ -48,10 +67,12 @@ export const LOOK_PARTS = ['hair', 'top', 'bottom'];
 const HEX = /^[0-9a-f]{6}$/;
 /** 'male-a' 또는 'mix:...' → { head, body, hair, top, bottom, acc } (색·소품은 없으면 null). 아니면 null */
 export function parseLook(v) {
-  if (CHARACTERS.includes(v)) return { head: v, body: v, hair: null, top: null, bottom: null, acc: null };
+  if (CHARACTERS.includes(v) || SPECIAL_IDS.includes(v)) return { head: v, body: v, hair: null, top: null, bottom: null, acc: null };
   if (typeof v !== 'string' || !v.startsWith('mix:')) return null;
   const [head, body, hair, top, bottom, acc, ...rest] = v.slice(4).split('.');
-  if (rest.length || !CHARACTERS.includes(head) || !CHARACTERS.includes(body)) return null;
+  // 섞을 수 없는 테마 캐릭터(유령·눈사람·순록)는 머리=몸일 때만 (코스튬은 씌울 수 있다)
+  const whole = SPECIAL_IDS.includes(head) && head === body;
+  if (rest.length || !((MIX_PARTS.includes(head) && MIX_PARTS.includes(body)) || whole)) return null;
   const color = (c) => (c === '-' ? null : HEX.test(c) ? c : undefined);
   const look = { head, body, hair: color(hair), top: color(top), bottom: color(bottom), acc: acc === '-' ? null : ACCESSORIES.some((a) => a.id === acc) ? acc : undefined };
   return Object.values(look).includes(undefined) ? null : look;
@@ -162,14 +183,18 @@ function pixelsOf(im) {
 }
 const heads = new Map(); // name → [[{ top, cx }]] (머리 레이어의 행·칸)
 const HEAD_FALLBACK = { top: SHEET.FOOT - SHEET.HEIGHT * 0.92, cx: SHEET.W / 2 };
-function headOf(name, im, row, col) {
+/** 머리 레이어에서 찾고, 머리가 없는 캐릭터(유령·눈사람·순록)는 몸통 레이어에서 */
+function headOf(name, row, col) {
   let h = heads.get(name);
   if (!h) {
+    const im = sheetOf(name);
+    if (!im) return HEAD_FALLBACK;
     h = null;
     try {
       const { W, H, ROWS } = SHEET;
-      const data = pixelsOf(im);
-      h = ROWS.map((r, ri) => Array.from({ length: r.frames }, (_, ci) => scanHead(data, im.naturalWidth, ci * W, ri * H, W, H) || HEAD_FALLBACK));
+      const data = pixelsOf(im), body = ROWS.length * H;
+      h = ROWS.map((r, ri) => Array.from({ length: r.frames }, (_, ci) => scanHead(data, im.naturalWidth, ci * W, ri * H, W, H)
+        || scanHead(data, im.naturalWidth, ci * W, body + ri * H, W, H) || HEAD_FALLBACK));
     } catch { h = null; }
     heads.set(name, h);
   }
@@ -205,10 +230,10 @@ function customHead(c) {
   return c.head;
 }
 
-/** 미리 불러 두기 (첫 프레임에 빈 캐릭터가 덜 보이게). parts 면 마스크·소품도 */
+/** 미리 불러 두기 (첫 프레임에 빈 캐릭터가 덜 보이게). parts 면 마스크·소품·테마 캐릭터도 */
 export function preloadCharacters(parts = false) {
   for (const n of CHARACTERS) { sheetOf(n); if (parts) maskOf(n); }
-  if (parts) for (const a of ACCESSORIES) accOf(a.id);
+  if (parts) { for (const a of ACCESSORIES) if (!a.draw) accOf(a.id); for (const c of SPECIALS) sheetOf(c.id); }
 }
 
 /**
@@ -236,33 +261,32 @@ export function drawCharacter(ctx, fx, fy, name, o = {}) {
   const body = layerOf(look.body, 'body', look);
   const head = layerOf(look.head, 'head', look);
   if (!body || !head) return false;
-  const acc = look.acc ? accOf(look.acc) : null;
+  const costume = look.acc && ACCESSORIES.find((a) => a.id === look.acc && a.draw);
+  const acc = look.acc && !costume ? accOf(look.acc) : null;
   const { W, H, FOOT, HEIGHT } = SHEET;
   const k = OFFICE_HEIGHT / HEIGHT * (o.scale || 1);
-  const { row, col } = frameOf(o);
+  // 정지 모델(눈사람·순록)은 한 칸만 있고 몸 전체를 움직인다
+  const still = STILL.has(look.body);
+  const { row, col } = still ? { row: 0, col: 0 } : frameOf(o);
+  const m = still ? motionOf(o, o.scale || 1) : { lift: 0, tilt: 0, sx: 1, sy: 1 };
   ctx.save();
-  ctx.translate(fx, fy);
-  if (o.faceRight) ctx.scale(-1, 1); // 모델은 화면 왼쪽 아래를 본다
+  ctx.translate(fx, fy - m.lift);
+  ctx.rotate(o.faceRight ? -m.tilt : m.tilt);
+  ctx.scale((o.faceRight ? -1 : 1) * m.sx, m.sy); // 모델은 화면 왼쪽 아래를 본다
   for (const l of [body, head, acc && { im: acc, y0: 0 }]) if (l) ctx.drawImage(l.im, col * W, l.y0 + row * H, W, H, -W * k / 2, -FOOT * k, W * k, H * k);
-  ctx.restore();
-  if (o.hardHat) {
-    const head = headOf(look.head, sheetOf(look.head), row, col);
-    const dx = (head.cx - W / 2) * k * (o.faceRight ? -1 : 1);
-    drawHardHat(ctx, fx + dx, fy + (head.top - FOOT) * k, k * HEIGHT / OFFICE_HEIGHT, o.faceRight);
+  // 코스튬·안전모: 뒤집힌 좌표 안에서 머리에 맞춰 (앞은 늘 -x 쪽)
+  if (costume || o.hardHat) {
+    const hd = headOf(look.head, row, col);
+    const x = (hd.cx - W / 2) * k, top = (hd.top - FOOT) * k, s = k * HEIGHT / OFFICE_HEIGHT;
+    if (costume) drawCostume(ctx, costume.id, x, top, s);
+    if (o.hardHat) drawHardHat(ctx, x, top, s, false);
   }
+  ctx.restore();
   return true;
 }
 
-/**
- * 커스텀 그림 그리기: 발(그림 아래 가운데)을 (fx, fy)에, 키 OFFICE_HEIGHT (너무 넓은 그림은 너비 1.2배까지).
- * 정지 그림이라 동작은 몸 전체를 움직여 보인다: 걷기 = 걸음마다 통통 + 살짝 기울기, 앉기 = 낮게, 타이핑 = 잔떨림, 끄덕임 = 숙였다 펴기, 서기 = 숨쉬기
- */
-function drawCustom(ctx, fx, fy, name, o) {
-  const c = customOf(name);
-  if (!c) return false;
-  const { naturalWidth: w, naturalHeight: h } = c.im;
-  const k = Math.min(OFFICE_HEIGHT / h, OFFICE_HEIGHT * 1.2 / w) * (o.scale || 1);
-  const s = h * k / OFFICE_HEIGHT; // 그려진 키 / 사무실 키 (안전모·움직임 배율)
+/** 정지 그림·모델의 동작: 걷기 = 걸음마다 통통 + 살짝 기울기, 앉기 = 낮게, 타이핑 = 잔떨림, 끄덕임 = 숙였다 펴기, 서기 = 숨쉬기. s 는 배율 */
+function motionOf(o, s) {
   const now = o.now || 0, seed = o.seed || 0;
   let lift = 0, tilt = 0, sx = 1, sy = 1;
   if (o.walking) {
@@ -280,6 +304,53 @@ function drawCustom(ctx, fx, fy, name, o) {
   } else {
     sy = 1 + Math.sin(now / 600 + seed) * 0.012;
   }
+  return { lift, tilt, sx, sy };
+}
+
+/** 직접 그리는 코스튬 (FE-62). (x, top) = 머리 가운데·꼭대기, 앞은 -x 쪽, s 는 배율 */
+function drawCostume(ctx, id, x, top, s) {
+  ctx.save();
+  ctx.translate(x, top);
+  ctx.scale(s, s);
+  if (id === 'santa') {
+    ctx.fillStyle = '#d42a32';
+    ctx.beginPath(); ctx.moveTo(-13, 13); ctx.quadraticCurveTo(-3, -9, 14, -5); ctx.lineTo(13, 13); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fafafa';
+    ctx.beginPath(); ctx.ellipse(0, 13, 15, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(14, -5, 4, 0, Math.PI * 2); ctx.fill();
+  } else if (id === 'antlers') {
+    ctx.strokeStyle = '#8b5a2b'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+    for (const d of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(d * 6, 11); ctx.lineTo(d * 10, -3); ctx.lineTo(d * 16, -9);
+      ctx.moveTo(d * 10, -1); ctx.lineTo(d * 17, -1);
+      ctx.moveTo(d * 9, 4); ctx.lineTo(d * 4, -5);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ff2a2a'; ctx.beginPath(); ctx.arc(-8, 23, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(-9, 22, 1, 0, Math.PI * 2); ctx.fill();
+  } else if (id === 'pumpkin') {
+    const cy = 14;
+    for (const [dx, col, w] of [[8, '#c95a14', 0.64], [-8, '#e06a1c', 0.64], [0, '#f28a2a', 0.7]]) { ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(dx, cy, 20 * w, 15, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#4a7a3a'; ctx.fillRect(-2, cy - 19, 4, 6);
+    ctx.fillStyle = '#ffd34d';
+    for (const d of [-1, 1]) { ctx.beginPath(); ctx.moveTo(-2 + d * 8, cy - 5); ctx.lineTo(-2 + d * 2, cy - 1); ctx.lineTo(-2 + d * 9, cy); ctx.closePath(); ctx.fill(); }
+    ctx.beginPath(); ctx.moveTo(-11, cy + 4); ctx.lineTo(-6, cy + 6); ctx.lineTo(-3, cy + 4); ctx.lineTo(1, cy + 7); ctx.lineTo(7, cy + 4); ctx.lineTo(2, cy + 9); ctx.lineTo(-6, cy + 9); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * 커스텀 그림 그리기: 발(그림 아래 가운데)을 (fx, fy)에, 키 OFFICE_HEIGHT (너무 넓은 그림은 너비 1.2배까지).
+ * 정지 그림이라 동작은 몸 전체를 움직여 보인다: 걷기 = 걸음마다 통통 + 살짝 기울기, 앉기 = 낮게, 타이핑 = 잔떨림, 끄덕임 = 숙였다 펴기, 서기 = 숨쉬기
+ */
+function drawCustom(ctx, fx, fy, name, o) {
+  const c = customOf(name);
+  if (!c) return false;
+  const { naturalWidth: w, naturalHeight: h } = c.im;
+  const k = Math.min(OFFICE_HEIGHT / h, OFFICE_HEIGHT * 1.2 / w) * (o.scale || 1);
+  const s = h * k / OFFICE_HEIGHT; // 그려진 키 / 사무실 키 (안전모·움직임 배율)
+  const { lift, tilt, sx, sy } = motionOf(o, s);
   ctx.save();
   ctx.translate(fx, fy - lift);
   ctx.rotate(o.faceRight ? -tilt : tilt);

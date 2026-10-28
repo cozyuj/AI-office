@@ -4,7 +4,9 @@
 // Kenney Mini Characters 팩(https://kenney.nl/assets/mini-characters, CC0)을 받아 풀고, 그 폴더를 넘긴다.
 //   node scripts/bake-characters/bake.js ~/Downloads/kenney_mini-characters
 //   node scripts/bake-characters/bake.js <팩 폴더> --only male-c,female-a --acc glasses --quality 0.9
+//   node scripts/bake-characters/bake.js <팩 폴더> --graveyard <Graveyard Kit 폴더> --holiday <Holiday Kit 폴더> --only vampire,snowman
 // --only 를 주면 그 캐릭터만, --acc 를 주면 그 소품만 굽는다 (--acc none 은 소품 건너뛰기).
+// 테마 캐릭터(FE-62)는 --graveyard / --holiday 로 그 키트 폴더를 줄 때만 굽는다 (kenney.nl/assets/graveyard-kit, holiday-kit, CC0).
 // 헤드리스 크롬에서 three.js(CDN)로 렌더하므로 크롬과 인터넷 연결이 필요하다.
 // 시트 구성은 public/js/scene/characters.js 의 SHEET·ACCESSORIES.
 const http = require('http');
@@ -26,11 +28,22 @@ const CHROME = process.env.CHROME || ({
 }[process.platform] || 'google-chrome');
 
 (async () => {
-  const { CHARACTERS, SHEET, ACCESSORIES } = await import('../../public/js/scene/characters.js');
+  const { CHARACTERS, SHEET, ACCESSORIES, SPECIALS } = await import('../../public/js/scene/characters.js');
   const only = opt('--only');
   const names = (only || CHARACTERS.join(',')).split(',').filter((n) => CHARACTERS.includes(n));
   const accOpt = opt('--acc', only ? 'none' : '');
-  const accs = accOpt === 'none' ? [] : ACCESSORIES.filter((a) => !accOpt || accOpt.split(',').includes(a.id));
+  const accs = accOpt === 'none' ? [] : ACCESSORIES.filter((a) => !a.draw && (!accOpt || accOpt.split(',').includes(a.id)));
+  // 테마 캐릭터의 키트 폴더 (GLB 가 있는 곳)
+  const KIT = {};
+  for (const kit of ['graveyard', 'holiday']) {
+    const dir = opt(`--${kit}`);
+    if (!dir) continue;
+    const glb = [path.join(dir, 'Models', 'GLB format'), dir].find((d) => fs.existsSync(d) && fs.readdirSync(d).some((f) => f.endsWith('.glb')));
+    if (!glb) { console.error(`--${kit}: GLB 를 찾지 못했습니다: ${dir}`); process.exit(1); }
+    KIT[kit] = glb;
+  }
+  const specials = SPECIALS.filter((c) => KIT[c.kit] && (!only || only.split(',').includes(c.id))).map((c) => ({ ...c, url: `/kit/${c.kit}/${c.glb}.glb` }));
+  if (only && !names.length && !specials.length) { console.error(`--only: 구울 캐릭터가 없습니다 (${only})`); process.exit(1); }
   const quality = opt('--quality', '0.9');
   fs.mkdirSync(OUT, { recursive: true });
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-bake-'));
@@ -60,7 +73,9 @@ const CHROME = process.env.CHROME || ({
     }
     // GET: 굽기 페이지, GLB, 텍스처
     let f = path.join(__dirname, 'render.html');
-    if (u.pathname.startsWith('/glb/Textures/')) f = path.join(GLB, 'Textures', path.basename(u.pathname));
+    const kit = u.pathname.match(/^\/kit\/(graveyard|holiday)\/(Textures\/)?([^/]+)$/);
+    if (kit && KIT[kit[1]]) f = kit[2] ? path.join(KIT[kit[1]], 'Textures', path.basename(kit[3])) : path.join(KIT[kit[1]], path.basename(decodeURIComponent(kit[3])));
+    else if (u.pathname.startsWith('/glb/Textures/')) f = path.join(GLB, 'Textures', path.basename(u.pathname));
     else if (u.pathname.startsWith('/glb/')) f = path.join(GLB, path.basename(decodeURIComponent(u.pathname)));
     fs.readFile(f, (e, b) => { if (e) { res.statusCode = 404; return res.end(); } res.end(b); });
   });
@@ -70,7 +85,7 @@ const CHROME = process.env.CHROME || ({
     if (chrome && chrome.exitCode === null) { chrome.once('exit', done); chrome.kill(); } else done();
   }
   srv.listen(0, '127.0.0.1', () => {
-    const q = new URLSearchParams({ names: names.join(','), all: CHARACTERS.join(','), meta: JSON.stringify(SHEET), accs: JSON.stringify(accs), quality });
+    const q = new URLSearchParams({ names: names.join(','), all: CHARACTERS.join(','), meta: JSON.stringify(SHEET), accs: JSON.stringify(accs), specials: JSON.stringify(specials), quality });
     const url = `http://127.0.0.1:${srv.address().port}/?${q}`;
     chrome = spawn(CHROME, ['--headless=new', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', `--user-data-dir=${profile}`, url], { stdio: 'ignore' });
     chrome.on('error', (e) => { console.error(`크롬을 실행하지 못했습니다 (CHROME 환경변수로 경로 지정): ${e.message}`); failed = true; finish(); });

@@ -8,10 +8,11 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const q = new URLSearchParams(location.search);
-const NAMES = q.get('names').split(',');             // 구울 캐릭터 (character- 빼고)
+const NAMES = q.get('names').split(',').filter(Boolean); // 구울 캐릭터 (character- 빼고)
 const ALL = q.get('all').split(',');                 // 배율을 맞출 전체 캐릭터
 const META = JSON.parse(q.get('meta'));              // characters.js 의 SHEET
 const ACCS = JSON.parse(q.get('accs') || '[]');      // characters.js 의 ACCESSORIES (구울 것만)
+const SPECIALS = JSON.parse(q.get('specials') || '[]'); // characters.js 의 SPECIALS + url (FE-62)
 const { W, H, FOOT, HEIGHT, ROWS, MASK_BASE } = META;
 const COLS = Math.max(...ROWS.map((r) => r.frames));
 const QUALITY = Number(q.get('quality') || 0.9);
@@ -215,6 +216,35 @@ try {
       ],
       ext: { ...ext, clipped: [...ext.clipped] }, cells: reg.cells,
     }));
+  }
+
+  // 테마 캐릭터 (FE-62): 머리 메시('head')와 나머지를 같은 방식으로 나눠 굽는다. 마스크 없음.
+  // 정지 모델(still)은 미니 캐릭터 키에 맞춰 줄이고 한 번 렌더한 것을 모든 칸에 복사한다
+  const STILL_HEIGHT = 0.85;
+  for (const sp of SPECIALS) {
+    const gltf = await loader.loadAsync(sp.url);
+    const model = gltf.scene; scene.add(model);
+    const meshes = []; model.traverse((o) => { if (o.isMesh) meshes.push(o); });
+    const heads = meshes.filter((m) => /^head(-mesh)?$/.test(m.name)), bodies = meshes.filter((m) => !heads.includes(m));
+    const orig = new Map(meshes.map((m) => [m, m.material]));
+    heads.forEach((m) => { m.renderOrder = 1; }); bodies.forEach((m) => { m.renderOrder = 0; });
+    if (sp.still) { model.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(model); model.scale.setScalar(STILL_HEIGHT / (b.max.y - b.min.y)); }
+    const passes = [
+      () => { heads.forEach((m) => { m.visible = true; m.material = orig.get(m); }); bodies.forEach((m) => { m.material = depthOnly; }); },
+      () => { heads.forEach((m) => { m.visible = false; }); bodies.forEach((m) => { m.material = orig.get(m); }); },
+    ];
+    const ext = newExt();
+    const color = sheet(2 * ROWS.length);
+    if (sp.still) {
+      const octx = color.getContext('2d');
+      passes.forEach((prep, b) => {
+        prep(); renderer.render(scene, cam);
+        extent(ext, (() => { const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'); x.drawImage(renderer.domElement, 0, 0); return x.getImageData(0, 0, W, H); })(), `${b}:still`);
+        ROWS.forEach((row, r) => { for (let i = 0; i < row.frames; i++) octx.drawImage(renderer.domElement, i * W, (b * ROWS.length + r) * H); });
+      });
+    } else bake(model, new THREE.AnimationMixer(model), gltf, passes, color, ext);
+    scene.remove(model);
+    await post(`/save?name=${sp.id}`, JSON.stringify({ files: [{ file: `${sp.id}.webp`, data: color.toDataURL('image/webp', QUALITY) }], ext: { ...ext, clipped: [...ext.clipped] } }));
   }
 
   // 소품: 기준 캐릭터(원래 안경이 없는 male-f)의 머리 뼈에 붙여, 기준 캐릭터는 깊이만 (팔이 앞에 오면 소품이 가려진다)

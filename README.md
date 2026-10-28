@@ -175,6 +175,10 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 
 ![파트 조합 × 동작 — 맨 오른쪽은 서브에이전트 안전모](docs/screenshots/fe-57-parts.jpg)
 
+**테마 캐릭터**: 같은 창의 테마 캐릭터 줄에서 🧛 뱀파이어 · 🧟 좀비 · 💀 해골 · 👻 유령([Kenney Graveyard Kit](https://kenney.nl/assets/graveyard-kit), CC0)과 ⛄ 눈사람 · 🦌 루돌프([Kenney Holiday Kit](https://kenney.nl/assets/holiday-kit), CC0), 추천 조합 🎃 호박 머리 · 🎅 산타를 고릅니다. 뱀파이어·좀비·해골은 걷기·앉기·타이핑·끄덕임이 그대로 되고 머리·몸을 다른 캐릭터와 섞을 수 있습니다. 눈사람·루돌프는 정지 모델이라 몸 전체를 움직여 보입니다. 소품 줄에는 직접 그린 **산타 모자 · 루돌프 뿔 · 호박 탈** 이 있어 누구에게나 씌울 수 있습니다. 자동 배정은 지금처럼 기본 12명만 씁니다.
+
+![테마 캐릭터 × 동작](docs/screenshots/fe-62-characters.jpg)
+
 **내 캐릭터 (직접 올린 그림)**: 같은 창의 **＋ PNG 올리기** 타일을 누르거나 그 위(창 어디든)에 파일을 끌어다 놓으면, 배경이 투명한 그림을 캐릭터로 씁니다.
 
 ![PNG 올리기 — 고르기 창](docs/screenshots/fe-56-customize.jpg)
@@ -242,6 +246,6 @@ npm run bump:minor   # 0.19.0 → 0.20.0
 
 릴리스: `git tag vX.Y.Z && git push origin vX.Y.Z` 를 올리면 GitHub Actions 가 맥·Windows 앱을 빌드해 Release 에 올리고(updater 용 `latest.json` 포함), Windows 러너에서 설치 → 실행 → 훅까지 확인합니다. 테스트는 push·PR 마다 Ubuntu·Windows·macOS 에서 돕니다.
 
-캐릭터 스프라이트 다시 굽기: [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) 팩을 받아 풀고 `node scripts/bake-characters/bake.js <팩 폴더>` (헤드리스 크롬 + three.js CDN, 결과는 `public/assets/characters/*.webp`). 캐릭터마다 색 시트(머리 레이어 + 몸통 레이어)와 마스크 시트(머리카락·상의·하의 음영), 소품마다 시트 하나를 굽는다. 시트 구성(프레임 크기·동작 행·레이어)과 소품 위치는 `characters.js` 의 `SHEET`·`ACCESSORIES` 에서 정한다.
+캐릭터 스프라이트 다시 굽기: [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) 팩을 받아 풀고 `node scripts/bake-characters/bake.js <팩 폴더>` (헤드리스 크롬 + three.js CDN, 결과는 `public/assets/characters/*.webp`). 캐릭터마다 색 시트(머리 레이어 + 몸통 레이어)와 마스크 시트(머리카락·상의·하의 음영), 소품마다 시트 하나를 굽는다. 시트 구성(프레임 크기·동작 행·레이어)과 소품 위치는 `characters.js` 의 `SHEET`·`ACCESSORIES` 에서 정한다. 테마 캐릭터는 `--graveyard <Graveyard Kit 폴더> --holiday <Holiday Kit 폴더>` 를 더한다.
 
 작업 흐름: GitHub 이슈를 `[FE-30]`, `[BE-13]`, `[APP-03]` 처럼 FE/BE/APP 으로 나눠 만들고, `main` 에서 `feature/FE-30` 식 브랜치를 분리해 작업한 뒤 결과·테스트·캡처를 이슈 댓글로 남긴다.

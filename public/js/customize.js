@@ -1,12 +1,26 @@
 // 캐릭터 고르기 모달: 대상 선택 → 12명 중 하나(Claude 계열은 '자동: 세션마다 다르게'도) 또는 올린 그림 → 걷는 미리보기 → 저장(localStorage)
 // 커스텀 캐릭터(FE-56): '＋ PNG 올리기' 타일에 파일을 고르거나 끌어다 놓으면 투명 여백을 잘라 저장하고 그 그림을 고른다.
 // 파트 바꾸기(FE-57): 머리·몸통을 다른 캐릭터 것으로, 머리카락·상의·하의 색, 얼굴 소품. 값은 'mix:...' (characters.js)
-import { ACCESSORIES, CHARACTERS, DEFAULTS, drawCharacter, isCustomCharacter, lookValue, parseLook, preloadCharacters } from './scene/characters.js';
+import { ACCESSORIES, CHARACTERS, DEFAULTS, MIX_PARTS, SPECIALS, drawCharacter, isCustomCharacter, lookValue, parseLook, preloadCharacters } from './scene/characters.js';
 import { MESSAGES, prepareImage } from './customCharacters.js';
 
 // 색 고르기 칸 (6자리 hex). 그 밖의 색은 색 고르개로
 export const HAIR_COLORS = ['2b2b30', '4a3426', '7b4a2c', 'b5793f', 'e3c16f', 'c4532f', '9aa0ad', 'f1efe8', 'e48bb4', '5b86d6'];
 export const CLOTH_COLORS = ['e8683a', 'f2b51d', '5ac487', '1f8a70', '4f7fd0', '2f3b66', '8a5cc7', 'd0507a', '2b2f3a', 'eceef3', '9aa0ad', '8b5a3c'];
+// 테마 캐릭터 줄 (FE-62): 키트 캐릭터 + 코스튬을 씌운 추천 조합
+export const THEME_LOOKS = [
+  ...SPECIALS.filter((c) => !c.still).map((c) => [c.id, c.label]),
+  ['mix:male-f.male-f.-.2b2f3a.4a3426.pumpkin', '호박 머리'],
+  ['mix:male-b.male-b.f4f4f4.d42a32.b0262e.santa', '산타'],
+  ...SPECIALS.filter((c) => c.still).map((c) => [c.id, c.label]),
+];
+/** 섞을 수 없는 머리·몸(유령·눈사람·루돌프)이 끼면 섞을 수 있게 맞춘다 */
+function fixLook(l) {
+  if (l.head === l.body) return l;
+  if (!MIX_PARTS.includes(l.body)) l.body = MIX_PARTS.includes(l.head) ? l.head : DEFAULTS.me;
+  if (!MIX_PARTS.includes(l.head)) l.head = l.body;
+  return l;
+}
 const COLOR_ROWS = [['hair', '머리카락', HAIR_COLORS], ['top', '상의', CLOTH_COLORS], ['bottom', '하의', CLOTH_COLORS]];
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -69,6 +83,8 @@ export function createCustomizer(store, avatars) {
       ${nameRow()}
       <div class="cz-group"><div class="cz-label">캐릭터${allowAuto() ? ' <span class="muted">— 자동이면 세션마다 다르게</span>' : ''}</div>
         <div class="cz-presets">${auto}${CHARACTERS.map((c) => `<button class="cz-preset ${c === draft ? 'on' : ''}" data-char="${c}" title="${c}"><canvas class="cz-thumb" data-char="${c}"></canvas></button>`).join('')}</div></div>
+      <div class="cz-group"><div class="cz-label">테마 캐릭터 <span class="muted">— 할로윈·크리스마스 (자동에는 섞이지 않음)</span></div>
+        <div class="cz-presets">${THEME_LOOKS.map(([v, label]) => `<button class="cz-preset cz-theme ${v === draft ? 'on' : ''}" data-char="${esc(v)}" title="${esc(label)}"><canvas class="cz-thumb" data-char="${esc(v)}"></canvas><span>${esc(label)}</span></button>`).join('')}</div></div>
       ${partsGroup()}
       <div class="cz-group"><div class="cz-label">내 캐릭터 <span class="muted">— 배경 없는 PNG 를 올리거나 끌어다 놓기 · 자동에는 섞이지 않음</span></div>
         <div class="cz-presets">${customs}${upload}</div>
@@ -84,7 +100,7 @@ export function createCustomizer(store, avatars) {
   function setPart(part, value) {
     const l = baseLook();
     l[part] = value || null;
-    draft = lookValue(l); armed = null;
+    draft = lookValue(fixLook(l)); armed = null;
     render();
   }
   /** 파트 바꾸기: 머리·몸통 줄(썸네일), 색 줄(원래 + 팔레트 + 색 고르개), 소품 줄 */
@@ -93,13 +109,13 @@ export function createCustomizer(store, avatars) {
     const thumb = (look, zoom) => `<canvas class="cz-thumb" data-char="${esc(lookValue(look))}"${zoom ? ` data-zoom="${zoom}"` : ''}></canvas>`;
     const tile = (part, value, on, title, inner) => `<button class="cz-preset cz-mini ${on ? 'on' : ''}" data-part="${part}" data-value="${esc(value)}" title="${esc(title)}">${inner}</button>`;
     const row = (label, inner) => `<div class="cz-partrow"><span class="cz-partlabel">${label}</span><div class="cz-presets">${inner}</div></div>`;
-    const heads = CHARACTERS.map((c) => tile('head', c, cur && cur.head === c, `${c} 의 머리`, thumb({ ...l, head: c, hair: null }, 'head'))).join('');
-    const bodies = CHARACTERS.map((c) => tile('body', c, cur && cur.body === c, `${c} 의 몸`, thumb({ ...l, body: c, top: null, bottom: null }))).join('');
+    const heads = MIX_PARTS.map((c) => tile('head', c, cur && cur.head === c, `${c} 의 머리`, thumb(fixLook({ ...l, head: c, hair: null }), 'head'))).join('');
+    const bodies = MIX_PARTS.map((c) => tile('body', c, cur && cur.body === c, `${c} 의 몸`, thumb(fixLook({ ...l, body: c, top: null, bottom: null })))).join('');
     const colors = COLOR_ROWS.map(([part, label, list]) => row(label,
       `<button class="cz-swatch cz-orig ${cur && !cur[part] ? 'on' : ''}" data-part="${part}" data-value="" title="원래 색">원래</button>`
       + list.map((c) => `<button class="cz-swatch ${cur && cur[part] === c ? 'on' : ''}" data-part="${part}" data-value="${c}" title="#${c}" style="--sw:#${c}"></button>`).join('')
       + `<label class="cz-swatch cz-pick ${cur && cur[part] && !list.includes(cur[part]) ? 'on' : ''}" title="다른 색 고르기" style="${cur && cur[part] && !list.includes(cur[part]) ? `--sw:#${cur[part]}` : ''}"><input type="color" class="cz-color" data-part="${part}" value="#${(cur && cur[part]) || list[0]}"></label>`)).join('');
-    const accs = [{ id: '', label: '없음' }, ...ACCESSORIES].map((a) => tile('acc', a.id, cur && (cur.acc || '') === a.id, a.label, `${thumb({ ...l, acc: a.id || null }, 'head')}<span>${esc(a.label)}</span>`)).join('');
+    const accs = [{ id: '', label: '없음' }, ...ACCESSORIES].map((a) => tile('acc', a.id, cur && (cur.acc || '') === a.id, a.label, `${thumb({ ...fixLook({ ...l }), acc: a.id || null }, 'head')}<span>${esc(a.label)}</span>`)).join('');
     return `<div class="cz-group"><div class="cz-label">파트 바꾸기 <span class="muted">— ${cur ? '머리·몸을 섞고 색·소품 고르기' : '지금 캐릭터에서 시작합니다'}</span></div>
       ${row('머리', heads)}${row('몸', bodies)}${colors}${row('소품', accs)}</div>`;
   }
