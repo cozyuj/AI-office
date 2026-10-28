@@ -137,6 +137,30 @@ test('characters: 12명 × 모든 동작 × 좌우 · 서브에이전트 안전�
   assert.equal(drawn, 12 * 5 * 2 * 2);
 });
 
+test('characters: 커스텀 그림(FE-56)도 모든 동작 × 좌우 × 안전모로 그리고, 그림이 없으면 false', async () => {
+  const C = await import('../public/js/scene/characters.js');
+  const saved = globalThis.Image;
+  delete globalThis.Image;
+  C.setCustomCharacters([{ id: 'smoke1', src: 'data:image/png;base64,AAAA' }]);
+  assert.equal(C.drawCharacter(fakeCtx(), 0, 0, 'custom:smoke1', { hardHat: true }), false, 'Image 가 없는 Node 에서도 터지지 않고 false');
+  assert.equal(C.drawCharacter(fakeCtx(), 0, 0, 'custom:nope'), false, '모르는 커스텀');
+  globalThis.Image = class { constructor() { this.complete = true; this.naturalWidth = 180; this.naturalHeight = 256; } };
+  resetLog();
+  const ctx = fakeCtx();
+  const states = [{}, { walking: true, walkT: 0.37 }, { sitting: true }, { typing: true }, { nod: true }];
+  for (const st of states) for (const faceRight of [false, true]) for (const hardHat of [false, true]) for (const scale of [1, 0.95, 2.5]) {
+    assert.equal(C.drawCharacter(ctx, 10, 20, 'custom:smoke1', { ...st, faceRight, hardHat, now: 12345, seed: 7.5, scale }), true);
+  }
+  // 아주 넓은 그림도 NaN 없이
+  globalThis.Image = class { constructor() { this.complete = true; this.naturalWidth = 256; this.naturalHeight = 1; } };
+  C.setCustomCharacters([{ id: 'wide', src: 'data:image/png;base64,BBBB' }]);
+  assert.equal(C.drawCharacter(ctx, 0, 0, 'custom:wide', { walking: true, walkT: 1, hardHat: true }), true);
+  assertClean('custom characters');
+  C.setCustomCharacters([]);
+  assert.equal(C.drawCharacter(ctx, 0, 0, 'custom:smoke1'), false, '목록에서 빠지면 그리지 않는다');
+  globalThis.Image = saved;
+});
+
 test('actors + scene: 상태 머신 스냅샷으로 캐릭터를 만들고 수백 프레임 동안 걷기·말풍선·자율 행동을 돌린다', async () => {
   const { store } = await import('../public/js/store.js');
   const { createScene } = await import('../public/js/scene/index.js');

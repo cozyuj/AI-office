@@ -138,14 +138,18 @@ Shortcuts work when no input field has focus.
 
 ## Character looks and names
 
-![Customizer](docs/screenshots/fe-30-customize.jpg)
+![Customizer](docs/screenshots/fe-56-customize.jpg)
 
-⚙️ Settings → **Character looks** customizes four targets separately: **me / default Claude / default subagent / the Claude of the session you are viewing**.
+Characters are the 12 [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) (CC0), baked at the office's isometric angle. They walk, sit in rest rooms, type while editing or running commands, and nod with a `!` when waiting for you. Subagents wear a yellow hard hat.
 
-- **10 presets**: Developer · Suit · Researcher · Casual · Artist · Wizard · King · Robot · Cat · Bear. Pick one, then tweak the parts.
-- **4 body types**: human · robot · cat · bear. The skin (fur, metal) palette follows the body.
-- **Parts**: skin, hair (12 styles + color), top (8 styles + color; `auto` uses the session color), bottom (pants · shorts · skirt), shoes, glasses (round · square · sunglasses · goggles · monocle), hats (cap · beanie · beret · headband · bucket hat · top hat · wizard · crown …), extras (headphones · scarf · badge · earring · bow tie · beard · mask …).
-- 🎲 random, ↺ reset, 🗑 delete the saved look. Saved in this browser only.
+⚙️ Settings → **Character looks** picks one of the 12 for four targets separately: **me / default Claude / default subagent / the Claude of the session you are viewing**. Claude targets default to **Auto** (a different character per session, the same in every browser). 🎲 random, ↺ reset, 🗑 delete the saved choice. Saved in this browser only.
+
+**My characters (your own pictures)**: click **＋ Upload PNG** or drop a file anywhere on the customizer to use a picture with a transparent background.
+
+- The transparent margin is trimmed and the long side scaled to 256 px, then stored in this browser's localStorage (several pictures, up to 24 / about 2.5 MB). Hover a tile and press **×** twice to delete it; targets using it go back to their default.
+- Any target can use one. **Auto** never picks an uploaded picture.
+- It is a single still image, so the whole body moves: a bounce and slight tilt per step, lower when sitting, a small jitter while typing, a bow when nodding. It flips with the walking direction, and a subagent's hard hat sits on the top of the head (found from the alpha channel).
+- Non-images, files over 10 MB or 8192 px, and full storage show a notice in the customizer. A picture without transparency still works but shows as a rectangle.
 
 **Names per session**: every session's character gets an automatic nickname (Alex, Sam, Max, Leo, Mia, Zoe, …). Rename it in the "Character" row of the session card or in the customizer (🎲 draws another nickname; clearing the field goes back to automatic). The log and tooltips use that name. The server still calls it `Claude`; only the screen changes.
 

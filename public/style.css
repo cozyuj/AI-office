@@ -192,6 +192,16 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .cz-preset.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
 .cz-auto { justify-content: center; min-height: 64px; font-weight: 600; }
 .cz-auto-icon { font-size: 22px; line-height: 1.2; }
+.cz-custom { position: relative; }
+.cz-del { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; border: 1px solid var(--line); background: #fff; color: var(--muted); font-size: 11px; line-height: 16px; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.cz-custom:hover .cz-del, .cz-custom:focus-within .cz-del, .cz-del.armed { opacity: 1; }
+.cz-del:hover, .cz-del.armed { background: #e05252; border-color: #e05252; color: #fff; }
+.cz-upload { justify-content: center; min-height: 64px; border-style: dashed; color: var(--muted); font-weight: 600; }
+.cz-dropping .cz-upload { border-color: var(--accent); background: var(--accent-soft); color: var(--text); box-shadow: 0 0 0 2px var(--accent); }
+.cz-note { margin-top: 6px; font-size: 11.5px; padding: 5px 9px; border-radius: 8px; background: var(--accent-soft); color: var(--text); }
+.cz-note.error { background: rgba(224, 82, 82, 0.12); color: #c43c3c; }
+.cz-note.warn { background: rgba(242, 181, 29, 0.16); }
+.cz-note.busy { color: var(--muted); }
 .cz-credit { font-size: 10.5px; }
 .cz-credit a { color: inherit; }
 .cz-namerow { display: flex; gap: 6px; align-items: center; }
@@ -271,6 +281,8 @@ b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { fon
 :root[data-theme="dark"] .cz-preview, :root:not([data-theme="light"]).auto-dark .cz-preview { background: #232830; }
 :root[data-theme="dark"] .cz-preset, :root:not([data-theme="light"]).auto-dark .cz-preset { background: var(--panel); border-color: var(--line); }
 :root[data-theme="dark"] .cz-preset.on, :root:not([data-theme="light"]).auto-dark .cz-preset.on { background: var(--accent-soft); border-color: var(--accent); }
+:root[data-theme="dark"] .cz-del:not(:hover):not(.armed), :root:not([data-theme="light"]).auto-dark .cz-del:not(:hover):not(.armed) { background: var(--panel); }
+:root[data-theme="dark"] .cz-note.error, :root:not([data-theme="light"]).auto-dark .cz-note.error { color: #ff8a8a; }
 :root[data-theme="dark"] .name-input, :root:not([data-theme="light"]).auto-dark .name-input { background: var(--panel); color: var(--text); border-color: var(--line); }
 :root[data-theme="dark"] .banner, :root:not([data-theme="light"]).auto-dark .banner { background: #3a3220; color: #f5deab; border-color: #5a4a22; }
 /* ---------- 경고 배너 ---------- */

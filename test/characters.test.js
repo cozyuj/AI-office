@@ -74,3 +74,80 @@ test('avatarStore: 대상별 저장·기본값, 층 설정 우선, 나는 auto �
   again.reset('claude');
   assert.equal(again.get('claude'), 'auto');
 });
+
+test('커스텀 값(FE-56): custom:<id> 는 정규화·해결에서 그대로, 자동은 Kenney 12명 중에서만', async () => {
+  const { CHARACTERS, isCustomCharacter, normalizeCharacter, resolveCharacter } = await charsP;
+  assert.equal(isCustomCharacter('custom:abc123'), true);
+  for (const bad of ['custom:', 'custom:ABC', 'custom:a/b', 'custom:<x>', 'male-a', 'auto', null, 42]) assert.equal(isCustomCharacter(bad), false, String(bad));
+  assert.equal(normalizeCharacter('custom:abc123', 'auto'), 'custom:abc123');
+  assert.equal(normalizeCharacter('custom:"><img>', 'male-a'), 'male-a', '이상한 값은 기본값');
+  assert.equal(resolveCharacter('custom:abc123', 'sess/main'), 'custom:abc123');
+  for (let i = 0; i < 100; i++) assert.ok(CHARACTERS.includes(resolveCharacter('auto', `k${i}`)), '자동은 Kenney 만');
+});
+
+test('alphaBounds · fitSize: 투명 여백 잘라내기와 긴 변 줄이기', async () => {
+  const { alphaBounds, fitSize } = await import('../public/js/customCharacters.js');
+  const w = 10, h = 8, data = new Uint8ClampedArray(w * h * 4);
+  const put = (x, y, a) => { data[(y * w + x) * 4 + 3] = a; };
+  assert.equal(alphaBounds(data, w, h), null, '전부 투명');
+  put(3, 2, 255); put(6, 5, 200); put(9, 7, 8); // 마지막은 거의 투명이라 무시
+  assert.deepEqual(alphaBounds(data, w, h), { x: 3, y: 2, w: 4, h: 4, opaque: false });
+  assert.equal(alphaBounds(new Uint8ClampedArray(4 * 4 * 4).fill(255), 4, 4).opaque, true, '투명 픽셀이 없으면 opaque');
+  assert.deepEqual(fitSize(1000, 500), { w: 256, h: 128 });
+  assert.deepEqual(fitSize(90, 120), { w: 90, h: 120 }, '작은 그림은 그대로');
+  assert.deepEqual(fitSize(3000, 2), { w: 256, h: 1 }, '한 변이 0 이 되지 않는다');
+});
+
+test('커스텀 저장소: 더하기·지우기, 지운 그림을 가리키던 설정은 기본값, 용량·개수 한도, 저장 실패 되돌리기', async () => {
+  const mem = new Map();
+  let full = false;
+  globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => { if (full) throw new Error('QuotaExceededError'); mem.set(k, String(v)); }, removeItem: (k) => mem.delete(k) };
+  const { createAvatarStore } = await import('../public/js/avatarStore.js');
+  const { createCustomCharacters, LIMITS } = await import('../public/js/customCharacters.js');
+  const { CHARACTERS, isCustomCharacter } = await charsP;
+  const png = (n = 100) => ({ src: 'data:image/png;base64,' + 'A'.repeat(n), w: 40, h: 64, name: '고양이' });
+
+  const s = createAvatarStore();
+  const a = s.customs.add(png());
+  assert.ok(isCustomCharacter(a.value), JSON.stringify(a));
+  const b = s.customs.add(png());
+  assert.notEqual(a.value, b.value, 'id 가 겹치지 않는다');
+  assert.equal(s.customs.list().length, 2);
+  assert.equal(s.customs.list()[0].name, '고양이');
+  s.set('claude', a.value); s.set('me', b.value); s.set('sub', a.value);
+  assert.equal(s.forActor({ key: 's1/main', kind: 'main' }, 'f1'), a.value, 'Claude 에 커스텀');
+  assert.equal(s.forActor({ user: true }, 'f1'), b.value, '나에게도 커스텀');
+  assert.equal(s.forActor({ key: 's1/agent-1', kind: 'sub' }, 'f1'), a.value, '서브에도 커스텀');
+
+  // 새로 만들어도(새로 고침) 그림과 설정이 남는다
+  const again = createAvatarStore();
+  assert.equal(again.get('claude'), a.value);
+  assert.equal(again.customs.list().length, 2);
+
+  let notified = 0; again.subscribe(() => notified++);
+  again.customs.remove(a.value);
+  assert.ok(notified > 0, '지우면 구독자에게 알린다');
+  assert.equal(again.customs.has(a.value), false);
+  assert.equal(again.get('claude'), 'auto', '지운 그림을 쓰던 Claude 는 기본값(자동)');
+  assert.ok(CHARACTERS.includes(again.forActor({ key: 's1/main', kind: 'main' }, 'f1')));
+  assert.equal(again.get('sub'), 'auto');
+  assert.equal(again.get('me'), b.value, '남은 그림은 그대로');
+
+  // 한도: 한 장이 너무 크면 / 개수가 넘으면 / localStorage 가 꽉 차면
+  const c = createCustomCharacters();
+  assert.deepEqual(c.add(png(LIMITS.srcChars + 1)), { error: 'quota' });
+  assert.deepEqual(c.add({ src: 'javascript:alert(1)' }), { error: 'decode' }, 'dataURL 그림만');
+  full = true;
+  const before = c.list().length;
+  assert.deepEqual(c.add(png()), { error: 'quota' }, 'QuotaExceeded');
+  assert.equal(c.list().length, before, '저장 실패면 목록도 그대로');
+  full = false;
+  while (c.list().length < LIMITS.count) assert.ok(c.add(png()).value);
+  assert.deepEqual(c.add(png()), { error: 'too-many' });
+
+  // 깨진 저장값은 무시
+  mem.set('aiOffice.customCharacters.v1', '[{"id":"BAD","src":"data:image/png;base64,A"},{"id":"ok1","src":"http://x/y.png"},{"id":"ok2","src":"data:image/png;base64,A"}]');
+  assert.deepEqual(createCustomCharacters().list().map((x) => x.id), ['ok2']);
+  mem.set('aiOffice.customCharacters.v1', 'not json');
+  assert.deepEqual(createCustomCharacters().list(), []);
+});
