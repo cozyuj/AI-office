@@ -102,6 +102,12 @@ function drawPerson(ctx, a, now, character) {
   const sitting = a.activity === 'rest' && !a.ambient && !a.walking;
   const typing = !a.walking && (a.activity === 'edit' || a.activity === 'work' || a.activity === 'run');
   const fx = base.x, fy = base.y - bob;
+  // 선택 표시: 바닥의 원. 뒤쪽 반원은 캐릭터 몸에 가려지게 먼저, 앞쪽 반원은 캐릭터 다음에
+  const ring = (from, to) => {
+    ctx.strokeStyle = '#e8683a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(base.x, base.y + 1, 17, 8, 0, from, to); ctx.stroke();
+  };
+  if (a.selected) ring(Math.PI, Math.PI * 2);
   drawCharacter(ctx, fx, fy, character, { walking: a.walking, walkT: a.walkT, now, seed: a.seed, faceRight: a.faceRight, sitting, typing, nod: a.activity === 'ask', hardHat: a.kind === 'sub' });
   // 답을 기다리는 중: 머리 위 느낌표 펄스
   if (a.activity === 'ask') {
@@ -112,10 +118,7 @@ function drawPerson(ctx, a, now, character) {
     ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('!', fx, ty + 0.5);
   }
-  if (a.selected) {
-    ctx.strokeStyle = '#e8683a'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(base.x, base.y + 1, 17, 8, 0, 0, Math.PI * 2); ctx.stroke();
-  }
+  if (a.selected) ring(0, Math.PI);
   ctx.restore();
 }
 
