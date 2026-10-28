@@ -51,6 +51,10 @@ class Store {
     this.logFilter = { q: '', mine: false };
     this.names = createNameBook(); // 세션별 캐릭터 이름 (브라우저 저장)
     this.daylight = (() => { try { return localStorage.getItem('aiOffice.daylight') || 'auto'; } catch { return 'auto'; } })(); // 시간대 조명: auto|off|morning|day|evening|night
+    // 야외 날씨 (FE-61): mode theme|real|clear|rain|snow, place = { name, country, lat, lon } (실제 날씨용), weatherNow = 받은 실제 날씨 (저장 안 함)
+    this.weatherMode = (() => { try { const v = localStorage.getItem('aiOffice.weather'); return ['theme', 'real', 'clear', 'rain', 'snow'].includes(v) ? v : 'theme'; } catch { return 'theme'; } })();
+    this.weatherPlace = (() => { try { const p = JSON.parse(localStorage.getItem('aiOffice.weatherPlace') || 'null'); return p && Number.isFinite(p.lat) && Number.isFinite(p.lon) ? p : null; } catch { return null; } })();
+    this.weatherNow = null;
     this.themeMode = (() => { try { return localStorage.getItem('aiOffice.themeMode') === 'season' ? 'season' : 'manual'; } catch { return 'manual'; } })(); // 테마 층 (FE-60): manual(🎨 로 직접) | season(날짜에 맞춰 자동)
   }
 
@@ -127,6 +131,9 @@ class Store {
   setSound(v) { this.sound = !!v; try { localStorage.setItem('aiOffice.sound', v ? 'on' : 'off'); } catch {} this.emit('option'); }
   setSoundScope(v) { this.soundScope = v === 'all' ? 'all' : 'waiting'; ls.set('aiOffice.soundScope', this.soundScope); this.emit('option'); }
   setAmbient(v) { this.ambient = !!v; try { localStorage.setItem('aiOffice.ambient', v ? 'on' : 'off'); } catch {} this.emit('option'); }
+  setWeatherMode(v) { this.weatherMode = ['theme', 'real', 'clear', 'rain', 'snow'].includes(v) ? v : 'theme'; try { localStorage.setItem('aiOffice.weather', this.weatherMode); } catch {} this.emit('option'); }
+  setWeatherPlace(p) { this.weatherPlace = p || null; this.weatherNow = null; try { if (p) localStorage.setItem('aiOffice.weatherPlace', JSON.stringify(p)); else localStorage.removeItem('aiOffice.weatherPlace'); } catch {} this.emit('option'); }
+  setWeatherNow(w) { this.weatherNow = w || null; this.emit('option'); }
   setThemeMode(v) { this.themeMode = v === 'season' ? 'season' : 'manual'; try { localStorage.setItem('aiOffice.themeMode', this.themeMode); } catch {} this.emit('option'); }
   setDaylight(v) { this.daylight = String(v || 'auto'); try { localStorage.setItem('aiOffice.daylight', this.daylight); } catch {} this.emit('option'); }
 

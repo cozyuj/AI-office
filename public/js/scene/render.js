@@ -5,6 +5,7 @@
 // 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
 import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, DECOR, SCENE, LABEL, project, roomAt, worldBounds, setTheme as setMapTheme, setFloorStyle as setMapFloorStyle } from './map.js';
 import { drawDecor, decorBox, DECOR_PAD, DECOR_DYNAMIC } from './decor.js';
+import { effectiveWeather } from '../weather.js';
 import * as MAP from './map.js';
 import { tr } from '../i18n.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
@@ -202,9 +203,55 @@ export function drawDaylightLamps(ctx) {
   }
 }
 
-/** 장면 전체 틴트 (화면 공간, 이름표 앞에): 시간대 + 테마 층(할로윈 보랏빛, 크리스마스 따뜻한 빛) */
+// ---------- 야외 날씨 (FE-61) ----------
+const weather = { mode: 'theme', real: null };
+/** { mode, real } — 지금 내릴 것은 층 테마와 합쳐 매 프레임 정한다 (effectiveWeather) */
+export function setWeather(v) { Object.assign(weather, v); }
+export function weatherKind() { return effectiveWeather(weather.mode, weather.real, MAP.SKIN); }
+const outdoorRooms = () => ROOMS.filter((r) => r.outdoor);
+function roomPoly(ctx, r) {
+  const P = [project(r.x0, r.y0), project(r.x1 + 1, r.y0), project(r.x1 + 1, r.y1 + 1), project(r.x0, r.y1 + 1)];
+  ctx.beginPath(); ctx.moveTo(P[0].x, P[0].y); for (let i = 1; i < 4; i++) ctx.lineTo(P[i].x, P[i].y); ctx.closePath();
+}
+/** 바닥: 비면 젖은 톤, 눈이면 쌓인 하얀 톤 (월드 공간, 바닥 위·엔티티 앞) */
+export function drawWeatherFloor(ctx) {
+  const k = weatherKind();
+  if (!k) return;
+  ctx.fillStyle = k === 'snow' ? 'rgba(250,252,255,0.55)' : 'rgba(50,70,100,0.16)';
+  for (const r of outdoorRooms()) { roomPoly(ctx, r); ctx.fill(); }
+}
+const rnd = (i, s) => { const x = Math.sin(i * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
+/** 빗줄기·눈송이: 야외 방 위 상자 안에서 떨어진다 (월드 공간, 엔티티 뒤에 그려 앞을 덮는다) */
+export function drawWeather(ctx, now) {
+  const k = weatherKind();
+  if (!k) return;
+  const t = now / 1000;
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (const r of outdoorRooms()) {
+    const w = r.x1 - r.x0 + 1, d = r.y1 - r.y0 + 1, n = Math.round(w * d * (k === 'rain' ? 5 : 3.5));
+    for (let i = 0; i < n; i++) {
+      const u = rnd(i, r.x0), v = rnd(i, r.y0 + 7), off = rnd(i, 3);
+      if (k === 'rain') {
+        const ph = (t / 0.75 + off) % 1, z = 3.2 * (1 - ph);
+        const p = project(r.x0 + u * w - ph * 0.25, r.y0 + v * d, z);
+        if (ph > 0.94) { ctx.strokeStyle = 'rgba(190,215,240,0.55)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(p.x, p.y, 3, 1.2, 0, 0, Math.PI * 2); ctx.stroke(); continue; }
+        ctx.strokeStyle = 'rgba(150,185,230,0.8)'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 2.5, p.y + 10); ctx.stroke();
+      } else {
+        const ph = (t / 6 + off) % 1, z = 3.2 * (1 - ph);
+        const p = project(r.x0 + u * w + Math.sin(t * 0.9 + i) * 0.15, r.y0 + v * d + Math.cos(t * 0.7 + i) * 0.1, z);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.beginPath(); ctx.arc(p.x, p.y, 1.2 + (i % 3) * 0.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+/** 장면 전체 틴트 (화면 공간, 이름표 앞에): 시간대 + 테마 층(할로윈 보랏빛, 크리스마스 따뜻한 빛) + 비 오는 날 */
 export function drawDaylightTint(ctx, width, height) {
-  for (const c of [daylight().scene, SCENE.tint]) {
+  const rain = weatherKind() === 'rain' && outdoorRooms().length ? 'rgba(40,50,70,0.07)' : null;
+  for (const c of [daylight().scene, SCENE.tint, rain]) {
     if (!c) continue;
     ctx.fillStyle = c;
     ctx.fillRect(0, 0, width, height);

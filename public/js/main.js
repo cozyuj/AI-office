@@ -11,6 +11,7 @@ import { createAvatarStore } from './avatarStore.js';
 import { createCustomizer } from './customize.js';
 import { createOverview } from './overview.js';
 import { createFloorStyleBook, seasonTheme } from './scene/floorStyle.js';
+import { geocode, currentWeather, REFRESH_MS } from './weather.js';
 import { createFloorStylePicker } from './floorStylePicker.js';
 import { layoutOfPreset } from './scene/map.js';
 import { buildLayout, roomLabelIn } from './scene/layouts.js';
@@ -413,6 +414,45 @@ applyTheme();
 
 // ---------- 시간대 조명 (FE-33): 실제 시각으로 아침·낮·저녁·밤, 설정 행으로 고정 가능 ----------
 const daylightSel = document.getElementById('daylight-select');
+// ---------- 야외 날씨 (FE-61) ----------
+const weatherSel = document.getElementById('weather-select');
+const weatherRow = document.getElementById('weather-place-row');
+const weatherInput = document.getElementById('weather-place');
+const weatherStatus = document.getElementById('weather-status');
+const WEATHER_LABEL = { rain: '🌧️ 비', snow: '❄️ 눈', clear: '☀️ 맑음' };
+let weatherBusy = false, weatherErr = '';
+async function refreshWeather() {
+  if (store.weatherMode !== 'real' || !store.weatherPlace || weatherBusy) return;
+  weatherBusy = true;
+  try { store.setWeatherNow(await currentWeather(store.weatherPlace)); weatherErr = ''; } catch { weatherErr = '날씨를 받지 못했습니다'; renderWeather(); }
+  weatherBusy = false;
+}
+function renderWeather() {
+  if (weatherSel.value !== store.weatherMode) weatherSel.value = store.weatherMode;
+  weatherRow.classList.toggle('hidden', store.weatherMode !== 'real');
+  const p = store.weatherPlace, w = store.weatherNow;
+  if (document.activeElement !== weatherInput) weatherInput.value = p ? p.name : '';
+  weatherStatus.textContent = weatherErr || (!p ? '도시를 적고 Enter' : w ? `${WEATHER_LABEL[w.kind]} · ${new Date(w.at).toTimeString().slice(0, 5)}` : '받는 중…');
+  scene.setWeather({ mode: store.weatherMode, real: w });
+}
+weatherSel.onchange = () => { store.setWeatherMode(weatherSel.value); refreshWeather(); };
+weatherInput.addEventListener('keydown', (e) => {
+  e.stopPropagation(); // 글자 단축키가 새지 않게
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const q = weatherInput.value.trim();
+  if (!q) { store.setWeatherPlace(null); return; }
+  weatherStatus.textContent = '찾는 중…';
+  geocode(q, getLang()).then((p) => {
+    if (!p) { weatherErr = `"${q}" 를 찾지 못했습니다`; renderWeather(); weatherErr = ''; return; }
+    weatherErr = ''; store.setWeatherPlace(p); weatherInput.blur(); refreshWeather();
+  }).catch(() => { weatherErr = '도시를 찾지 못했습니다 (인터넷 연결)'; renderWeather(); weatherErr = ''; });
+});
+store.subscribe((kind) => { if (kind === 'option') renderWeather(); });
+renderWeather();
+refreshWeather();
+setInterval(refreshWeather, REFRESH_MS);
+
 const themeModeSel = document.getElementById('theme-mode-select');
 let appliedThemeMode = store.themeMode;
 function applyThemeMode() {

@@ -204,6 +204,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .cz-note.busy { color: var(--muted); }
 .cz-credit { font-size: 10.5px; }
 .cz-credit a { color: inherit; }
+.weather-place { width: 110px; font-size: 12px; padding: 3px 7px; }
+.weather-status { font-size: 11px; margin-left: 6px; white-space: nowrap; }
 .style-pop-sub { font-size: 10.5px; font-weight: 700; color: var(--muted); padding: 8px 6px 2px; border-top: 1px solid var(--line); margin-top: 4px; }
 .modal-card.cz { width: min(900px, calc(100vw - 40px)); }
 .cz-partrow { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
