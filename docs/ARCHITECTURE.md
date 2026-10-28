@@ -176,7 +176,8 @@ public/
     overview.js       전체 보기: 층을 건물처럼 쌓아 미니 사무실 + 캐릭터 점
     i18n.js           언어: 한국어 원문, 영어는 사전 → 패턴 규칙 → 구절 치환. 사용자 요청·제목은 번역하지 않는다
     names.js          세션별 캐릭터 별명 (localStorage)
-    customize.js, avatarStore.js   캐릭터 고르기 (대상별 12명 중 하나 / 자동)
+    customize.js, avatarStore.js   캐릭터 고르기 (대상별 12명 중 하나 / 자동 / 올린 그림)
+    customCharacters.js            커스텀 캐릭터: PNG 투명 여백 자르기·256px 축소, dataURL 을 localStorage 에 (FE-56)
     floorStylePicker.js            층 🎨 → 인테리어 프리셋 선택 (서버에 저장)
     tooltip.js, texttip.js         캐릭터 툴팁, 잘린 글자 툴팁
     scene/
@@ -186,7 +187,7 @@ public/
       pathfind.js     A* (4방향), 벽 edge 와 solid 가구 회피
       actors.js       Agent → Actor(위치, 경로, 걷기 애니, 말풍선, 슬롯 점유/해제, 휴식 방 안 배회)
       spots.js        휴식 방 명소 (레이아웃이 채우는 live 객체)
-      characters.js   캐릭터 스프라이트 (Kenney Mini Characters, CC0) 동작 프레임·안전모
+      characters.js   캐릭터 스프라이트 (Kenney Mini Characters, CC0) 동작 프레임·안전모, 커스텀 그림('custom:<id>') 그리기
       render.js       바닥 → 3D AABB 깊이 정렬된 가구/벽/캐릭터 → 방 이름표·말풍선
       sprites.js      가구·벽을 코드로 그리는 함수들 (외부 이미지 없음)
       camera.js       팬·줌·맵 맞춤·클릭 판정, 선택 세션 따라가기
@@ -235,6 +236,7 @@ public/
 - **그림 자산 없음**: 가구·캐릭터를 canvas 코드로 그린다 (sprites.js · avatar.js).
 - **재생 가능한 저널**: 상태를 직접 저장하지 않고 원본 이벤트를 남겨 재생한다. 상태 머신이 바뀌어도 저널은 그대로 쓸 수 있다.
 - **뷰어 설정은 브라우저에**: 별명·외형·언어·테마는 localStorage. 층 인테리어처럼 모두가 같이 봐야 하는 것만 서버에 둔다.
+- **커스텀 캐릭터도 브라우저에 (FE-56)**: 올린 PNG 는 서버로 보내지 않는다. 투명 여백을 자르고 긴 변 256px 로 줄인 dataURL 을 `aiOffice.customCharacters.v1` 에 두고(최대 24장·2.5MB, 실패하면 되돌림), 고른 값은 `custom:<id>` 로 `aiOffice.characters.v1` 에 섞인다. 키를 나눠 그림 저장이 실패해도 고르기 설정은 남는다. '자동' 해시는 Kenney 12명만 쓴다. 정지 그림 한 장이라 동작은 몸 전체의 오프셋·기울기·눌림으로 보이고, 안전모 위치는 스프라이트와 같은 알파 스캔(`scanHead`)으로 찾는다.
 - **범위**: Claude Code 훅만 받는다. claude.ai 채팅·클라우드 세션은 훅이 없어 다루지 않는다.
 
 ## 9. 보안 (BE-21)

@@ -1,5 +1,7 @@
-// 캐릭터 고르기 모달: 대상 선택 → 12명 중 하나(Claude 계열은 '자동: 세션마다 다르게'도) → 걷는 미리보기 → 저장(localStorage)
-import { CHARACTERS, drawCharacter, preloadCharacters } from './scene/characters.js';
+// 캐릭터 고르기 모달: 대상 선택 → 12명 중 하나(Claude 계열은 '자동: 세션마다 다르게'도) 또는 올린 그림 → 걷는 미리보기 → 저장(localStorage)
+// 커스텀 캐릭터(FE-56): '＋ PNG 올리기' 타일에 파일을 고르거나 끌어다 놓으면 투명 여백을 잘라 저장하고 그 그림을 고른다.
+import { CHARACTERS, drawCharacter, isCustomCharacter, preloadCharacters } from './scene/characters.js';
+import { MESSAGES, prepareImage } from './customCharacters.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -10,8 +12,10 @@ export function createCustomizer(store, avatars) {
   const preview = modal.querySelector('canvas');
   const pctx = preview.getContext('2d');
   let target = 'me';
-  let draft = null; // 캐릭터 이름 또는 'auto'
+  let draft = null; // 캐릭터 이름, 'custom:<id>' 또는 'auto'
   let raf = 0;
+  let note = null;  // 올리기 결과 안내 { kind: 'ok' | 'warn' | 'error' | 'busy', text }
+  let armed = null; // 지우기 확인 중인 커스텀 값 (× 를 한 번 더 누르면 지운다)
 
   function targets() {
     const list = [['me', `${store.me} (나)`], ['claude', 'Claude 기본'], ['sub', '서브에이전트 기본']];
@@ -25,6 +29,7 @@ export function createCustomizer(store, avatars) {
     target = initial || target;
     draft = avatars.get(target);
     preloadCharacters();
+    note = null; armed = null;
     modal.classList.remove('hidden');
     render();
     loop();
@@ -51,12 +56,37 @@ export function createCustomizer(store, avatars) {
   function render() {
     targetsEl.innerHTML = targets().map(([k, label]) => `<button class="cz-target ${k === target ? 'on' : ''}" data-target="${esc(k)}">${esc(label)}${avatars.has(k) ? '' : '<span class="muted"> · 기본</span>'}</button>`).join('');
     const auto = allowAuto() ? `<button class="cz-preset cz-auto ${draft === 'auto' ? 'on' : ''}" data-char="auto" title="세션마다 다른 캐릭터 (어느 브라우저에서도 같은 세션은 같은 캐릭터)"><span class="cz-auto-icon">🎲</span><span>자동</span></button>` : '';
+    const customs = avatars.customs.list().map((c) => `<div class="cz-preset cz-custom ${c.value === draft ? 'on' : ''}" data-char="${esc(c.value)}" role="button" tabindex="0" title="${esc(c.name || '커스텀 캐릭터')}"><canvas class="cz-thumb" data-char="${esc(c.value)}"></canvas>`
+      + `<button class="cz-del ${armed === c.value ? 'armed' : ''}" data-action="custom-del" data-value="${esc(c.value)}" title="${armed === c.value ? '한 번 더 누르면 지웁니다 — 이 그림을 쓰던 대상은 기본값으로' : '이 커스텀 캐릭터 지우기'}">${armed === c.value ? '지우기' : '×'}</button></div>`).join('');
+    const upload = `<label class="cz-preset cz-upload" title="배경이 투명한 PNG 를 고르거나 여기에 끌어다 놓기"><input type="file" class="cz-file" accept="image/png,image/webp,image/gif,image/*" multiple hidden><span class="cz-auto-icon">＋</span><span>PNG 올리기</span></label>`;
     optsEl.innerHTML = `
       ${nameRow()}
       <div class="cz-group"><div class="cz-label">캐릭터${allowAuto() ? ' <span class="muted">— 자동이면 세션마다 다르게</span>' : ''}</div>
         <div class="cz-presets">${auto}${CHARACTERS.map((c) => `<button class="cz-preset ${c === draft ? 'on' : ''}" data-char="${c}" title="${c}"><canvas class="cz-thumb" data-char="${c}"></canvas></button>`).join('')}</div></div>
+      <div class="cz-group"><div class="cz-label">내 캐릭터 <span class="muted">— 배경 없는 PNG 를 올리거나 끌어다 놓기 · 자동에는 섞이지 않음</span></div>
+        <div class="cz-presets">${customs}${upload}</div>
+        ${note ? `<div class="cz-note ${note.kind}">${esc(note.text)}</div>` : ''}</div>
       <div class="cz-credit muted">캐릭터: <a href="https://kenney.nl/assets/mini-characters" target="_blank" rel="noopener">Kenney Mini Characters</a> (CC0)</div>`;
     sizeThumbs();
+  }
+
+  /** 파일 여러 장을 차례로 다듬어 저장. 마지막으로 성공한 그림을 고른다 */
+  async function upload(files) {
+    const list = [...(files || [])];
+    if (!list.length) return;
+    armed = null; note = { kind: 'busy', text: '그림을 다듬는 중…' }; render();
+    let last = null, warn = null, error = null;
+    for (const f of list) {
+      const img = await prepareImage(f);
+      if (img.error) { error = img.error; continue; }
+      const r = avatars.customs.add(img);
+      if (r.error) { error = r.error; break; }
+      last = r.value;
+      if (img.opaque) warn = 'opaque';
+    }
+    if (last) draft = last;
+    note = error ? { kind: 'error', text: MESSAGES[error] } : warn ? { kind: 'warn', text: MESSAGES[warn] } : { kind: 'ok', text: MESSAGES.added };
+    render();
   }
 
   const TW = 56, TH = 64;
@@ -64,14 +94,14 @@ export function createCustomizer(store, avatars) {
     const dpr = window.devicePixelRatio || 1;
     for (const c of optsEl.querySelectorAll('canvas.cz-thumb')) { c.width = TW * dpr; c.height = TH * dpr; c.style.width = `${TW}px`; c.style.height = `${TH}px`; }
   }
-  /** 썸네일: 서 있는 첫 칸. 시트가 늦게 오므로 매 프레임 그린다 (12장, 작다) */
+  /** 썸네일: 서 있는 첫 칸. 시트가 늦게 오므로 매 프레임 그린다 (12장, 작다). 올린 그림은 뒤집지 않고 올린 그대로 */
   function drawThumbs() {
     const dpr = window.devicePixelRatio || 1;
     for (const c of optsEl.querySelectorAll('canvas.cz-thumb')) {
       const cx = c.getContext('2d');
       cx.setTransform(dpr, 0, 0, dpr, 0, 0);
       cx.clearRect(0, 0, TW, TH);
-      drawCharacter(cx, TW / 2, TH - 4, c.dataset.char, { scale: 0.95, faceRight: true });
+      drawCharacter(cx, TW / 2, TH - 4, c.dataset.char, { scale: 0.95, faceRight: !isCustomCharacter(c.dataset.char) });
     }
   }
 
@@ -103,10 +133,19 @@ export function createCustomizer(store, avatars) {
   }
 
   modal.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-action="custom-del"]');
+    if (del) {
+      const v = del.dataset.value;
+      if (armed !== v) { armed = v; render(); return; }
+      avatars.customs.remove(v);
+      armed = null; note = null;
+      if (draft === v) draft = avatars.get(target);
+      render(); return;
+    }
     const t = e.target.closest('[data-target]');
-    if (t) { target = t.dataset.target; draft = avatars.get(target); render(); return; }
-    const c = e.target.closest('button[data-char]');
-    if (c) { draft = c.dataset.char; render(); return; }
+    if (t) { target = t.dataset.target; draft = avatars.get(target); note = null; armed = null; render(); return; }
+    const c = e.target.closest('.cz-preset[data-char]');
+    if (c) { draft = c.dataset.char; armed = null; render(); return; }
     const act = e.target.closest('[data-action]');
     if (!act) { if (e.target === modal) close(); return; }
     switch (act.dataset.action) {
@@ -120,13 +159,25 @@ export function createCustomizer(store, avatars) {
   });
   // 이름 입력: Enter/포커스 아웃에 바로 저장, Esc 는 입력만 닫음 (모달은 유지), 글자 단축키가 새지 않게
   modal.addEventListener('change', (e) => {
+    if (e.target.closest('input.cz-file')) { upload(e.target.files); return; }
     const i = e.target.closest('input.cz-name-input');
     if (!i) return;
     const s = store.selectedSession();
     if (s) store.setName(s.id, i.value);
     render();
   });
+  // 끌어다 놓기: 창 어디에 놓아도 올린다 (끄는 동안 올리기 타일이 강조된다). 빗나가 페이지가 그림으로 바뀌는 일도 막는다
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+  modal.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; optsEl.classList.add('cz-dropping'); });
+  modal.addEventListener('dragleave', (e) => { if (!modal.contains(e.relatedTarget)) optsEl.classList.remove('cz-dropping'); });
+  modal.addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); optsEl.classList.remove('cz-dropping');
+    upload(e.dataTransfer.files);
+  });
   modal.addEventListener('keydown', (e) => {
+    const tile = e.target.closest('.cz-custom');
+    if (tile && e.target === tile && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); draft = tile.dataset.char; render(); return; }
     if (!e.target.closest('input.cz-name-input')) return;
     if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
     if (e.key === 'Escape') { e.preventDefault(); e.target.blur(); }
