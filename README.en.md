@@ -153,6 +153,8 @@ Characters are the 12 [Kenney Mini Characters](https://kenney.nl/assets/mini-cha
 
 ![Mix parts](docs/screenshots/fe-57-customize.jpg)
 
+**Theme characters**: a row of 🧛 Vampire · 🧟 Zombie · 💀 Skeleton · 👻 Ghost ([Kenney Graveyard Kit](https://kenney.nl/assets/graveyard-kit), CC0), ⛄ Snowman · 🦌 Rudolph ([Kenney Holiday Kit](https://kenney.nl/assets/holiday-kit), CC0) and ready-made 🎃 Pumpkin head · 🎅 Santa. Vampire, zombie and skeleton walk, sit, type and nod like the others and mix with other heads and bodies; snowman and Rudolph are still models that move as a whole. The accessory row adds hand-drawn **Santa hat · reindeer antlers · pumpkin mask** for anyone. Auto still uses only the 12 default characters.
+
 **My characters (your own pictures)**: click **＋ Upload PNG** or drop a file anywhere on the customizer to use a picture with a transparent background.
 
 - The transparent margin is trimmed and the long side scaled to 256 px, then stored in this browser's localStorage (several pictures, up to 24 / about 2.5 MB). Hover a tile and press **×** twice to delete it; targets using it go back to their default.

@@ -6,7 +6,7 @@ const path = require('path');
 const charsP = import('../public/js/scene/characters.js');
 
 test('시트: 12명 색·마스크 시트와 소품 시트가 있고, 크기가 SHEET 의 행·열과 맞는다', async () => {
-  const { CHARACTERS, SHEET, ACCESSORIES } = await charsP;
+  const { CHARACTERS, SHEET, ACCESSORIES, SPECIALS } = await charsP;
   assert.equal(CHARACTERS.length, 12);
   const cols = Math.max(...SHEET.ROWS.map((r) => r.frames));
   const rows = SHEET.ROWS.length;
@@ -24,8 +24,9 @@ test('시트: 12명 색·마스크 시트와 소품 시트가 있고, 크기가 
     check(name, SHEET.PARTS.length);         // 머리 행들 + 몸통 행들
     check(`${name}.mask`, SHEET.MASKS.length); // 머리카락·상의·하의
   }
-  for (const a of ACCESSORIES) check(`acc-${a.id}`, 1);
-  assert.ok(total < 2.5 * 1024 * 1024, `합 ${(total / 1024).toFixed(0)} KB`);
+  for (const a of ACCESSORIES) if (!a.draw) check(`acc-${a.id}`, 1);
+  for (const c of SPECIALS) check(c.id, SHEET.PARTS.length); // 테마 캐릭터 (FE-62): 머리·몸통 행, 마스크 없음
+  assert.ok(total < 3 * 1024 * 1024, `합 ${(total / 1024).toFixed(0)} KB`);
 });
 
 test('파트 조합(FE-57): mix 값 읽기·쓰기, 바꾼 게 없으면 이름, 이상한 값은 기본값', async () => {
@@ -46,6 +47,18 @@ test('파트 조합(FE-57): mix 값 읽기·쓰기, 바꾼 게 없으면 이름,
     assert.equal(parseLook(bad), null, String(bad));
     assert.equal(normalizeCharacter(bad, 'male-c'), 'male-c', String(bad));
   }
+});
+
+test('테마 캐릭터(FE-62): 이름 그대로 쓰고, 뱀파이어·좀비·해골만 섞기, 코스튬은 누구에게나, 자동에는 안 섞인다', async () => {
+  const { parseLook, normalizeCharacter, resolveCharacter, SPECIALS, MIX_PARTS, CHARACTERS } = await charsP;
+  for (const c of SPECIALS) assert.equal(normalizeCharacter(c.id), c.id);
+  assert.equal(normalizeCharacter('mix:zombie.female-a.-.-.-.-'), 'mix:zombie.female-a.-.-.-.-', '좀비 머리 + 다른 몸');
+  assert.equal(normalizeCharacter('mix:ghost.male-a.-.-.-.-', 'x'), 'x', '유령은 섞지 않는다');
+  assert.equal(normalizeCharacter('mix:male-a.snowman.-.-.-.-', 'x'), 'x', '눈사람 몸도 섞지 않는다');
+  assert.equal(normalizeCharacter('mix:snowman.snowman.-.-.-.santa'), 'mix:snowman.snowman.-.-.-.santa', '정지 모델에도 코스튬');
+  for (const id of ['santa', 'antlers', 'pumpkin']) assert.ok(parseLook(`mix:male-b.male-b.-.-.-.${id}`), id);
+  assert.ok(MIX_PARTS.includes('vampire') && !MIX_PARTS.includes('ghost'));
+  for (let i = 0; i < 200; i++) assert.ok(CHARACTERS.includes(resolveCharacter('auto', `k${i}`)), '자동은 기본 12명만');
 });
 
 test('randomLook: 늘 올바른 값이고 지금 것과 다르며, 통째·조합이 섞여 나온다', async () => {
