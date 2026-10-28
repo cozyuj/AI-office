@@ -96,7 +96,9 @@ function drawPerson(ctx, a, now, character) {
   const base = project(cx, cy);
   ctx.save();
   ctx.globalAlpha = a.dim ? 0.45 : 1;
-  shadow(ctx, cx, cy, 0.28, 0.14, 0.2);
+  // 선택한 세션의 캐릭터: 회색 그림자 대신 발밑에 파란 빛 (캐릭터보다 먼저 그려 몸을 가리지 않는다). 아니면 보통 그림자
+  if (a.selected) selectionGlow(ctx, base, now);
+  else shadow(ctx, cx, cy, 0.28, 0.14, 0.2);
   // 걷기·숨쉬기는 스프라이트 동작에 들어 있다. 고민 중일 때만 살짝 흔들린다
   const bob = a.activity === 'think' && !a.walking ? Math.sin(now / 420) * 0.8 : 0;
   const sitting = a.activity === 'rest' && !a.ambient && !a.walking;
@@ -112,10 +114,22 @@ function drawPerson(ctx, a, now, character) {
     ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('!', fx, ty + 0.5);
   }
-  if (a.selected) {
-    ctx.strokeStyle = '#e8683a'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(base.x, base.y + 1, 17, 8, 0, 0, Math.PI * 2); ctx.stroke();
-  }
+  ctx.restore();
+}
+
+/** 선택 표시: 발밑에 납작하게 깔리는 파란 빛. 천천히 숨쉬듯 커졌다 작아진다 */
+function selectionGlow(ctx, p, now) {
+  const pulse = 1 + Math.sin(now / 650) * 0.06;
+  ctx.save();
+  ctx.translate(p.x, p.y + 1);
+  ctx.scale(1, 0.5);
+  const r = 34 * pulse;
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, 'rgba(70, 140, 235, 0.65)');
+  g.addColorStop(0.6, 'rgba(70, 140, 235, 0.4)');
+  g.addColorStop(1, 'rgba(70, 140, 235, 0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
