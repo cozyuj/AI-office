@@ -168,6 +168,7 @@ public/
   index.html          3단 레이아웃 (좌 층별 안내 / 중앙 canvas / 우 사람들·로그), 상단 헤더(층·세션 제목·브랜치·LIVE)
   style.css           라이트/다크 테마 토큰, 패널 카드
   fonts/              서브셋 웹폰트 (scripts/subset-fonts.sh)
+  assets/characters/  캐릭터 스프라이트 시트 12장 webp (scripts/bake-characters 로 굽는다)
   js/
     main.js           SSE 연결·재접속, store 갱신, 알림(소리·브라우저 알림), 설정, 키보드(1~9 층 이동)
     store.js          floors/sessions/log 미러, 선택된 층/세션, 층 접기(auto/all/none), subscribe()
@@ -175,7 +176,7 @@ public/
     overview.js       전체 보기: 층을 건물처럼 쌓아 미니 사무실 + 캐릭터 점
     i18n.js           언어: 한국어 원문, 영어는 사전 → 패턴 규칙 → 구절 치환. 사용자 요청·제목은 번역하지 않는다
     names.js          세션별 캐릭터 별명 (localStorage)
-    customize.js, avatarStore.js   캐릭터 외형 커스터마이즈 (몸 종류·파츠·색·악세사리)
+    customize.js, avatarStore.js   캐릭터 고르기 (대상별 12명 중 하나 / 자동)
     floorStylePicker.js            층 🎨 → 인테리어 프리셋 선택 (서버에 저장)
     tooltip.js, texttip.js         캐릭터 툴팁, 잘린 글자 툴팁
     scene/
@@ -185,7 +186,7 @@ public/
       pathfind.js     A* (4방향), 벽 edge 와 solid 가구 회피
       actors.js       Agent → Actor(위치, 경로, 걷기 애니, 말풍선, 슬롯 점유/해제, 휴식 방 안 배회)
       spots.js        휴식 방 명소 (레이아웃이 채우는 live 객체)
-      avatar.js       치비 캐릭터 그리기 (사람·로봇·고양이·곰)
+      characters.js   캐릭터 스프라이트 (Kenney Mini Characters, CC0) 동작 프레임·안전모
       render.js       바닥 → 3D AABB 깊이 정렬된 가구/벽/캐릭터 → 방 이름표·말풍선
       sprites.js      가구·벽을 코드로 그리는 함수들 (외부 이미지 없음)
       camera.js       팬·줌·맵 맞춤·클릭 판정, 선택 세션 따라가기

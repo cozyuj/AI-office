@@ -138,15 +138,17 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 | `Esc` | 단축키 패널 · 외형 모달 · 설정 메뉴 · 전체 보기 닫기 → 검색창 비우기 → 따라가기 해제 (순서대로 하나씩) |
 | `?` | 단축키 패널 열기/닫기 |
 
-## 캐릭터 외형과 이름
+## 캐릭터와 이름
 
-![캐릭터 외형 모달](docs/screenshots/fe-30-customize.jpg)
+![캐릭터 12명과 동작](docs/screenshots/fe-54-characters.jpg)
 
-⚙️ 설정 → **캐릭터 외형** 에서 **나 / Claude 기본 / 서브에이전트 기본 / 지금 보는 세션의 Claude** 네 대상을 따로 꾸밀 수 있습니다.
+캐릭터는 [Kenney Mini Characters](https://kenney.nl/assets/mini-characters)(CC0) 12명을 사무실과 같은 각도(2:1 아이소메트릭)로 구운 스프라이트입니다. 상태에 따라 동작이 바뀝니다: 이동 중 **걷기**, 휴식 방에서 **앉기**, 편집·실행 중 **타이핑**, 답을 기다리면 **끄덕임** + 머리 위 느낌표. 서브에이전트는 노란 **안전모**를 씁니다.
 
-- **프리셋** 10종: 개발자 · 정장 · 연구원 · 캐주얼 · 예술가 · 마법사 · 임금님 · 로봇 · 고양이 · 곰. 고른 뒤 파츠를 더 바꿀 수 있다.
-- **몸 종류** 4가지: 사람 · 로봇 · 고양이 · 곰. 몸에 따라 피부(털·금속) 팔레트가 바뀐다.
-- **파츠**: 피부색, 머리(12가지 스타일 + 색), 상의(8종 + 색, `auto` 는 세션 색), 하의(바지·반바지·치마), 신발, 안경(둥근·네모·선글라스·고글·외알), 모자(캡·비니·베레모·머리띠·버킷햇·실크햇·마법사·왕관…), 소품(헤드폰·스카프·사원증·귀걸이·나비넥타이·수염·마스크…).
+![캐릭터 고르기 모달](docs/screenshots/fe-54-customize.jpg)
+
+⚙️ 설정 → **캐릭터 외형** 에서 **나 / Claude 기본 / 서브에이전트 기본 / 지금 보는 층의 Claude** 네 대상마다 12명 중 한 명을 고릅니다.
+
+- Claude 계열은 기본이 **자동**: 세션마다 다른 캐릭터가 배정되고(세션 id 해시), 어느 브라우저에서도 같은 세션은 같은 캐릭터입니다.
 - 🎲 랜덤, ↺ 초기화, 🗑 저장 삭제. 저장은 이 브라우저에만 남는다.
 
 **세션별 이름**: 세션마다 캐릭터에 자동 별명(Alex, Sam, Max, Leo, Mia, Zoe, …)이 붙고, 우측 세션 카드의 "캐릭터" 행이나 외형 모달의 이름 행에서 직접 이름을 지을 수 있습니다(🎲 로 다른 별명 뽑기, 비우면 자동 별명으로). 활동 로그와 툴팁도 그 이름으로 표시됩니다. 서버가 보는 이름은 그대로 `Claude` 이고 화면에서만 바뀝니다.
@@ -182,8 +184,8 @@ Claude Code 세션 ─hooks─▶ hooks/emit.js ─POST /hook─▶ server.js �
 - `lib/normalize.js` 훅 payload 축소 + 도구 → 방/말풍선 해석
 - `lib/state.js` 층/세션/캐릭터 상태 머신, `lib/project.js` cwd → git 저장소·브랜치·worktree
 - `lib/journal.js` 이벤트 JSONL 기록(`~/.ai-office/events.jsonl`) + 기동 시 재생, 주기 압축
-- `public/js/scene/*` 아이소메트릭 맵·가구·캐릭터(외형 `avatar.js`)·A*·카메라·시간대 조명(`daylight.js`)·층 스타일(`floorStyle.js`)
-- `public/js/overview.js` 전체 보기, `customize.js` 외형 모달, `names.js` 세션별 이름, `panels.js` 좌/우 패널
+- `public/js/scene/*` 아이소메트릭 맵·가구·캐릭터(스프라이트 `characters.js`, 시트는 `public/assets/characters/`)·A*·카메라·시간대 조명(`daylight.js`)·층 스타일(`floorStyle.js`)
+- `public/js/overview.js` 전체 보기, `customize.js` 캐릭터 고르기 모달, `names.js` 세션별 이름, `panels.js` 좌/우 패널
 - `bin/ai-office.js` CLI, `scripts/install-hooks.js` 훅 등록/제거, `scripts/demo.js` 데모
 
 외부 의존성 0, 번들러 없음. 자세한 설계는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -191,7 +193,7 @@ Claude Code 세션 ─hooks─▶ hooks/emit.js ─POST /hook─▶ server.js �
 ## 개발
 
 ```bash
-npm test                      # node --test (상태 머신 · 경로 탐색 · 외형 · 이름 · CLI …)
+npm test                      # node --test (상태 머신 · 경로 탐색 · 캐릭터 · 이름 · CLI …)
 AI_OFFICE_PORT=4799 npm start # 다른 포트로 띄우기 (훅도 같은 포트로 등록해야 보임)
 npm run demo                  # 서버가 떠 있는 상태에서 가짜 세션 흘려 넣기 (DEMO_SPEED=3 으로 빠르게)
 ```
@@ -204,5 +206,7 @@ npm run bump:minor   # 0.19.0 → 0.20.0
 ```
 
 릴리스: `git tag vX.Y.Z && git push origin vX.Y.Z` 를 올리면 GitHub Actions 가 맥·Windows 앱을 빌드해 Release 에 올리고(updater 용 `latest.json` 포함), Windows 러너에서 설치 → 실행 → 훅까지 확인합니다. 테스트는 push·PR 마다 Ubuntu·Windows·macOS 에서 돕니다.
+
+캐릭터 스프라이트 다시 굽기: [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) 팩을 받아 풀고 `node scripts/bake-characters/bake.js <팩 폴더>` (헤드리스 크롬 + three.js CDN, 결과는 `public/assets/characters/*.webp`). 시트 구성(프레임 크기·동작 행)은 `characters.js` 의 `SHEET` 한 곳에서 정한다.
 
 작업 흐름: GitHub 이슈를 `[FE-30]`, `[BE-13]`, `[APP-03]` 처럼 FE/BE/APP 으로 나눠 만들고, `main` 에서 `feature/FE-30` 식 브랜치를 분리해 작업한 뒤 결과·테스트·캡처를 이슈 댓글로 남긴다.
