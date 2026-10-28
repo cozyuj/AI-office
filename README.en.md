@@ -98,7 +98,9 @@ A session's rest room (café or terrace) becomes that floor's facility: on a Min
 
 **Theme floors**: the bottom of the 🎨 menu has **🎃 Halloween · 🎄 Christmas · 🏖️ Summer vacation**. They keep the floor's layout and facilities and change the floor, walls, colors and decorations — pumpkins, a bubbling cauldron, gravestones, floating ghosts and bats; a tree with twinkling lights, a fireplace with stockings, presents, snowmen and wreaths; parasols, loungers, a pool, beach balls and surfboards. Large pieces block the way only when every seat stays reachable. ⚙️ Settings → **Theme floors** → `📅 Auto by date` puts the season's theme on every floor you did not pick by hand (Halloween 10/15–11/1, Christmas 12/1–12/26, Summer 7/15–8/31).
 
-![Christmas floor](docs/screenshots/fe-60-christmas.jpg)
+![Christmas floor](docs/screenshots/fe-63-christmas.jpg)
+
+The whole floor changes: the sky outside the office (a purple night with a big moon and bats / a snowy night / a blue sky with sun and clouds), garlands on every wall including partitions, a rug in every room plus low fog for Halloween, and pumpkins, lanterns or tiki torches along the corridors.
 
 ![Different office on every floor](docs/screenshots/fe-35-overview.jpg)
 

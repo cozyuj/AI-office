@@ -39,7 +39,7 @@ export const PRESETS = [
 export const THEMES = [
   // floor: 실내 바닥 무늬, wall: 벽 색·무늬, tint: 장면 틴트, deep: 바닥이 이미 어두워 다크 테마에서 더 누르지 않는다
   { id: 'halloween', label: '할로윈', emoji: '🎃', theme: true, floor: 'checker', deep: true, tint: 'rgba(60,20,110,0.12)',
-    rooms: { library: '#7a6458', dev: '#7a6c94', research: '#73668e', meeting: '#7d6f96', lounge: '#836a7e', server: '#6d6188', mydesk: '#776a92', lobby: '#7f7398', elevator: '#776f8c', cafe: '#86707f', terrace: '#6b5d55' },
+    rooms: { library: '#7a6458', dev: '#7a6c94', research: '#73668e', meeting: '#7d6f96', lounge: '#836a7e', server: '#6d6188', mydesk: '#776a92', lobby: '#7f7398', elevator: '#776f8c', cafe: '#86707f', terrace: '#6b5d55', garden: '#55604f' },
     corridor: '#857a9c',
     wall: { face: '#4a3a62', top: '#5f4d7c', left: '#433558', right: '#33284a', lines: 'stripes', band: '#2a1f3a' },
     accent: { leaf: ['#4f6b4f', '#5d7a5b', '#405a42', '#6c8a69'], sofa: '#e8742c', parasol: '#6b3fa0', wood: '#8a6a4f', text: '#4a3a5c' } },
@@ -50,8 +50,8 @@ export const THEMES = [
     accent: { leaf: ['#2f7a45', '#3d8c52', '#24683a', '#4f9d62'], sofa: '#c8323b', parasol: '#c8323b', wood: '#a8743f', text: '#5a3a32' } },
   { id: 'summer', label: '여름휴가', emoji: '🏖️', theme: true, floor: 'deck',
     wall: { face: '#f6fafa', top: '#ffffff', left: '#e8f0f0', right: '#d8e4e4', lines: 'planks', band: '#5cc6c2' },
-    rooms: { library: '#ecd8b2', dev: '#f4fbfc', research: '#e8f6f7', meeting: '#f3f8f2', lounge: '#e3f3f5', server: '#e1f0ed', mydesk: '#e5f1f9', lobby: '#f8f6ee', elevator: '#eef3f3', cafe: '#fbf0de', terrace: '#f0dcae' },
-    corridor: '#f6f9f8',
+    rooms: { library: '#e3c592', dev: '#ead2a4', research: '#e6cd9f', meeting: '#e8cfa2', lounge: '#ecd5a8', server: '#e2caa0', mydesk: '#e7d0a3', lobby: '#efdcb6', elevator: '#e4d6bd', cafe: '#efd8ab', terrace: '#f0dcae' },
+    corridor: '#f4e4bf',
     accent: { leaf: ['#3fa66b', '#52b87c', '#2f9459', '#6ccb92'], sofa: '#22a7c4', parasol: '#ff7a59', wood: '#e0bb85', text: '#2f5a66' } },
 ];
 export const THEME_IDS = THEMES.map((t) => t.id);

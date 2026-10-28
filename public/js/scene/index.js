@@ -1,6 +1,6 @@
 // 사무실 장면 진입점: 캔버스 크기, 카메라, 프레임 루프. 캐릭터(FE-03)는 actorProvider 로 끼워 넣는다.
 import { createCamera } from './camera.js';
-import { drawFloor, drawEntities, drawLabels, setDebugDepth, setCacheEnabled, setTheme, setFloorStyle, setDaylight, drawDaylightFloor, drawDaylightLamps, drawDaylightTint, drawWeatherFloor, drawWeather, setWeather } from './render.js';
+import { drawFloor, drawEntities, drawLabels, setDebugDepth, setCacheEnabled, setTheme, setFloorStyle, setDaylight, drawDaylightFloor, drawDaylightLamps, drawDaylightTint, drawWeatherFloor, drawWeather, setWeather, drawThemeBackdrop } from './render.js';
 import { worldBounds, unproject } from './map.js';
 
 export function createScene(canvas, store) {
@@ -44,6 +44,7 @@ export function createScene(canvas, store) {
   function frame(now) {
     const { width, height } = resize();
     ctx.clearRect(0, 0, width, height);
+    drawThemeBackdrop(ctx, width, height, now);
     const actors = actorProvider ? actorProvider(now) : [];
     const scale = camera.cam.zoom * (window.devicePixelRatio || 1);
     ctx.save();

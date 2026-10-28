@@ -3,10 +3,14 @@
 // 길이 막히지 않는지 확인한 뒤에만 막는다. 벽 소품은 키 큰 바깥벽(맨 위 줄·맨 왼쪽)에 닿은 방에만 건다.
 
 // hero: 층마다 하나 (HERO_ROOMS 중 앞의 방), feature: 바깥벽에 붙이는 큰 것 하나, big: 2×2 하나 (야외 방 우선)
+// garland: 모든 벽(칸막이·난간 포함)을 따라 거는 줄, rug: 실내 방마다 바닥에 까는 것, corridor: 복도 소품, fog: 바닥 안개 (FE-63)
 export const DECOR_SETS = {
-  halloween: { hero: 'cauldron', floor: ['pumpkin', 'candles', 'ghost', 'pumpkins', 'tombstone'], outdoor: ['tombstone', 'pumpkins', 'tombstone', 'ghost'], wall: ['cobweb', 'hbunting'], air: 'bat' },
-  christmas: { hero: 'xmastree', feature: 'fireplace', floor: ['gifts', 'snowman', 'gifts', 'candles'], outdoor: ['snowman', 'xmastree', 'gifts', 'snowman'], wall: ['wreath', 'xlights'] },
-  summer: { hero: 'beachumbrella', big: 'pool', floor: ['beachball', 'lounger', 'floatring', 'cooler'], outdoor: ['lounger', 'beachumbrella', 'beachball', 'lounger'], wall: ['bunting', 'lifebuoy'], lean: 'surfboard' },
+  halloween: { hero: 'cauldron', floor: ['pumpkin', 'candles', 'ghost', 'pumpkins', 'tombstone', 'cauldron'], outdoor: ['tombstone', 'pumpkins', 'tombstone', 'ghost', 'pumpkin'], wall: ['cobweb'], air: 'bat',
+    garland: 'hbunting', rug: 'rugweb', corridor: ['pumpkin', 'candles'], fog: true },
+  christmas: { hero: 'xmastree', feature: 'fireplace', floor: ['gifts', 'snowman', 'xmastree', 'gifts', 'candles'], outdoor: ['snowman', 'xmastree', 'gifts', 'snowman'], wall: ['wreath'],
+    garland: 'xlights', rug: 'rugplaid', corridor: ['lantern', 'gifts'] },
+  summer: { hero: 'beachumbrella', big: 'pool', floor: ['beachball', 'lounger', 'floatring', 'cooler', 'beachumbrella'], outdoor: ['lounger', 'beachumbrella', 'beachball', 'lounger', 'floatring'], wall: ['lifebuoy'], lean: 'surfboard',
+    garland: 'bunting', rug: 'towels', corridor: ['torch', 'beachball'] },
 };
 export const SOLID_DECOR = new Set(['xmastree', 'fireplace', 'cauldron', 'pool', 'lounger']);
 const HERO_ROOMS = ['lobby', 'lounge', 'cafe', 'canteen', 'game', 'booklounge'];
@@ -68,15 +72,15 @@ export function planDecor(theme, data) {
   for (const r of rest) {
     const h = hash(`${theme}:${r.id}`);
     const area = (r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1);
-    const n = r.outdoor ? 4 : area >= 48 ? 3 : 2;
-    // 후보: 구석 → 뒷벽 쪽 가장자리 → 나머지 가장자리 순
+    const n = r.outdoor ? 7 : area >= 48 ? 6 : 4;
+    // 후보: 구석 → 뒷벽 쪽 가장자리 → 나머지 가장자리 → 안쪽 순
     const tiles = [];
     for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) {
       if (!free(x, y)) continue;
       const corner = (x === r.x0 || x === r.x1) && (y === r.y0 || y === r.y1);
       const back = x === r.x0 || y === r.y0;
-      if (!back && x !== r.x1 && y !== r.y1) continue;
-      tiles.push({ x, y, back, rank: (corner ? 0 : back ? 1 : 2) * 1000 + ((x * 7 + y * 13 + h) % 97) });
+      const edge = back || x === r.x1 || y === r.y1;
+      tiles.push({ x, y, back, rank: (corner ? 0 : back ? 1 : edge ? 2 : 3) * 1000 + ((x * 7 + y * 13 + h) % 97) });
     }
     tiles.sort((a, b) => a.rank - b.rank);
     const types = r.outdoor ? set.outdoor : set.floor;
@@ -109,10 +113,41 @@ export function planDecor(theme, data) {
         }
       }
     }
+    // 바닥에 까는 것 (러그·수건)과 안개: 방 가운데 (가구 아래로 깔리므로 빈 자리가 아니어도 된다)
+    if (set.rug && !r.outdoor) out.push({ type: set.rug, x: (r.x0 + r.x1 + 1) / 2, y: (r.y0 + r.y1 + 1) / 2, w: Math.min(3, r.x1 - r.x0 - 1), d: Math.min(2.4, r.y1 - r.y0 - 1), seed: h % 4, kind: 'flat' });
+    if (set.fog) for (let i = 0; i < (r.outdoor ? 5 : 3); i++) out.push({ type: 'fog', x: r.x0 + 0.5 + ((h >>> (i * 3)) % 97) / 97 * (r.x1 - r.x0), y: r.y0 + 0.5 + ((h >>> (i * 5 + 1)) % 89) / 89 * (r.y1 - r.y0), seed: i, kind: 'flat' });
     // 하늘을 나는 것 (할로윈 박쥐): 넓은 실내 방에 하나씩
     if (set.air && !r.outdoor && area >= 48) {
       out.push({ type: set.air, x: r.x0 + 2 + (h % Math.max(1, r.x1 - r.x0 - 3)), y: r.y0 + 1 + ((h >>> 4) % Math.max(1, r.y1 - r.y0 - 2)), seed: h % 11, kind: 'air' });
     }
+  }
+  // 모든 벽을 따라 거는 줄 (문 구멍 사이 토막마다)
+  if (set.garland) {
+    for (const w of walls) {
+      let start = null;
+      for (let i = 0; i <= w.len; i++) {
+        const open = i === w.len || w.doors.includes(i);
+        if (!open && start === null) start = i;
+        if (open && start !== null) {
+          if (i - start >= 2) out.push({ type: set.garland, x: w.dir === 'h' ? w.x + start : w.x, y: w.dir === 'h' ? w.y : w.y + start, len: i - start, dir: w.dir, z: w.h, outer: !!w.outer, rail: !!w.rail, seed: (w.x + w.y + start) % 5, kind: 'wall' });
+          start = null;
+        }
+      }
+    }
+  }
+  // 복도 소품: 방 밖 빈 타일에 띄엄띄엄
+  if (set.corridor) {
+    const inAnyRoom = (x, y) => rooms.some((r) => inRoom(r, x, y));
+    const spots = [];
+    for (let y = grid.y0; y <= grid.y1; y++) for (let x = grid.x0; x <= grid.x1; x++) if (!inAnyRoom(x, y) && free(x, y)) spots.push({ x, y, k: hash(`${theme}:c${x},${y}`) % 100 });
+    spots.sort((a, b) => a.k - b.k);
+    const picked = [];
+    for (const t of spots) {
+      if (picked.length >= 14) break;
+      if (picked.some((p) => Math.abs(p.x - t.x) + Math.abs(p.y - t.y) < 4)) continue;
+      picked.push(t);
+    }
+    picked.forEach((t, i) => { out.push({ type: set.corridor[i % set.corridor.length], x: t.x, y: t.y, seed: i % 7, kind: 'floor', corridor: true }); take(t.x, t.y); });
   }
   return out;
 }
