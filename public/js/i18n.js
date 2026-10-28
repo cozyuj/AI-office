@@ -70,6 +70,11 @@ const DICT = {
   '그림이 너무 큽니다 — 한 변 8192px 이하로 올려 주세요': 'Picture is too large — each side must be 8192 px or less', '이미지를 읽지 못했습니다 — 다른 파일로 해 보세요': 'Could not read the image — try another file', '그림이 전부 투명합니다': 'The picture is fully transparent',
   '커스텀 캐릭터가 너무 많습니다 — 안 쓰는 것을 지워 주세요': 'Too many custom characters — delete ones you no longer use', '저장 공간이 부족합니다 — 안 쓰는 커스텀 캐릭터를 지워 주세요': 'Out of storage space — delete custom characters you no longer use',
   '배경이 투명하지 않은 그림이라 사각형 그대로 보입니다': 'The background is not transparent, so it shows as a rectangle', '추가했습니다 — 저장을 누르면 이 대상에 적용됩니다': 'Added — press Save to use it for this target',
+  // 야외 날씨 (FE-61)
+  '야외 날씨': 'Outdoor weather', '🎄 테마에 맞춰': '🎄 Match theme', '🌤️ 실제 날씨': '🌤️ Real weather', '☀️ 맑음': '☀️ Clear', '🌧️ 비': '🌧️ Rain', '❄️ 눈': '❄️ Snow', '날씨 도시': 'Weather city',
+  '예: 서울, Tokyo': 'e.g. Seoul, Tokyo', '도시를 적고 Enter': 'Type a city and press Enter', '받는 중…': 'Fetching…', '찾는 중…': 'Searching…', '날씨를 받지 못했습니다': 'Could not get the weather', '도시를 찾지 못했습니다 (인터넷 연결)': 'Could not look up the city (internet connection)',
+  '테라스·옥상정원 같은 야외 방에 비·눈 — 테마에 맞춰는 크리스마스 층에 눈, 실제 날씨는 아래 도시의 현재 날씨(Open-Meteo, 30분마다)': 'Rain or snow over outdoor rooms such as the terrace or rooftop garden — Match theme snows on Christmas floors, Real weather uses the current weather of the city below (Open-Meteo, every 30 minutes)',
+  '도시 이름을 적고 Enter — 도시 이름과 좌표만 Open-Meteo 로 보냅니다': 'Type a city name and press Enter — only the city name and coordinates are sent to Open-Meteo',
   // 테마 캐릭터 (FE-62)
   '테마 캐릭터': 'Theme characters', '— 할로윈·크리스마스 (자동에는 섞이지 않음)': '— Halloween · Christmas (never picked by auto)', '뱀파이어': 'Vampire', '좀비': 'Zombie', '해골': 'Skeleton', '유령': 'Ghost', '호박 머리': 'Pumpkin head', '산타': 'Santa', '루돌프': 'Rudolph', '눈사람': 'Snowman',
   '산타 모자': 'Santa hat', '루돌프 뿔': 'Reindeer antlers', '호박 탈': 'Pumpkin mask',
@@ -126,6 +131,8 @@ const RULES = [
   [/^(.+) 세션을 목록에서 치우기$/, (m) => `Dismiss this ${tr(m[1])} session`],
   [/^(\d+)F (.+) 의 Claude$/, (m) => `Claude of ${m[1]}F ${m[2]}`],
   [/^(.+) \(나\)$/, (m) => `${m[1]} (me)`],
+  [/^"(.+)" 를 찾지 못했습니다$/, (m) => `Could not find "${m[1]}"`],
+  [/^(🌧️ 비|❄️ 눈|☀️ 맑음) · (\d\d:\d\d)$/, (m) => `${tr(m[1])} · ${m[2]}`],
   [/^(.+) 의 머리$/, (m) => `head of ${m[1]}`],
   [/^(.+) 의 몸$/, (m) => `body of ${m[1]}`],
   [/^🎨 (\d+)F 인테리어$/, (m) => `🎨 ${m[1]}F interior`],

@@ -119,6 +119,7 @@ Open **⚙️ Settings** in the header. Everything here is stored in this browse
 | Demo | Four fake sessions on separate `(demo)` floors | `D` |
 | Character looks | Opens the customizer (below) | |
 | Daylight | Window, terrace and room lighting follow the real clock: morning (06–10), day (10–17), evening (17–20), night (20–06). Can be fixed to one period or turned off | |
+| Outdoor weather | Rain or snow over outdoor rooms (terrace, rooftop garden): `🎄 Match theme` (default; snow on Christmas floors) · `🌤️ Real weather` (type a city → current weather from [Open-Meteo](https://open-meteo.com) every 30 minutes; only the city name and coordinates are sent) · `☀️ Clear` · `🌧️ Rain` · `❄️ Snow` | |
 | Theme floors | `🎨 Pick manually` (default) or `📅 Auto by date` | |
 | Floor interior | Interior preset or theme of the floor you are viewing | |
 | Language | 한국어 / English | |
