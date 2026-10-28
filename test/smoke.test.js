@@ -121,6 +121,28 @@ test('scene: 모든 인테리어 프리셋 × 테마 × 시간대에서 바닥·
   R.setFloorStyle(PRESET_IDS[0]); R.setTheme('light'); R.setDaylight('off');
 });
 
+test('scene: 테마 층(FE-60) × 모든 구조 × 라이트·다크에서 소품(움직이는 것 포함)·벽 무늬·틴트를 그린다', async () => {
+  const R = await import('../public/js/scene/render.js');
+  const { PRESET_IDS, THEME_IDS } = await import('../public/js/scene/floorStyle.js');
+  R.setCacheEnabled(true); R.setDaylight('off');
+  let combos = 0;
+  for (const t of THEME_IDS) for (const preset of PRESET_IDS) {
+    R.setFloorStyle(`${t}/${preset}`);
+    for (const theme of ['light', 'dark']) {
+      R.setTheme(theme);
+      resetLog();
+      const ctx = fakeCtx();
+      R.drawFloor(ctx, 1);
+      for (const now of [0, 777, 12345]) R.drawEntities(ctx, now, [], 1);
+      R.drawDaylightTint(ctx, 1600, 900);
+      assertClean(`${t}/${preset}/${theme}`);
+      combos++;
+    }
+  }
+  assert.equal(combos, THEME_IDS.length * PRESET_IDS.length * 2);
+  R.setFloorStyle(PRESET_IDS[0]); R.setTheme('light');
+});
+
 test('characters: 12명 × 모든 동작 × 좌우 · 서브에이전트 안전모를 drawCharacter 로 그린다', async () => {
   const C = await import('../public/js/scene/characters.js');
   assert.equal(C.drawCharacter(fakeCtx(), 0, 0, 'male-c'), false, 'Image 가 없으면(시트 없음) 그리지 않고 false');

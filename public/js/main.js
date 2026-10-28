@@ -10,7 +10,7 @@ import { initTextTips } from './texttip.js';
 import { createAvatarStore } from './avatarStore.js';
 import { createCustomizer } from './customize.js';
 import { createOverview } from './overview.js';
-import { createFloorStyleBook } from './scene/floorStyle.js';
+import { createFloorStyleBook, seasonTheme } from './scene/floorStyle.js';
 import { createFloorStylePicker } from './floorStylePicker.js';
 import { layoutOfPreset } from './scene/map.js';
 import { buildLayout, roomLabelIn } from './scene/layouts.js';
@@ -23,7 +23,8 @@ const tooltip = createTooltip();
 
 // ---------- 🎨 층 인테리어 (프리셋 = 색 + 사무실 구조) ----------
 const floorStyles = createFloorStyleBook(); // 층별 인테리어 프리셋 (FE-34/35): 직접 고른 것 > id 해시 자동 배정
-const styleOfFloor = (f) => floorStyles.resolve(f, store.floorsByNo());
+// 설정 '테마 층: 날짜에 맞춰 자동' 이면 직접 고르지 않은 층에 그 철의 테마(할로윈·크리스마스·여름휴가)를 덮는다 (FE-60)
+const styleOfFloor = (f) => floorStyles.resolve(f, store.floorsByNo(), store.themeMode === 'season' ? seasonTheme() : null);
 function applyFloorStyle() { scene.setFloorStyle(styleOfFloor(store.selectedFloor())); }
 // 캐릭터(createActors)보다 먼저 구독한다: 층이 바뀌면 레이아웃부터 바꾼 뒤 캐릭터를 그 레이아웃의 자리에 배치해야 한다
 store.subscribe((kind) => { if (kind === 'select' || kind === 'snapshot' || kind === 'update' || kind === 'remove') applyFloorStyle(); });
@@ -412,6 +413,17 @@ applyTheme();
 
 // ---------- 시간대 조명 (FE-33): 실제 시각으로 아침·낮·저녁·밤, 설정 행으로 고정 가능 ----------
 const daylightSel = document.getElementById('daylight-select');
+const themeModeSel = document.getElementById('theme-mode-select');
+let appliedThemeMode = store.themeMode;
+function applyThemeMode() {
+  if (themeModeSel.value !== store.themeMode) themeModeSel.value = store.themeMode;
+  if (appliedThemeMode === store.themeMode) return;
+  appliedThemeMode = store.themeMode;
+  applyFloorStyle(); actors.sync(true); overview.invalidate(); dirty = true;
+}
+themeModeSel.onchange = () => store.setThemeMode(themeModeSel.value);
+store.subscribe((kind) => { if (kind === 'option') applyThemeMode(); });
+themeModeSel.value = store.themeMode;
 function applyDaylight() { scene.setDaylight(store.daylight); if (daylightSel.value !== store.daylight) daylightSel.value = store.daylight; }
 daylightSel.onchange = () => store.setDaylight(daylightSel.value);
 store.subscribe((kind) => { if (kind === 'option') applyDaylight(); });

@@ -3,7 +3,8 @@
 // 깊이 정렬: 각 엔티티는 3D AABB {x0,y0,x1,y1,z0,z1} 를 가진다. 화면에서 겹치는 두 상자 A, B 에 대해
 //   A.x1 <= B.x0  또는  A.y1 <= B.y0  또는  A.z1 <= B.z0  이면 A 가 뒤(먼저 그림).
 // 이 관계로 위상 정렬한다. 정적 엔티티끼리의 관계는 한 번만 계산해 두고, 캐릭터와의 관계만 매 프레임 계산한다.
-import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, LABEL, project, roomAt, worldBounds, setTheme as setMapTheme, setFloorStyle as setMapFloorStyle } from './map.js';
+import { GRID, ROOMS, CORRIDOR, FURNITURE, WALLS, DOORS, DECOR, SCENE, LABEL, project, roomAt, worldBounds, setTheme as setMapTheme, setFloorStyle as setMapFloorStyle } from './map.js';
+import { drawDecor, decorBox, DECOR_PAD, DECOR_DYNAMIC } from './decor.js';
 import * as MAP from './map.js';
 import { tr } from '../i18n.js';
 import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
@@ -201,12 +202,13 @@ export function drawDaylightLamps(ctx) {
   }
 }
 
-/** 장면 전체 틴트 (화면 공간, 이름표 앞에) */
+/** 장면 전체 틴트 (화면 공간, 이름표 앞에): 시간대 + 테마 층(할로윈 보랏빛, 크리스마스 따뜻한 빛) */
 export function drawDaylightTint(ctx, width, height) {
-  const c = daylight().scene;
-  if (!c) return;
-  ctx.fillStyle = c;
-  ctx.fillRect(0, 0, width, height);
+  for (const c of [daylight().scene, SCENE.tint]) {
+    if (!c) continue;
+    ctx.fillStyle = c;
+    ctx.fillRect(0, 0, width, height);
+  }
 }
 
 // ---------- 엔티티 ----------
@@ -279,6 +281,15 @@ function buildStatic() {
       }));
     }
   }
+  // 테마 소품 (FE-60): 반짝이·흔들리는 것은 매 프레임, 나머지는 같은 모양끼리 스프라이트 공유
+  for (const it of DECOR) {
+    const dynamic = DECOR_DYNAMIC.has(it.type);
+    S.push(makeEntity(decorBox(it), (ctx, now) => drawDecor(ctx, it, now), {
+      label: `decor:${it.type}`, dynamic, pad: DECOR_PAD[it.type] || 28,
+      key: dynamic ? undefined : `d:${it.type}|${it.seed}|${it.dir || ''}|${it.len || 0}|${it.w || 1}x${it.d || 1}`,
+      anchor: project(it.x, it.y, 0),
+    }));
+  }
   // 문설주: 문 구멍의 양 끝
   for (const d of DOORS) {
     const wall = WALLS.find((w) => w.dir === 'h' && w.y === d.y && d.x >= w.x && d.x < w.x + w.len);
@@ -298,17 +309,18 @@ function buildStatic() {
 }
 
 // 레이아웃(FE-35)마다 정적 엔티티를 한 번 만들어 두고, 층이 바뀌면 STATIC 의 내용을 바꿔 끼운다 (스프라이트 캐시는 엔티티에 붙어 있어 같이 돌아온다)
-const staticCache = new Map(); // layoutId → { entities, edges }
+const staticCache = new Map(); // `${layoutId}|${테마}` → { entities, edges } (테마 층은 소품이 더해진다)
 export const STATIC = [];
 let STATIC_EDGES = [];
 let builtLayout = null;
 function ensureStatic() {
-  if (builtLayout === MAP.LAYOUT) return;
-  let c = staticCache.get(MAP.LAYOUT);
-  if (!c) { c = buildStatic(); staticCache.set(MAP.LAYOUT, c); }
+  const key = `${MAP.LAYOUT}|${MAP.SKIN || ''}`;
+  if (builtLayout === key) return;
+  let c = staticCache.get(key);
+  if (!c) { c = buildStatic(); staticCache.set(key, c); }
   STATIC.length = 0; STATIC.push(...c.entities);
   STATIC_EDGES = c.edges;
-  builtLayout = MAP.LAYOUT;
+  builtLayout = key;
 }
 ensureStatic();
 

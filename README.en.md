@@ -96,6 +96,10 @@ Each floor (= project) is assigned an **interior preset** automatically (hash of
 
 A session's rest room (café or terrace) becomes that floor's facility: on a Mint floor the character goes to the Gym (`🏃 working out`) and the log reads `✅ … → 🏃 Gym`. Press **🎨** on the selected floor to pick a preset by hand; the choice is stored on the server (`~/.ai-office/floor-styles.json`) so every browser sees the same floor (`Auto` restores the automatic choice). Building view shows the different layouts too.
 
+**Theme floors**: the bottom of the 🎨 menu has **🎃 Halloween · 🎄 Christmas · 🏖️ Summer vacation**. They keep the floor's layout and facilities and change the floor, walls, colors and decorations — pumpkins, a bubbling cauldron, gravestones, floating ghosts and bats; a tree with twinkling lights, a fireplace with stockings, presents, snowmen and wreaths; parasols, loungers, a pool, beach balls and surfboards. Large pieces block the way only when every seat stays reachable. ⚙️ Settings → **Theme floors** → `📅 Auto by date` puts the season's theme on every floor you did not pick by hand (Halloween 10/15–11/1, Christmas 12/1–12/26, Summer 7/15–8/31).
+
+![Christmas floor](docs/screenshots/fe-60-christmas.jpg)
+
 ![Different office on every floor](docs/screenshots/fe-35-overview.jpg)
 
 Subagents wear blue hard hats and are named after the `description` given to the Agent tool. You (`me`) sit at My Desk, and Claude comes over when it has a question or needs permission.
@@ -115,7 +119,8 @@ Open **⚙️ Settings** in the header. Everything here is stored in this browse
 | Demo | Four fake sessions on separate `(demo)` floors | `D` |
 | Character looks | Opens the customizer (below) | |
 | Daylight | Window, terrace and room lighting follow the real clock: morning (06–10), day (10–17), evening (17–20), night (20–06). Can be fixed to one period or turned off | |
-| Floor interior | Interior preset of the floor you are viewing | |
+| Theme floors | `🎨 Pick manually` (default) or `📅 Auto by date` | |
+| Floor interior | Interior preset or theme of the floor you are viewing | |
 | Language | 한국어 / English | |
 | Shortcuts | Keyboard shortcut panel | `?` |
 
