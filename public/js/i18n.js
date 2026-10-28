@@ -61,7 +61,7 @@ const DICT = {
   'Claude 가 질문하거나 허락을 기다리면 브라우저 알림을 보냅니다': 'Browser notification when Claude asks a question or waits for permission',
   "가짜 세션 4개로 사무실을 북적이게 (실제 세션과 별도 층, '(데모)' 표시)": "Fill the office with 4 fake sessions (separate floors marked '(demo)')",
   '끝난 세션을 목록에서 치우기 (TTL 을 기다리지 않음)': 'Remove the finished session from the list now (without waiting for the TTL)',
-  '나 / Claude / 서브에이전트 캐릭터 고르기 — 12명 중 하나, 세션마다 자동 또는 직접 올린 PNG, 지금 보는 세션의 캐릭터 이름': 'Choose characters for me / Claude / subagents — one of 12, auto per session or a PNG you upload, and the name of the session you are viewing',
+  '나 / Claude / 서브에이전트 캐릭터 고르기 — 12명 중 하나 또는 머리·몸·색·소품 조합, 세션마다 자동 또는 직접 올린 PNG, 지금 보는 세션의 캐릭터 이름': 'Choose characters for me / Claude / subagents — one of 12 or a mix of head, body, colors and accessories, auto per session or a PNG you upload, and the name of the session you are viewing',
   // 커스텀 캐릭터 (FE-56)
   '내 캐릭터': 'My characters', '— 배경 없는 PNG 를 올리거나 끌어다 놓기 · 자동에는 섞이지 않음': '— upload or drop a PNG with a transparent background · never picked by auto', 'PNG 올리기': 'Upload PNG',
   '배경이 투명한 PNG 를 고르거나 여기에 끌어다 놓기': 'Choose a PNG with a transparent background, or drop it here', '커스텀 캐릭터': 'Custom character', '이 커스텀 캐릭터 지우기': 'Delete this custom character',
@@ -70,6 +70,10 @@ const DICT = {
   '그림이 너무 큽니다 — 한 변 8192px 이하로 올려 주세요': 'Picture is too large — each side must be 8192 px or less', '이미지를 읽지 못했습니다 — 다른 파일로 해 보세요': 'Could not read the image — try another file', '그림이 전부 투명합니다': 'The picture is fully transparent',
   '커스텀 캐릭터가 너무 많습니다 — 안 쓰는 것을 지워 주세요': 'Too many custom characters — delete ones you no longer use', '저장 공간이 부족합니다 — 안 쓰는 커스텀 캐릭터를 지워 주세요': 'Out of storage space — delete custom characters you no longer use',
   '배경이 투명하지 않은 그림이라 사각형 그대로 보입니다': 'The background is not transparent, so it shows as a rectangle', '추가했습니다 — 저장을 누르면 이 대상에 적용됩니다': 'Added — press Save to use it for this target',
+  // 파트 바꾸기 (FE-57)
+  '파트 바꾸기': 'Mix parts', '— 머리·몸을 섞고 색·소품 고르기': '— mix heads and bodies, pick colors and accessories', '— 지금 캐릭터에서 시작합니다': '— starts from the current character',
+  '머리': 'Head', '몸': 'Body', '머리카락': 'Hair', '상의': 'Top', '하의': 'Bottom', '소품': 'Accessory', '원래': 'Original', '원래 색': 'Original color', '다른 색 고르기': 'Pick another color',
+  '없음': 'None', '안경': 'Glasses', '선글라스': 'Sunglasses', '마스크': 'Mask', '보청기': 'Hearing aid',
   '다크 모드 전환': 'Toggle dark mode', '다크 모드로': 'Switch to dark', '라이트 모드로': 'Switch to light',
   '답을 기다리는 세션이 생기면 짧은 소리 (한 번 클릭해 켜야 브라우저가 소리를 허용)': 'Short chime when a session starts waiting for you (click once so the browser allows audio)',
   '답을 기다릴 때만 (높은 2음)': 'Only when waiting for you (high two-tone)', '도구 실패·세션 종료에도 낮은 2음': 'Also on tool failure and session end (low two-tone)',
@@ -115,6 +119,8 @@ const RULES = [
   [/^(.+) 세션을 목록에서 치우기$/, (m) => `Dismiss this ${tr(m[1])} session`],
   [/^(\d+)F (.+) 의 Claude$/, (m) => `Claude of ${m[1]}F ${m[2]}`],
   [/^(.+) \(나\)$/, (m) => `${m[1]} (me)`],
+  [/^(.+) 의 머리$/, (m) => `head of ${m[1]}`],
+  [/^(.+) 의 몸$/, (m) => `body of ${m[1]}`],
   [/^🎨 (\d+)F 인테리어$/, (m) => `🎨 ${m[1]}F interior`],
   [/^(.+) 의 Claude$/, (m) => `Claude of ${m[1]}`],
   [/^세션 (\d+)개$/, (m) => `${m[1]} session${m[1] === '1' ? '' : 's'}`],

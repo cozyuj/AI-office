@@ -1,7 +1,13 @@
 // 캐릭터 고르기 모달: 대상 선택 → 12명 중 하나(Claude 계열은 '자동: 세션마다 다르게'도) 또는 올린 그림 → 걷는 미리보기 → 저장(localStorage)
 // 커스텀 캐릭터(FE-56): '＋ PNG 올리기' 타일에 파일을 고르거나 끌어다 놓으면 투명 여백을 잘라 저장하고 그 그림을 고른다.
-import { CHARACTERS, drawCharacter, isCustomCharacter, preloadCharacters } from './scene/characters.js';
+// 파트 바꾸기(FE-57): 머리·몸통을 다른 캐릭터 것으로, 머리카락·상의·하의 색, 얼굴 소품. 값은 'mix:...' (characters.js)
+import { ACCESSORIES, CHARACTERS, DEFAULTS, drawCharacter, isCustomCharacter, lookValue, parseLook, preloadCharacters } from './scene/characters.js';
 import { MESSAGES, prepareImage } from './customCharacters.js';
+
+// 색 고르기 칸 (6자리 hex). 그 밖의 색은 색 고르개로
+export const HAIR_COLORS = ['2b2b30', '4a3426', '7b4a2c', 'b5793f', 'e3c16f', 'c4532f', '9aa0ad', 'f1efe8', 'e48bb4', '5b86d6'];
+export const CLOTH_COLORS = ['e8683a', 'f2b51d', '5ac487', '1f8a70', '4f7fd0', '2f3b66', '8a5cc7', 'd0507a', '2b2f3a', 'eceef3', '9aa0ad', '8b5a3c'];
+const COLOR_ROWS = [['hair', '머리카락', HAIR_COLORS], ['top', '상의', CLOTH_COLORS], ['bottom', '하의', CLOTH_COLORS]];
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -28,7 +34,7 @@ export function createCustomizer(store, avatars) {
   function open(initial) {
     target = initial || target;
     draft = avatars.get(target);
-    preloadCharacters();
+    preloadCharacters(true);
     note = null; armed = null;
     modal.classList.remove('hidden');
     render();
@@ -63,11 +69,39 @@ export function createCustomizer(store, avatars) {
       ${nameRow()}
       <div class="cz-group"><div class="cz-label">캐릭터${allowAuto() ? ' <span class="muted">— 자동이면 세션마다 다르게</span>' : ''}</div>
         <div class="cz-presets">${auto}${CHARACTERS.map((c) => `<button class="cz-preset ${c === draft ? 'on' : ''}" data-char="${c}" title="${c}"><canvas class="cz-thumb" data-char="${c}"></canvas></button>`).join('')}</div></div>
+      ${partsGroup()}
       <div class="cz-group"><div class="cz-label">내 캐릭터 <span class="muted">— 배경 없는 PNG 를 올리거나 끌어다 놓기 · 자동에는 섞이지 않음</span></div>
         <div class="cz-presets">${customs}${upload}</div>
         ${note ? `<div class="cz-note ${note.kind}">${esc(note.text)}</div>` : ''}</div>
       <div class="cz-credit muted">캐릭터: <a href="https://kenney.nl/assets/mini-characters" target="_blank" rel="noopener">Kenney Mini Characters</a> (CC0)</div>`;
     sizeThumbs();
+  }
+
+  /** 파트를 바꿀 바탕: 고른 조합, 자동이면 지금 미리보기의 캐릭터, 올린 그림이면 기본 캐릭터 */
+  function baseLook() {
+    return parseLook(draft) || parseLook(draft === 'auto' ? previewChar() : DEFAULTS.me);
+  }
+  function setPart(part, value) {
+    const l = baseLook();
+    l[part] = value || null;
+    draft = lookValue(l); armed = null;
+    render();
+  }
+  /** 파트 바꾸기: 머리·몸통 줄(썸네일), 색 줄(원래 + 팔레트 + 색 고르개), 소품 줄 */
+  function partsGroup() {
+    const l = baseLook(), cur = parseLook(draft);
+    const thumb = (look, zoom) => `<canvas class="cz-thumb" data-char="${esc(lookValue(look))}"${zoom ? ` data-zoom="${zoom}"` : ''}></canvas>`;
+    const tile = (part, value, on, title, inner) => `<button class="cz-preset cz-mini ${on ? 'on' : ''}" data-part="${part}" data-value="${esc(value)}" title="${esc(title)}">${inner}</button>`;
+    const row = (label, inner) => `<div class="cz-partrow"><span class="cz-partlabel">${label}</span><div class="cz-presets">${inner}</div></div>`;
+    const heads = CHARACTERS.map((c) => tile('head', c, cur && cur.head === c, `${c} 의 머리`, thumb({ ...l, head: c, hair: null }, 'head'))).join('');
+    const bodies = CHARACTERS.map((c) => tile('body', c, cur && cur.body === c, `${c} 의 몸`, thumb({ ...l, body: c, top: null, bottom: null }))).join('');
+    const colors = COLOR_ROWS.map(([part, label, list]) => row(label,
+      `<button class="cz-swatch cz-orig ${cur && !cur[part] ? 'on' : ''}" data-part="${part}" data-value="" title="원래 색">원래</button>`
+      + list.map((c) => `<button class="cz-swatch ${cur && cur[part] === c ? 'on' : ''}" data-part="${part}" data-value="${c}" title="#${c}" style="--sw:#${c}"></button>`).join('')
+      + `<label class="cz-swatch cz-pick ${cur && cur[part] && !list.includes(cur[part]) ? 'on' : ''}" title="다른 색 고르기" style="${cur && cur[part] && !list.includes(cur[part]) ? `--sw:#${cur[part]}` : ''}"><input type="color" class="cz-color" data-part="${part}" value="#${(cur && cur[part]) || list[0]}"></label>`)).join('');
+    const accs = [{ id: '', label: '없음' }, ...ACCESSORIES].map((a) => tile('acc', a.id, cur && (cur.acc || '') === a.id, a.label, `${thumb({ ...l, acc: a.id || null }, 'head')}<span>${esc(a.label)}</span>`)).join('');
+    return `<div class="cz-group"><div class="cz-label">파트 바꾸기 <span class="muted">— ${cur ? '머리·몸을 섞고 색·소품 고르기' : '지금 캐릭터에서 시작합니다'}</span></div>
+      ${row('머리', heads)}${row('몸', bodies)}${colors}${row('소품', accs)}</div>`;
   }
 
   /** 파일 여러 장을 차례로 다듬어 저장. 마지막으로 성공한 그림을 고른다 */
@@ -90,18 +124,21 @@ export function createCustomizer(store, avatars) {
   }
 
   const TW = 56, TH = 64;
+  const thumbSize = (c) => (c.closest('.cz-mini') ? [38, 44] : [TW, TH]); // 파트 줄은 작게
   function sizeThumbs() {
     const dpr = window.devicePixelRatio || 1;
-    for (const c of optsEl.querySelectorAll('canvas.cz-thumb')) { c.width = TW * dpr; c.height = TH * dpr; c.style.width = `${TW}px`; c.style.height = `${TH}px`; }
+    for (const c of optsEl.querySelectorAll('canvas.cz-thumb')) { const [w, h] = thumbSize(c); c.width = w * dpr; c.height = h * dpr; c.style.width = `${w}px`; c.style.height = `${h}px`; }
   }
   /** 썸네일: 서 있는 첫 칸. 시트가 늦게 오므로 매 프레임 그린다 (12장, 작다). 올린 그림은 뒤집지 않고 올린 그대로 */
   function drawThumbs() {
     const dpr = window.devicePixelRatio || 1;
     for (const c of optsEl.querySelectorAll('canvas.cz-thumb')) {
-      const cx = c.getContext('2d');
+      const cx = c.getContext('2d'), [w, h] = thumbSize(c), k = h / TH;
       cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      cx.clearRect(0, 0, TW, TH);
-      drawCharacter(cx, TW / 2, TH - 4, c.dataset.char, { scale: 0.95, faceRight: !isCustomCharacter(c.dataset.char) });
+      cx.clearRect(0, 0, w, h);
+      // 머리·소품 줄은 윗몸을 크게
+      if (c.dataset.zoom === 'head') drawCharacter(cx, w / 2, h * 1.3, c.dataset.char, { scale: h / 48, faceRight: true });
+      else drawCharacter(cx, w / 2, h - 4 * k, c.dataset.char, { scale: 0.95 * k, faceRight: !isCustomCharacter(c.dataset.char) });
     }
   }
 
@@ -144,12 +181,14 @@ export function createCustomizer(store, avatars) {
     }
     const t = e.target.closest('[data-target]');
     if (t) { target = t.dataset.target; draft = avatars.get(target); note = null; armed = null; render(); return; }
+    const pt = e.target.closest('button[data-part]');
+    if (pt) { setPart(pt.dataset.part, pt.dataset.value); return; }
     const c = e.target.closest('.cz-preset[data-char]');
     if (c) { draft = c.dataset.char; armed = null; render(); return; }
     const act = e.target.closest('[data-action]');
     if (!act) { if (e.target === modal) close(); return; }
     switch (act.dataset.action) {
-      case 'random': { const rest = CHARACTERS.filter((x) => x !== draft); draft = rest[Math.floor(Math.random() * rest.length)]; render(); break; }
+      case 'random': draft = randomLook(draft); render(); break;
       case 'reset': draft = avatars.baseFor(target); render(); break;
       case 'save': avatars.set(target, draft); render(); close(); break;
       case 'close': close(); break;
@@ -160,6 +199,8 @@ export function createCustomizer(store, avatars) {
   // 이름 입력: Enter/포커스 아웃에 바로 저장, Esc 는 입력만 닫음 (모달은 유지), 글자 단축키가 새지 않게
   modal.addEventListener('change', (e) => {
     if (e.target.closest('input.cz-file')) { upload(e.target.files); return; }
+    const col = e.target.closest('input.cz-color');
+    if (col) { setPart(col.dataset.part, col.value.slice(1).toLowerCase()); return; }
     const i = e.target.closest('input.cz-name-input');
     if (!i) return;
     const s = store.selectedSession();
@@ -186,4 +227,19 @@ export function createCustomizer(store, avatars) {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
 
   return { open, close };
+}
+
+/** 🎲: 반은 통째 캐릭터, 반은 머리·몸을 섞고 색·소품을 가끔 바꾼 조합. 지금 것과는 다르게 */
+export function randomLook(current, rnd = Math.random) {
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  for (let i = 0; i < 20; i++) {
+    const head = pick(CHARACTERS);
+    const v = rnd() < 0.5 ? head : lookValue({
+      head, body: pick(CHARACTERS),
+      hair: rnd() < 0.4 ? pick(HAIR_COLORS) : null, top: rnd() < 0.4 ? pick(CLOTH_COLORS) : null, bottom: rnd() < 0.3 ? pick(CLOTH_COLORS) : null,
+      acc: rnd() < 0.3 ? pick(ACCESSORIES).id : null,
+    });
+    if (v !== current) return v;
+  }
+  return CHARACTERS[0];
 }

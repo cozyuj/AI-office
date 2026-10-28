@@ -1,15 +1,22 @@
 <!doctype html><meta charset="utf-8"><body style="margin:0;background:#0000">
-<!-- bake.js 가 띄우는 굽기 페이지. 캐릭터 GLB 를 사무실과 같은 카메라로 렌더해 시트를 /save 로 보낸다 -->
+<!-- bake.js 가 띄우는 굽기 페이지. 캐릭터 GLB 를 사무실과 같은 카메라로 렌더해 시트를 /save 로 보낸다.
+     캐릭터마다: 색 시트(머리 레이어 행들 + 몸통 레이어 행들), 마스크 시트(머리카락·상의·하의 음영 행들).
+     소품마다: 기준 캐릭터 머리에 붙여 렌더한 시트 하나. -->
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const q = new URLSearchParams(location.search);
-const NAMES = q.get('names').split(',');
-const META = JSON.parse(q.get('meta'));            // characters.js 의 SHEET (프레임 크기·행 구성)
-const { W, H, FOOT, HEIGHT, ROWS } = META;
+const NAMES = q.get('names').split(',');             // 구울 캐릭터 (character- 빼고)
+const ALL = q.get('all').split(',');                 // 배율을 맞출 전체 캐릭터
+const META = JSON.parse(q.get('meta'));              // characters.js 의 SHEET
+const ACCS = JSON.parse(q.get('accs') || '[]');      // characters.js 의 ACCESSORIES (구울 것만)
+const { W, H, FOOT, HEIGHT, ROWS, MASK_BASE } = META;
 const COLS = Math.max(...ROWS.map((r) => r.frames));
+const QUALITY = Number(q.get('quality') || 0.9);
+const post = (path, body) => fetch(path, { method: 'POST', body });
+
 try {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(1); renderer.setSize(W, H); renderer.setClearColor(0x000000, 0);
@@ -24,51 +31,213 @@ try {
   cam.lookAt(0, 0, 0);
   cam.updateMatrixWorld();
   const loader = new GLTFLoader();
+  const glb = {};
+  const load = async (file) => (glb[file] ||= await loader.loadAsync(`/glb/${file}.glb`));
+
+  // 팔레트(colormap) 픽셀: 정점 uv → 원래 색. 팔레트는 8열 × 4띠 칸이고 칸마다 위아래로 음영이 들어 있다
+  const pal = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = '/glb/Textures/colormap.png'; });
+  const pc = document.createElement('canvas'); pc.width = pal.width; pc.height = pal.height;
+  const pctx = pc.getContext('2d'); pctx.drawImage(pal, 0, 0);
+  const pdata = pctx.getImageData(0, 0, pal.width, pal.height).data;
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const texel = (u, v) => { const x = Math.min(pal.width - 1, Math.floor(u * pal.width)), y = Math.min(pal.height - 1, Math.floor(v * pal.height)), i = (y * pal.width + x) * 4; return [pdata[i], pdata[i + 1], pdata[i + 2]]; };
+  const luma = (rgb) => 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+  const cellOf = (u, v) => `${Math.floor(u * 8)},${Math.floor(v * 4)}`;
+
+  // 모든 캐릭터를 같은 배율로 (머리·몸통을 섞어도 맞도록): 가장 큰 캐릭터의 머리 꼭대기가 HEIGHT px
+  function topOf(gltf) {
+    const mixer = new THREE.AnimationMixer(gltf.scene);
+    const st = mixer.clipAction(gltf.animations.find((a) => a.name === 'static')); st.play(); mixer.update(0);
+    gltf.scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(gltf.scene, true);
+    let top = -Infinity;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      top = Math.max(top, new THREE.Vector3(x, y, z).applyMatrix4(cam.matrixWorldInverse).y);
+    }
+    st.stop(); mixer.stopAllAction();
+    return top;
+  }
+  let maxTop = 0;
+  for (const n of ALL) maxTop = Math.max(maxTop, topOf(await load(`character-${n}`)));
+  const ppu = HEIGHT / maxTop;
+  cam.left = -W / 2 / ppu; cam.right = W / 2 / ppu;
+  cam.top = FOOT / ppu; cam.bottom = (FOOT - H) / ppu;
+  cam.updateProjectionMatrix();
+
+  const meshesOf = (root) => { const m = {}; root.traverse((o) => { if (o.isSkinnedMesh || o.isMesh) m[o.name] = o; }); return m; };
+  const depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false });
+  const boneOf = (mesh, i) => {
+    const si = mesh.geometry.attributes.skinIndex, sw = mesh.geometry.attributes.skinWeight;
+    let best = 0; for (let k = 1; k < 4; k++) if (sw.getComponent(i, k) > sw.getComponent(i, best)) best = k;
+    const name = mesh.skeleton.bones[si.getComponent(i, best)].name;
+    return /leg/.test(name) ? 'leg' : /arm/.test(name) ? 'arm' : /head/.test(name) ? 'head' : 'torso';
+  };
+
+  /**
+   * 색을 바꿀 부위 고르기 (캐릭터마다 팔레트 칸이 다르다).
+   * 피부 = 머리와 몸통(팔)에 함께 쓰인 칸 중 머리에 가장 많은 것. 머리카락 = 머리에서 피부가 아닌 가장 많은 칸(눈처럼 작은 덩어리는 뺀다).
+   * 상의 = 몸통·팔 정점에 가장 많은 칸, 하의 = 다리 정점(신발 높이 위)에 가장 많은 칸. 피부는 둘 다에서 뺀다.
+   * 반환: 부위 → 정점마다 0 또는 상대 밝기(그 부위 평균 대비)
+   */
+  function regionsOf(name, head, body) {
+    // 칸마다 면적 (정점 수로 세면 목발처럼 잘게 쪼갠 물건이 이긴다). pick(정점) 이 참인 정점에 삼각형 면적의 1/3 씩
+    const area = (mesh, pick) => {
+      const g = mesh.geometry, uv = g.attributes.uv, p = g.attributes.position, idx = g.index, c = {};
+      const v = (i) => new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i));
+      const tri = idx ? idx.count / 3 : p.count / 3;
+      for (let t = 0; t < tri; t++) {
+        const vs = [0, 1, 2].map((k) => (idx ? idx.getX(t * 3 + k) : t * 3 + k));
+        const a = v(vs[1]).sub(v(vs[0])).cross(v(vs[2]).sub(v(vs[0]))).length() / 2;
+        for (const i of vs) if (pick(i)) { const k = cellOf(uv.getX(i), uv.getY(i)); c[k] = (c[k] || 0) + a / 3; }
+      }
+      return c;
+    };
+    const top1 = (c, skip) => Object.entries(c).filter(([k]) => !skip.includes(k)).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const hp = head.geometry.attributes.position;
+    const headC = area(head, () => true);
+    const armC = area(body, (i) => boneOf(body, i) === 'arm');
+    // 피부: 머리와 팔(손)에 함께 쓰인 칸 중 머리에서 가장 넓은 것. 장갑을 껴서 없으면 목 앞쪽 칸
+    const skin = SKIN[name] || Object.keys(headC).filter((k) => armC[k]).sort((a, b) => headC[b] - headC[a])[0]
+      || top1(area(head, (i) => hp.getY(i) < 0.37 && hp.getZ(i) > 0 && Math.abs(hp.getX(i)) < 0.12), []);
+    const hair = top1(headC, [skin]);
+    const pos = body.geometry.attributes.position;
+    const top = top1(area(body, (i) => boneOf(body, i) !== 'leg'), [skin]);
+    const bottom = top1(area(body, (i) => boneOf(body, i) === 'leg' && pos.getY(i) > 0.07), [skin]);
+    // 머리카락 칸 중 얼굴에 붙은 납작한 덩어리(눈·입·눈썹)는 뺀다: 같은 위치의 정점끼리 이어 붙인 덩어리의 두께로
+    const smallInHair = new Set();
+    {
+      const g = head.geometry, uv = g.attributes.uv, p = g.attributes.position, idx = g.index;
+      const key = (i) => `${p.getX(i).toFixed(4)},${p.getY(i).toFixed(4)},${p.getZ(i).toFixed(4)}`;
+      const parent = new Map(); const find = (a) => { while (parent.get(a) !== a) { parent.set(a, parent.get(parent.get(a))); a = parent.get(a); } return a; };
+      const add = (a) => { if (!parent.has(a)) parent.set(a, a); };
+      const tri = idx ? idx.count / 3 : p.count / 3;
+      const vi = (t, k) => (idx ? idx.getX(t * 3 + k) : t * 3 + k);
+      const hairVerts = [];
+      for (let t = 0; t < tri; t++) {
+        const vs = [0, 1, 2].map((k) => vi(t, k));
+        if (!vs.every((i) => cellOf(uv.getX(i), uv.getY(i)) === hair)) continue;
+        const ks = vs.map(key); ks.forEach(add); parent.set(find(ks[1]), find(ks[0])); parent.set(find(ks[2]), find(ks[0]));
+        hairVerts.push(...vs);
+      }
+      const box = new Map();
+      for (const i of hairVerts) { const r = find(key(i)); const b = box.get(r) || [1e9, 1e9, 1e9, -1e9, -1e9, -1e9]; const v = [p.getX(i), p.getY(i), p.getZ(i)]; for (let a = 0; a < 3; a++) { b[a] = Math.min(b[a], v[a]); b[a + 3] = Math.max(b[a + 3], v[a]); } box.set(r, b); }
+      for (const i of hairVerts) { const b = box.get(find(key(i))); const ext = [b[3] - b[0], b[4] - b[1], b[5] - b[2]]; if (Math.min(...ext) < 0.004 && Math.max(...ext) < 0.15) smallInHair.add(i); }
+    }
+    const weights = (mesh, pick) => {
+      const uv = mesh.geometry.attributes.uv, n = uv.count, w = new Float32Array(n); let sum = 0, m = 0;
+      for (let i = 0; i < n; i++) if (pick(i)) { w[i] = luma(texel(uv.getX(i), uv.getY(i))); sum += w[i]; m++; } else w[i] = -1;
+      const mean = m ? sum / m : 1;
+      for (let i = 0; i < n; i++) w[i] = w[i] < 0 ? 0 : Math.min(1.8, Math.max(0.35, w[i] / mean));
+      return w;
+    };
+    const huv = head.geometry.attributes.uv, buv = body.geometry.attributes.uv;
+    return {
+      cells: { skin, hair, top, bottom },
+      hair: weights(head, (i) => cellOf(huv.getX(i), huv.getY(i)) === hair && !smallInHair.has(i)),
+      top: weights(body, (i) => cellOf(buv.getX(i), buv.getY(i)) === top && boneOf(body, i) !== 'leg'),
+      bottom: weights(body, (i) => cellOf(buv.getX(i), buv.getY(i)) === bottom && boneOf(body, i) === 'leg' && body.geometry.attributes.position.getY(i) > 0.07),
+    };
+  }
+  // 피부 칸을 자동으로 못 찾는 캐릭터 (장갑을 껴서 손에 피부가 없고, 안경테가 소매와 같은 칸)
+  const SKIN = { 'male-e': '7,3' };
+  // 마스크 재질: 원래 재질과 같은 조명에 흰색 알베도 × 정점색(부위면 MASK_BASE × 상대 밝기, 아니면 투명). 블렌딩 없이 알파째 쓴다
+  function maskMaterial(orig) {
+    const m = orig.clone(); m.map = null; m.color.set(1, 1, 1); m.vertexColors = true; m.transparent = true; m.blending = THREE.NoBlending; m.needsUpdate = true;
+    return m;
+  }
+  function setMask(mesh, w) {
+    const n = mesh.geometry.attributes.position.count, a = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) { const s = w ? w[i] * MASK_BASE : 0; a[i * 4] = a[i * 4 + 1] = a[i * 4 + 2] = s; a[i * 4 + 3] = w && w[i] > 0 ? 1 : 0; }
+    mesh.geometry.setAttribute('color', new THREE.BufferAttribute(a, 4));
+  }
+
   // 그려진 픽셀의 범위 (프레임 가장자리에 닿으면 잘린 것)
-  let ext;
-  const extent = (img, label) => {
+  const newExt = () => ({ x0: W, x1: 0, y0: H, y1: 0, clipped: new Set() });
+  const extent = (ext, img, label) => {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       if (img.data[(y * W + x) * 4 + 3] < 8) continue;
       ext.x0 = Math.min(ext.x0, x); ext.x1 = Math.max(ext.x1, x); ext.y0 = Math.min(ext.y0, y); ext.y1 = Math.max(ext.y1, y);
       if (x === 0 || y === 0 || x === W - 1 || y === H - 1) ext.clipped.add(label);
     }
   };
-  for (const name of NAMES) {
-    ext = { x0: W, x1: 0, y0: H, y1: 0, clipped: new Set() };
-    const gltf = await loader.loadAsync(`/glb/${name}.glb`);
-    const model = gltf.scene; scene.add(model);
-    const mixer = new THREE.AnimationMixer(model);
-    const clip = (n) => gltf.animations.find((a) => a.name === n);
-    // 키는 static 자세 기준: 스킨 적용 뒤 상자 → 카메라 공간에서 머리 꼭대기
-    const st = mixer.clipAction(clip('static')); st.play(); mixer.update(0);
-    const box = new THREE.Box3().setFromObject(model, true);
-    let top = -Infinity;
-    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
-      top = Math.max(top, new THREE.Vector3(x, y, z).applyMatrix4(cam.matrixWorldInverse).y);
-    }
-    st.stop();
-    // 발 가운데(원점)가 프레임의 (W/2, FOOT), 머리 꼭대기까지 HEIGHT px
-    const ppu = HEIGHT / top;
-    cam.left = -W / 2 / ppu; cam.right = W / 2 / ppu;
-    cam.top = FOOT / ppu; cam.bottom = (FOOT - H) / ppu;
-    cam.updateProjectionMatrix();
-    const sheet = document.createElement('canvas');
-    sheet.width = W * COLS; sheet.height = H * ROWS.length;
-    const sctx = sheet.getContext('2d');
+  const sheet = (rows) => { const c = document.createElement('canvas'); c.width = W * COLS; c.height = H * rows; return c; };
+
+  /** 동작 행마다 프레임을 돌며 passes(행 묶음 번호 → 그리기 준비) 를 렌더해 시트에 붙인다 */
+  function bake(model, mixer, gltf, passes, out, ext) {
+    const octx = out.getContext('2d');
     ROWS.forEach((row, r) => {
       mixer.stopAllAction();
-      const c = clip(row.anim); const act = mixer.clipAction(c); act.reset().play();
-      model.position.y = row.lift ? top * row.lift : 0; // 앉은 자세는 의자 높이만큼 올린다
+      const c = gltf.animations.find((a) => a.name === row.anim); const act = mixer.clipAction(c); act.reset().play();
+      model.position.y = row.lift ? maxTop * row.lift : 0; // 앉은 자세는 의자 높이만큼 올린다 (모두 같은 높이 — 머리·몸통을 섞으므로)
       for (let i = 0; i < row.frames; i++) {
         act.time = row.frames === 1 ? c.duration * (row.at || 0) : c.duration * i / row.frames;
         mixer.update(0);
-        renderer.render(scene, cam);
-        sctx.drawImage(renderer.domElement, i * W, r * H);
-        extent(sctx.getImageData(i * W, r * H, W, H), `${row.anim}#${i}`);
+        passes.forEach((prep, b) => {
+          prep();
+          renderer.render(scene, cam);
+          const y = (b * ROWS.length + r) * H;
+          octx.drawImage(renderer.domElement, i * W, y);
+          if (ext) extent(ext, octx.getImageData(i * W, y, W, H), `${b}:${row.anim}#${i}`);
+        });
       }
     });
-    scene.remove(model);
-    await fetch(`/save?name=${name}`, { method: 'POST', body: JSON.stringify({ data: sheet.toDataURL(q.get('type') || 'image/webp', Number(q.get('quality') || 0.9)), ext: { ...ext, clipped: [...ext.clipped] } }) });
   }
-} catch (e) { fetch('/err', { method: 'POST', body: String(e.stack) }); }
+
+  for (const name of NAMES) {
+    const gltf = await load(`character-${name}`);
+    const model = gltf.scene; scene.add(model);
+    const mixer = new THREE.AnimationMixer(model);
+    const { 'head-mesh': head, 'body-mesh': body } = meshesOf(model);
+    const orig = { head: head.material, body: body.material };
+    const mask = { head: maskMaterial(head.material), body: maskMaterial(body.material) };
+    const reg = regionsOf(name, head, body);
+    body.renderOrder = 0; head.renderOrder = 1; // 깊이만 쓰는 쪽을 먼저
+    const ext = newExt();
+    // 색 시트: 머리(몸통은 깊이만 — 팔이 머리 앞에 오면 머리가 잘린다), 몸통(머리 없이)
+    const color = sheet(2 * ROWS.length);
+    bake(model, mixer, gltf, [
+      () => { head.visible = true; head.material = orig.head; body.material = depthOnly; },
+      () => { head.visible = false; body.material = orig.body; },
+    ], color, ext);
+    // 마스크 시트: 머리카락(머리 레이어와 같은 가림), 상의, 하의
+    const masks = sheet(3 * ROWS.length);
+    bake(model, mixer, gltf, [
+      () => { head.visible = true; setMask(head, reg.hair); head.material = mask.head; body.material = depthOnly; },
+      () => { head.visible = false; setMask(body, reg.top); body.material = mask.body; },
+      () => { head.visible = false; setMask(body, reg.bottom); body.material = mask.body; },
+    ], masks, null);
+    head.visible = true; head.material = orig.head; body.material = orig.body;
+    scene.remove(model);
+    await post(`/save?name=${name}`, JSON.stringify({
+      files: [
+        { file: `${name}.webp`, data: color.toDataURL('image/webp', QUALITY) },
+        { file: `${name}.mask.webp`, data: masks.toDataURL('image/webp', QUALITY) },
+      ],
+      ext: { ...ext, clipped: [...ext.clipped] }, cells: reg.cells,
+    }));
+  }
+
+  // 소품: 기준 캐릭터(원래 안경이 없는 male-f)의 머리 뼈에 붙여, 기준 캐릭터는 깊이만 (팔이 앞에 오면 소품이 가려진다)
+  if (ACCS.length) {
+    const gltf = await load(`character-${q.get('ref') || 'male-f'}`);
+    const model = gltf.scene; scene.add(model);
+    const mixer = new THREE.AnimationMixer(model);
+    const { 'head-mesh': head, 'body-mesh': body } = meshesOf(model);
+    head.material = depthOnly; body.material = depthOnly; head.renderOrder = body.renderOrder = 0;
+    const bone = model.getObjectByName('head');
+    for (const a of ACCS) {
+      const acc = (await load(a.glb)).scene.clone();
+      acc.position.set(...a.at);
+      acc.traverse((o) => { o.renderOrder = 1; });
+      bone.add(acc);
+      const ext = newExt();
+      const out = sheet(ROWS.length);
+      bake(model, mixer, gltf, [() => {}], out, ext);
+      bone.remove(acc);
+      await post(`/save?name=acc-${a.id}`, JSON.stringify({ files: [{ file: `acc-${a.id}.webp`, data: out.toDataURL('image/webp', QUALITY) }], ext: { ...ext, clipped: [...ext.clipped] } }));
+    }
+    scene.remove(model);
+  }
+  await post('/done', '');
+} catch (e) { post('/err', String(e.stack)); }
 </script>

@@ -149,7 +149,18 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 ⚙️ 설정 → **캐릭터 외형** 에서 **나 / Claude 기본 / 서브에이전트 기본 / 지금 보는 층의 Claude** 네 대상마다 12명 중 한 명을 고릅니다.
 
 - Claude 계열은 기본이 **자동**: 세션마다 다른 캐릭터가 배정되고(세션 id 해시), 어느 브라우저에서도 같은 세션은 같은 캐릭터입니다.
-- 🎲 랜덤, ↺ 초기화, 🗑 저장 삭제. 저장은 이 브라우저에만 남는다.
+- 🎲 랜덤(통째 캐릭터 또는 파트 조합), ↺ 초기화, 🗑 저장 삭제. 저장은 이 브라우저에만 남는다.
+
+**파트 바꾸기**: 같은 창의 파트 줄에서 캐릭터를 부위별로 고칩니다.
+
+![파트 바꾸기 — 고르기 창](docs/screenshots/fe-57-customize.jpg)
+
+- **머리 · 몸**: 12명 중 아무 머리와 아무 몸을 섞는다 (예: female-b 의 머리 + male-d 의 정장).
+- **머리카락 · 상의 · 하의 색**: 원래 색, 팔레트, 또는 색 고르개로 아무 색. 원래 무늬의 밝고 어두움은 그대로 남는다 (넥타이·칼라처럼 다른 색 부분은 원래 색).
+- **소품**: 안경 · 선글라스 · 마스크 · 보청기 (Kenney 팩에 들어 있는 모델).
+- 걷기·앉기·타이핑·끄덕임과 서브에이전트 안전모도 조합 그대로 움직입니다.
+
+![파트 조합 × 동작 — 맨 오른쪽은 서브에이전트 안전모](docs/screenshots/fe-57-parts.jpg)
 
 **내 캐릭터 (직접 올린 그림)**: 같은 창의 **＋ PNG 올리기** 타일을 누르거나 그 위(창 어디든)에 파일을 끌어다 놓으면, 배경이 투명한 그림을 캐릭터로 씁니다.
 
@@ -218,6 +229,6 @@ npm run bump:minor   # 0.19.0 → 0.20.0
 
 릴리스: `git tag vX.Y.Z && git push origin vX.Y.Z` 를 올리면 GitHub Actions 가 맥·Windows 앱을 빌드해 Release 에 올리고(updater 용 `latest.json` 포함), Windows 러너에서 설치 → 실행 → 훅까지 확인합니다. 테스트는 push·PR 마다 Ubuntu·Windows·macOS 에서 돕니다.
 
-캐릭터 스프라이트 다시 굽기: [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) 팩을 받아 풀고 `node scripts/bake-characters/bake.js <팩 폴더>` (헤드리스 크롬 + three.js CDN, 결과는 `public/assets/characters/*.webp`). 시트 구성(프레임 크기·동작 행)은 `characters.js` 의 `SHEET` 한 곳에서 정한다.
+캐릭터 스프라이트 다시 굽기: [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) 팩을 받아 풀고 `node scripts/bake-characters/bake.js <팩 폴더>` (헤드리스 크롬 + three.js CDN, 결과는 `public/assets/characters/*.webp`). 캐릭터마다 색 시트(머리 레이어 + 몸통 레이어)와 마스크 시트(머리카락·상의·하의 음영), 소품마다 시트 하나를 굽는다. 시트 구성(프레임 크기·동작 행·레이어)과 소품 위치는 `characters.js` 의 `SHEET`·`ACCESSORIES` 에서 정한다.
 
 작업 흐름: GitHub 이슈를 `[FE-30]`, `[BE-13]`, `[APP-03]` 처럼 FE/BE/APP 으로 나눠 만들고, `main` 에서 `feature/FE-30` 식 브랜치를 분리해 작업한 뒤 결과·테스트·캡처를 이슈 댓글로 남긴다.

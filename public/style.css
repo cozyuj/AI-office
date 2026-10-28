@@ -204,6 +204,17 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .cz-note.busy { color: var(--muted); }
 .cz-credit { font-size: 10.5px; }
 .cz-credit a { color: inherit; }
+.modal-card.cz { width: min(900px, calc(100vw - 40px)); }
+.cz-partrow { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.cz-partlabel { flex: 0 0 52px; font-size: 11.5px; color: var(--muted); }
+.cz-partrow .cz-presets { gap: 3px; flex: 1; }
+.cz-preset.cz-mini { width: auto; padding: 2px; border-radius: 8px; font-size: 9.5px; }
+.cz-swatch { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); background: var(--sw, #fff); cursor: pointer; padding: 0; position: relative; }
+.cz-swatch:hover { box-shadow: 0 0 0 2px var(--accent-soft); }
+.cz-swatch.on { box-shadow: 0 0 0 2px var(--accent); }
+.cz-orig { width: auto; border-radius: 11px; padding: 0 8px; font-size: 10.5px; color: var(--text); background: #fafbfc; }
+.cz-pick { background: var(--sw, conic-gradient(#e05252, #f2b51d, #5ac487, #4f7fd0, #8a5cc7, #e05252)); overflow: hidden; }
+.cz-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; border: 0; padding: 0; }
 .cz-namerow { display: flex; gap: 6px; align-items: center; }
 .cz-name-input { width: 170px; font-size: 13px; padding: 3px 8px; }
 
@@ -281,6 +292,8 @@ b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { fon
 :root[data-theme="dark"] .cz-preview, :root:not([data-theme="light"]).auto-dark .cz-preview { background: #232830; }
 :root[data-theme="dark"] .cz-preset, :root:not([data-theme="light"]).auto-dark .cz-preset { background: var(--panel); border-color: var(--line); }
 :root[data-theme="dark"] .cz-preset.on, :root:not([data-theme="light"]).auto-dark .cz-preset.on { background: var(--accent-soft); border-color: var(--accent); }
+:root[data-theme="dark"] .cz-orig, :root:not([data-theme="light"]).auto-dark .cz-orig { background: var(--panel); border-color: var(--line); }
+:root[data-theme="dark"] .cz-swatch:not(.cz-orig), :root:not([data-theme="light"]).auto-dark .cz-swatch:not(.cz-orig) { border-color: rgba(255,255,255,.28); }
 :root[data-theme="dark"] .cz-del:not(:hover):not(.armed), :root:not([data-theme="light"]).auto-dark .cz-del:not(:hover):not(.armed) { background: var(--panel); }
 :root[data-theme="dark"] .cz-note.error, :root:not([data-theme="light"]).auto-dark .cz-note.error { color: #ff8a8a; }
 :root[data-theme="dark"] .name-input, :root:not([data-theme="light"]).auto-dark .name-input { background: var(--panel); color: var(--text); border-color: var(--line); }

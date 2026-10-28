@@ -5,21 +5,60 @@ const fs = require('fs');
 const path = require('path');
 const charsP = import('../public/js/scene/characters.js');
 
-test('시트: 12명 모두 webp 가 있고, 크기가 SHEET 의 행·열과 맞는다', async () => {
-  const { CHARACTERS, SHEET } = await charsP;
+test('시트: 12명 색·마스크 시트와 소품 시트가 있고, 크기가 SHEET 의 행·열과 맞는다', async () => {
+  const { CHARACTERS, SHEET, ACCESSORIES } = await charsP;
   assert.equal(CHARACTERS.length, 12);
   const cols = Math.max(...SHEET.ROWS.map((r) => r.frames));
+  const rows = SHEET.ROWS.length;
   let total = 0;
-  for (const name of CHARACTERS) {
-    const buf = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'characters', `${name}.webp`));
+  const check = (file, blocks) => {
+    const buf = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'characters', `${file}.webp`));
     total += buf.length;
     assert.equal(buf.toString('ascii', 0, 4), 'RIFF'); assert.equal(buf.toString('ascii', 8, 12), 'WEBP');
     // VP8X(확장, 알파) 헤더: 너비-1, 높이-1 이 24비트 리틀엔디언
-    assert.equal(buf.toString('ascii', 12, 16), 'VP8X', `${name}: 알파가 있는 확장 webp`);
+    assert.equal(buf.toString('ascii', 12, 16), 'VP8X', `${file}: 알파가 있는 확장 webp`);
     const w = buf.readUIntLE(24, 3) + 1, h = buf.readUIntLE(27, 3) + 1;
-    assert.deepEqual([w, h], [SHEET.W * cols, SHEET.H * SHEET.ROWS.length], name);
+    assert.deepEqual([w, h], [SHEET.W * cols, SHEET.H * rows * blocks], file);
+  };
+  for (const name of CHARACTERS) {
+    check(name, SHEET.PARTS.length);         // 머리 행들 + 몸통 행들
+    check(`${name}.mask`, SHEET.MASKS.length); // 머리카락·상의·하의
   }
-  assert.ok(total < 1.5 * 1024 * 1024, `12장 합 ${(total / 1024).toFixed(0)} KB`);
+  for (const a of ACCESSORIES) check(`acc-${a.id}`, 1);
+  assert.ok(total < 2.5 * 1024 * 1024, `합 ${(total / 1024).toFixed(0)} KB`);
+});
+
+test('파트 조합(FE-57): mix 값 읽기·쓰기, 바꾼 게 없으면 이름, 이상한 값은 기본값', async () => {
+  const { parseLook, lookValue, normalizeCharacter, resolveCharacter, ACCESSORIES } = await charsP;
+  const v = 'mix:female-b.male-d.c4532f.4f7fd0.-.sunglasses';
+  assert.deepEqual(parseLook(v), { head: 'female-b', body: 'male-d', hair: 'c4532f', top: '4f7fd0', bottom: null, acc: 'sunglasses' });
+  assert.equal(lookValue(parseLook(v)), v, '되돌리면 같은 값');
+  assert.deepEqual(parseLook('male-a'), { head: 'male-a', body: 'male-a', hair: null, top: null, bottom: null, acc: null });
+  assert.equal(lookValue({ head: 'male-a', body: 'male-a', hair: null, top: null, bottom: null, acc: null }), 'male-a');
+  assert.equal(normalizeCharacter('mix:male-a.male-a.-.-.-.-'), 'male-a', '안 바꾼 조합은 이름으로');
+  assert.equal(normalizeCharacter(v), v);
+  assert.equal(resolveCharacter(v, 'sess/main'), v, '조합은 자동 해시를 타지 않는다');
+  for (const id of ACCESSORIES.map((a) => a.id)) assert.ok(parseLook(`mix:male-a.male-a.-.-.-.${id}`), id);
+  for (const bad of [
+    'mix:', 'mix:male-a', 'mix:male-a.robot.-.-.-.-', 'mix:male-a.male-b.red.-.-.-', 'mix:male-a.male-b.C4532F.-.-.-',
+    'mix:male-a.male-b.-.-.-.hat', 'mix:male-a.male-b.-.-.-.-.extra', 'mix:male-a.male-b.-.-.-.-"><img>', 42, null,
+  ]) {
+    assert.equal(parseLook(bad), null, String(bad));
+    assert.equal(normalizeCharacter(bad, 'male-c'), 'male-c', String(bad));
+  }
+});
+
+test('randomLook: 늘 올바른 값이고 지금 것과 다르며, 통째·조합이 섞여 나온다', async () => {
+  const { randomLook } = await import('../public/js/customize.js');
+  const { parseLook } = await charsP;
+  let mixes = 0, plain = 0;
+  for (let i = 0; i < 300; i++) {
+    const v = randomLook('male-a');
+    assert.notEqual(v, 'male-a');
+    assert.ok(parseLook(v), v);
+    if (v.startsWith('mix:')) mixes++; else plain++;
+  }
+  assert.ok(mixes > 50 && plain > 50, `조합 ${mixes} 통째 ${plain}`);
 });
 
 test('resolveCharacter: 이름은 그대로, auto 는 키 해시로 늘 같은 캐릭터, 여러 키에 고루 퍼진다', async () => {
@@ -69,6 +108,10 @@ test('avatarStore: 대상별 저장·기본값, 층 설정 우선, 나는 auto �
   assert.equal(s.forActor(claude, 'f2'), 'female-b', '다른 층은 Claude 기본');
   assert.ok(CHARACTERS.includes(s.forActor({ key: 's1/agent-1', kind: 'sub' }, 'f1')));
   assert.equal(s.forActor({ user: true }, 'f1'), 'male-a');
+  s.set('me', 'mix:female-b.male-d.c4532f.-.-.glasses');
+  assert.equal(s.forActor({ user: true }, 'f1'), 'mix:female-b.male-d.c4532f.-.-.glasses', '조합도 저장된다');
+  s.set('me', 'mix:female-b.male-d.zzz.-.-.-');
+  assert.equal(s.get('me'), 'male-a', '이상한 조합은 기본값');
   const again = createAvatarStore();
   assert.equal(again.get('claude'), 'female-b', 'localStorage 에 남는다');
   again.reset('claude');

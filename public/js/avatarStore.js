@@ -1,5 +1,5 @@
 // 캐릭터 고르기 저장소. 뷰어 설정이므로 localStorage 에 둔다.
-// 키: me | claude | sub | floor:<floorId>   값: 캐릭터 이름(characters.js 의 CHARACTERS), 'custom:<id>'(올린 그림) 또는 'auto'(세션마다 다르게)
+// 키: me | claude | sub | floor:<floorId>   값: 캐릭터 이름(characters.js 의 CHARACTERS), 'mix:...'(파트 조합), 'custom:<id>'(올린 그림) 또는 'auto'(세션마다 다르게)
 import { DEFAULTS, isCustomCharacter, normalizeCharacter, resolveCharacter } from './scene/characters.js';
 import { createCustomCharacters } from './customCharacters.js';
 
