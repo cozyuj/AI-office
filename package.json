@@ -1,6 +1,6 @@
 {
   "name": "claude-ai-office",
-  "version": "0.32.0",
+  "version": "0.32.1",
   "description": "Claude Code 세션 활동을 아이소메트릭 사무실로 실시간 시각화",
   "keywords": [
     "claude",
