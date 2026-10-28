@@ -19,7 +19,7 @@ dependencies = [
 
 [[package]]
 name = "ai-office-app"
-version = "0.34.0"
+version = "0.34.1"
 dependencies = [
  "objc2",
  "objc2-app-kit",
