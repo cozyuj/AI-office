@@ -185,18 +185,17 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .cz-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .cz-options { display: flex; flex-direction: column; gap: 12px; }
 .cz-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
-.cz-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
 .cz-presets { display: flex; gap: 6px; flex-wrap: wrap; }
-.cz-preset { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 60px; padding: 4px 4px 3px; border: 1px solid var(--line); background: #fff; border-radius: 10px; cursor: pointer; font-size: 10.5px; color: var(--text); }
+.cz-preset { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 66px; padding: 4px; border: 1px solid var(--line); background: #fff; border-radius: 10px; cursor: pointer; font-size: 10.5px; color: var(--text); }
 .cz-preset:hover { border-color: var(--accent); background: var(--accent-soft); }
 .cz-preset canvas { display: block; }
+.cz-preset.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
+.cz-auto { justify-content: center; min-height: 64px; font-weight: 600; }
+.cz-auto-icon { font-size: 22px; line-height: 1.2; }
+.cz-credit { font-size: 10.5px; }
+.cz-credit a { color: inherit; }
 .cz-namerow { display: flex; gap: 6px; align-items: center; }
 .cz-name-input { width: 170px; font-size: 13px; padding: 3px 8px; }
-.cz-chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
-.cz-chip.on { background: var(--accent-soft); border-color: #f2b79a; color: var(--accent); font-weight: 600; }
-.cz-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
-.cz-swatch { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
-.cz-swatch.on { box-shadow: 0 0 0 2px var(--accent); }
 
 /* ---------- FE-10 UI 다듬기 ---------- */
 .head-sub .dot { display: inline-block; vertical-align: middle; margin-right: 2px; }
@@ -239,9 +238,6 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .card.grow .list { flex: 1; min-height: 0; }
 
 /* ---------- 외형: 직접 색 고르기 ---------- */
-.cz-swatch.custom { position: relative; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; color: #8a919b; font-size: 14px; border: 2px dashed #cfd4da; box-shadow: none; }
-.cz-swatch.custom.on { border-style: solid; border-color: #fff; box-shadow: 0 0 0 2px var(--accent); color: #fff; }
-.cz-swatch.custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
 b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { font-weight: 800; }
 
 /* ---------- 활동 로그 검색 ---------- */
@@ -269,11 +265,12 @@ b, strong, .panel-title, .floor-name, .head-title, .card-head, .modal-head { fon
 :root[data-theme="dark"] .person-act, :root[data-theme="dark"] .log-text, :root[data-theme="dark"] .people-title, :root[data-theme="dark"] .legend,
 :root:not([data-theme="light"]).auto-dark .person-act, :root:not([data-theme="light"]).auto-dark .log-text, :root:not([data-theme="light"]).auto-dark .people-title, :root:not([data-theme="light"]).auto-dark .legend { color: #c9cfd8; }
 :root[data-theme="dark"] .people-group.selected, :root:not([data-theme="light"]).auto-dark .people-group.selected { background: #26211e; border-color: #4a3a30; }
-:root[data-theme="dark"] .tooltip, :root[data-theme="dark"] .modal-card, :root[data-theme="dark"] .stage-empty-card, :root[data-theme="dark"] .cz-target, :root[data-theme="dark"] .cz-chip,
-:root:not([data-theme="light"]).auto-dark .tooltip, :root:not([data-theme="light"]).auto-dark .modal-card, :root:not([data-theme="light"]).auto-dark .stage-empty-card, :root:not([data-theme="light"]).auto-dark .cz-target, :root:not([data-theme="light"]).auto-dark .cz-chip { background: var(--panel); color: var(--text); border-color: var(--line); }
+:root[data-theme="dark"] .tooltip, :root[data-theme="dark"] .modal-card, :root[data-theme="dark"] .stage-empty-card, :root[data-theme="dark"] .cz-target,
+:root:not([data-theme="light"]).auto-dark .tooltip, :root:not([data-theme="light"]).auto-dark .modal-card, :root:not([data-theme="light"]).auto-dark .stage-empty-card, :root:not([data-theme="light"]).auto-dark .cz-target { background: var(--panel); color: var(--text); border-color: var(--line); }
 :root[data-theme="dark"] .tt-v.mono, :root:not([data-theme="light"]).auto-dark .tt-v.mono { background: #2c3139; }
 :root[data-theme="dark"] .cz-preview, :root:not([data-theme="light"]).auto-dark .cz-preview { background: #232830; }
 :root[data-theme="dark"] .cz-preset, :root:not([data-theme="light"]).auto-dark .cz-preset { background: var(--panel); border-color: var(--line); }
+:root[data-theme="dark"] .cz-preset.on, :root:not([data-theme="light"]).auto-dark .cz-preset.on { background: var(--accent-soft); border-color: var(--accent); }
 :root[data-theme="dark"] .name-input, :root:not([data-theme="light"]).auto-dark .name-input { background: var(--panel); color: var(--text); border-color: var(--line); }
 :root[data-theme="dark"] .banner, :root:not([data-theme="light"]).auto-dark .banner { background: #3a3220; color: #f5deab; border-color: #5a4a22; }
 /* ---------- 경고 배너 ---------- */

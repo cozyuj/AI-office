@@ -7,7 +7,7 @@ import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 import { tr } from '../i18n.js';
-import { drawAvatar } from './avatar.js';
+import { drawCharacter, preloadCharacters, OFFICE_HEIGHT } from './characters.js';
 
 const SPEED = 3.6;          // 타일/초
 const LEAVE_TIMEOUT = 8000; // 퇴근 중 최대 대기
@@ -91,42 +91,22 @@ class Actor {
 }
 
 // ---------- 그리기 ----------
-function drawPerson(ctx, a, now, spec) {
+function drawPerson(ctx, a, now, character) {
   const cx = a.x + 0.5, cy = a.y + 0.5;
   const base = project(cx, cy);
   ctx.save();
   ctx.globalAlpha = a.dim ? 0.45 : 1;
   shadow(ctx, cx, cy, 0.28, 0.14, 0.2);
-  const breath = Math.sin(now / 700 + a.seed) * 0.7;                       // 숨쉬기
-  const bob = a.walking ? Math.abs(Math.sin(a.walkT * 9)) * 2.2 : (a.activity === 'think' ? Math.sin(now / 420) * 0.8 : breath);
-  const sit = a.activity === 'rest' && !a.ambient && !a.walking ? 4 : 0;
-  const blink = ((now + a.seed * 37) % 4200) < 130;                        // 4.2초마다 130ms 깜빡임
+  // 걷기·숨쉬기는 스프라이트 동작에 들어 있다. 고민 중일 때만 살짝 흔들린다
+  const bob = a.activity === 'think' && !a.walking ? Math.sin(now / 420) * 0.8 : 0;
+  const sitting = a.activity === 'rest' && !a.ambient && !a.walking;
   const typing = !a.walking && (a.activity === 'edit' || a.activity === 'work' || a.activity === 'run');
-  const fx = base.x, fy = base.y - bob + sit;
-  drawAvatar(ctx, fx, fy, spec, { sessionColor: a.color, walking: a.walking, walkT: a.walkT, now, faceRight: a.faceRight, thinking: a.activity === 'think', hardHat: a.kind === 'sub', blink, typing });
-  // 활동 소품 (손 높이)
-  if (a.ambient) {
-    // 자율 행동 소품: 커피잔 / 없음
-    if (a.ambient.spot.icon === '☕' && a.ambient.phase !== 'go') { ctx.fillStyle = '#fff'; ctx.fillRect(fx + 6, fy - 20, 5, 6); ctx.fillStyle = '#6b4e3d'; ctx.fillRect(fx + 6, fy - 20, 5, 2); }
-  } else if (a.activity === 'read' || a.activity === 'search') {
-    const page = Math.floor(now / 900 + a.seed) % 2;                       // 책장 넘기기
-    ctx.fillStyle = '#fff'; ctx.fillRect(fx - 7, fy - 20, 14, 8);
-    ctx.fillStyle = '#c0504d'; ctx.fillRect(fx - 7, fy - 20, 2, 8);
-    ctx.fillStyle = '#d9dce2'; ctx.fillRect(fx - 4 + page * 6, fy - 19, 4, 6);
-  } else if (a.activity === 'edit' || a.activity === 'work' || a.activity === 'run') {
-    ctx.fillStyle = '#2f3542'; ctx.fillRect(fx - 7, fy - 21, 14, 8);
-    ctx.fillStyle = '#5aa7e6'; ctx.fillRect(fx - 6, fy - 20, 12, 5);
-    const k = Math.floor(now / 160 + a.seed) % 3;                           // 타자 치는 커서/손
-    ctx.fillStyle = '#eaf6ff'; ctx.fillRect(fx - 5 + k * 3, fy - 19, 2, 1.2);
-  } else if (a.activity === 'rest' && !a.walking && (!a.roam || !a.roam.spot || a.roam.spot.icon === '☕')) {
-    // 휴식 중 컵 (명소에서는 커피 자리일 때만)
-    ctx.fillStyle = '#fff'; ctx.fillRect(fx + 6, fy - 20, 5, 6);
-    ctx.fillStyle = '#e8683a'; ctx.fillRect(fx + 6, fy - 20, 5, 2);
-  }
+  const fx = base.x, fy = base.y - bob;
+  drawCharacter(ctx, fx, fy, character, { walking: a.walking, walkT: a.walkT, now, seed: a.seed, faceRight: a.faceRight, sitting, typing, nod: a.activity === 'ask', hardHat: a.kind === 'sub' });
   // 답을 기다리는 중: 머리 위 느낌표 펄스
   if (a.activity === 'ask') {
     const pulse = 0.5 + 0.5 * Math.sin(now / 180);
-    const ty = fy - 68 - pulse * 3;
+    const ty = fy - OFFICE_HEIGHT - (a.kind === 'sub' ? 14 : 8) - pulse * 3;
     ctx.fillStyle = '#e05252';
     ctx.beginPath(); ctx.arc(fx, ty, 7 + pulse, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -358,6 +338,7 @@ export function createActors(store, scene, avatars) {
   }
 
   store.subscribe((kind) => { if (kind === 'snapshot') sync(true); else sync(false); });
+  preloadCharacters();
   scene.setActorProvider(tick);
   scene.onClick(pick);
   /** 선택 세션의 main 캐릭터 (카메라 따라가기용) */

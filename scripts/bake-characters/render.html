@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#0000">
+<!-- bake.js 가 띄우는 굽기 페이지. 캐릭터 GLB 를 사무실과 같은 카메라로 렌더해 시트를 /save 로 보낸다 -->
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const q = new URLSearchParams(location.search);
+const NAMES = q.get('names').split(',');
+const META = JSON.parse(q.get('meta'));            // characters.js 의 SHEET (프레임 크기·행 구성)
+const { W, H, FOOT, HEIGHT, ROWS } = META;
+const COLS = Math.max(...ROWS.map((r) => r.frames));
+try {
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1); renderer.setSize(W, H); renderer.setClearColor(0x000000, 0);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c8, 1.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-2, 4, 3); scene.add(sun);
+  // 사무실의 2:1 아이소메트릭: 방위 45°, 고도 30°. 모델은 +Z(화면 왼쪽 아래)를 본다
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+  const el = Math.PI / 6, az = Math.PI / 4, d = 20;
+  cam.position.set(d * Math.cos(el) * Math.sin(az), d * Math.sin(el), d * Math.cos(el) * Math.cos(az));
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  const loader = new GLTFLoader();
+  // 그려진 픽셀의 범위 (프레임 가장자리에 닿으면 잘린 것)
+  let ext;
+  const extent = (img, label) => {
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (img.data[(y * W + x) * 4 + 3] < 8) continue;
+      ext.x0 = Math.min(ext.x0, x); ext.x1 = Math.max(ext.x1, x); ext.y0 = Math.min(ext.y0, y); ext.y1 = Math.max(ext.y1, y);
+      if (x === 0 || y === 0 || x === W - 1 || y === H - 1) ext.clipped.add(label);
+    }
+  };
+  for (const name of NAMES) {
+    ext = { x0: W, x1: 0, y0: H, y1: 0, clipped: new Set() };
+    const gltf = await loader.loadAsync(`/glb/${name}.glb`);
+    const model = gltf.scene; scene.add(model);
+    const mixer = new THREE.AnimationMixer(model);
+    const clip = (n) => gltf.animations.find((a) => a.name === n);
+    // 키는 static 자세 기준: 스킨 적용 뒤 상자 → 카메라 공간에서 머리 꼭대기
+    const st = mixer.clipAction(clip('static')); st.play(); mixer.update(0);
+    const box = new THREE.Box3().setFromObject(model, true);
+    let top = -Infinity;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      top = Math.max(top, new THREE.Vector3(x, y, z).applyMatrix4(cam.matrixWorldInverse).y);
+    }
+    st.stop();
+    // 발 가운데(원점)가 프레임의 (W/2, FOOT), 머리 꼭대기까지 HEIGHT px
+    const ppu = HEIGHT / top;
+    cam.left = -W / 2 / ppu; cam.right = W / 2 / ppu;
+    cam.top = FOOT / ppu; cam.bottom = (FOOT - H) / ppu;
+    cam.updateProjectionMatrix();
+    const sheet = document.createElement('canvas');
+    sheet.width = W * COLS; sheet.height = H * ROWS.length;
+    const sctx = sheet.getContext('2d');
+    ROWS.forEach((row, r) => {
+      mixer.stopAllAction();
+      const c = clip(row.anim); const act = mixer.clipAction(c); act.reset().play();
+      model.position.y = row.lift ? top * row.lift : 0; // 앉은 자세는 의자 높이만큼 올린다
+      for (let i = 0; i < row.frames; i++) {
+        act.time = row.frames === 1 ? c.duration * (row.at || 0) : c.duration * i / row.frames;
+        mixer.update(0);
+        renderer.render(scene, cam);
+        sctx.drawImage(renderer.domElement, i * W, r * H);
+        extent(sctx.getImageData(i * W, r * H, W, H), `${row.anim}#${i}`);
+      }
+    });
+    scene.remove(model);
+    await fetch(`/save?name=${name}`, { method: 'POST', body: JSON.stringify({ data: sheet.toDataURL(q.get('type') || 'image/webp', Number(q.get('quality') || 0.9)), ext: { ...ext, clipped: [...ext.clipped] } }) });
+  }
+} catch (e) { fetch('/err', { method: 'POST', body: String(e.stack) }); }
+</script>

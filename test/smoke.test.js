@@ -121,27 +121,20 @@ test('scene: 모든 인테리어 프리셋 × 테마 × 시간대에서 바닥·
   R.setFloorStyle(PRESET_IDS[0]); R.setTheme('light'); R.setDaylight('off');
 });
 
-test('avatar: 프리셋·몸 종류·모든 파츠 옵션·랜덤 조합을 drawAvatar 로 그린다', async () => {
-  const A = await import('../public/js/scene/avatar.js');
+test('characters: 12명 × 모든 동작 × 좌우 · 서브에이전트 안전모를 drawCharacter 로 그린다', async () => {
+  const C = await import('../public/js/scene/characters.js');
+  assert.equal(C.drawCharacter(fakeCtx(), 0, 0, 'male-c'), false, 'Image 가 없으면(시트 없음) 그리지 않고 false');
+  globalThis.Image = class { constructor() { this.complete = true; this.naturalWidth = 1792; } };
   resetLog();
   const ctx = fakeCtx();
   let drawn = 0;
-  const draw = (spec, extra = {}) => { A.drawAvatar(ctx, 0, 0, A.normalizeAvatar(spec), { scale: 1, ...extra }); drawn++; };
-  for (const p of A.PRESETS) { draw(p.spec); draw(p.spec, { blink: true }); draw(p.spec, { typing: true, faceRight: false }); }
-  const fresh = () => JSON.parse(JSON.stringify(A.DEFAULTS.claude));
-  const id = (opt) => (Array.isArray(opt) ? opt[0] : opt);
-  for (const [key, list] of Object.entries(A.OPTIONS)) {
-    if (key === 'bodySkins') { for (const [body, colors] of Object.entries(list)) for (const c of colors) { const b = fresh(); b.body = body; b.skin = c; draw(b); } continue; }
-    if (Array.isArray(list)) { for (const opt of list) { const b = fresh(); b[key] = id(opt); draw(b); } continue; }
-    for (const st of list.styles || []) { const b = fresh(); b[key] = { ...b[key], style: id(st) }; draw(b); }
-    for (const c of list.colors || []) { const b = fresh(); b[key] = { ...b[key], color: c }; draw(b); }
+  const states = [{}, { walking: true, walkT: 0.37 }, { sitting: true }, { typing: true }, { nod: true }];
+  for (const name of C.CHARACTERS) for (const st of states) for (const faceRight of [false, true]) for (const hardHat of [false, true]) {
+    assert.equal(C.drawCharacter(ctx, 10, 20, name, { ...st, faceRight, hardHat, now: 12345, seed: 7.5, scale: 2.5 }), true);
+    drawn++;
   }
-  // 몸 종류 × 머리 모양 × 모자 조합 (몸 종류마다 그리기 분기가 다르다)
-  for (const body of A.OPTIONS.body) for (const st of A.OPTIONS.hair.styles) for (const hat of A.OPTIONS.hat) { const b = fresh(); b.body = id(body); b.hair.style = id(st); b.hat = id(hat); draw(b, { walking: true, walkT: 0.3 }); }
-  for (let i = 0; i < 30; i++) draw(A.randomAvatar(i / 30));
-  for (const role of Object.keys(A.DEFAULTS)) draw(A.DEFAULTS[role]);
-  assertClean('avatar');
-  assert.ok(drawn > 40, `그린 아바타 ${drawn}개`);
+  assertClean('characters');
+  assert.equal(drawn, 12 * 5 * 2 * 2);
 });
 
 test('actors + scene: 상태 머신 스냅샷으로 캐릭터를 만들고 수백 프레임 동안 걷기·말풍선·자율 행동을 돌린다', async () => {
