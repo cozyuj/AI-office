@@ -385,7 +385,7 @@ function buildStatic() {
     const dynamic = DECOR_DYNAMIC.has(it.type);
     S.push(makeEntity(decorBox(it), (ctx, now) => drawDecor(ctx, it, now), {
       label: `decor:${it.type}`, dynamic, pad: DECOR_PAD[it.type] || 28,
-      key: dynamic ? undefined : `d:${it.type}|${it.seed}|${it.dir || ''}|${it.len || 0}|${it.w || 1}x${it.d || 1}`,
+      key: dynamic ? undefined : `d:${it.type}|${it.seed}|${it.dir || ''}|${it.len || 0}|${it.w || 1}x${it.d || 1}|k${(it.k0 || 0) % 20}|z${it.z || 0}|${it.rail ? 'r' : it.outer ? 'o' : ''}`,
       anchor: project(it.x, it.y, 0),
     }));
   }

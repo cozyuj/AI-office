@@ -237,6 +237,35 @@ test('PreCompact: 자리 유지, 기억 정리 중', () => {
   assert.equal(main().activity, 'compact');
 });
 
+test('PostCompact: 일하는 중 압축이 끝나면 고민 중으로 (FE-65)', () => {
+  const { st, main } = fresh();
+  st.apply(pre('Edit', { file_path: '/a/x.js' }), 1000);
+  st.apply(base({ hook_event_name: 'PreCompact', trigger: 'auto' }), 1100);
+  st.apply(base({ hook_event_name: 'PostCompact', trigger: 'auto', compact_summary: '...' }), 1200);
+  assert.equal(main().activity, 'think');
+});
+
+test('PreCompact: 쉬는 중 자동 압축은 자리에서 일으키지 않는다, 수동은 보이고 끝나면 다시 휴식 (FE-65)', () => {
+  const { st, main, s } = fresh();
+  st.apply(pre('Edit', { file_path: '/a/x.js' }), 1000);
+  st.apply(base({ hook_event_name: 'Stop' }), 1100);
+  st.apply(base({ hook_event_name: 'PreCompact', trigger: 'auto' }), 1200);
+  assert.equal(main().activity, 'rest');
+  assert.equal(s().status, 'idle');
+  st.apply(base({ hook_event_name: 'PreCompact', trigger: 'manual' }), 1300);
+  assert.equal(main().activity, 'compact');
+  st.apply(base({ hook_event_name: 'PostCompact', trigger: 'manual' }), 1400);
+  assert.equal(main().activity, 'rest');
+});
+
+test('SessionStart(compact): PostCompact 가 없어도 남은 기억 정리 중을 치운다 (FE-65)', () => {
+  const { st, main } = fresh();
+  st.apply(pre('Edit', { file_path: '/a/x.js' }), 1000);
+  st.apply(base({ hook_event_name: 'PreCompact', trigger: 'auto' }), 1100);
+  st.apply(base({ hook_event_name: 'SessionStart', source: 'compact' }), 1200);
+  assert.equal(main().activity, 'think');
+});
+
 test('SessionEnd: 모두 퇴근, 10초 뒤 세션 제거, 빈 층도 제거', () => {
   const { st, removes, s } = fresh();
   st.apply(base({ hook_event_name: 'SessionStart', source: 'startup' }), 1000);

@@ -58,12 +58,12 @@ function web(ctx, o, len, a0, a1) {
     ctx.stroke();
   }
 }
-/** 벽을 따라 늘어진 줄 + 깃발/전구. pts: 화면 점들, each(x, y, k) 로 매단 것을 그린다 */
-function garland(ctx, pts, color, each) {
+/** 벽을 따라 늘어진 줄 + 깃발/전구. pts: 화면 점들, each(x, y, k) 로 매단 것을 그린다. k0: 첫 번째 것의 번호 (한 칸씩 나눈 줄) */
+function garland(ctx, pts, color, each, k0 = 0) {
   ctx.strokeStyle = color; ctx.lineWidth = 0.8; ctx.beginPath();
   pts.forEach((p, i) => { if (!i) ctx.moveTo(p.x, p.y); else ctx.quadraticCurveTo((p.x + pts[i - 1].x) / 2, (p.y + pts[i - 1].y) / 2 + 7, p.x, p.y); });
   ctx.stroke();
-  let k = 0;
+  let k = k0;
   for (let i = 0; i < pts.length - 1; i++) for (const t of [0.2, 0.5, 0.8]) {
     const a = pts[i], b = pts[i + 1];
     each(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t + 7 * 4 * t * (1 - t) * 0.5, k++);
@@ -140,7 +140,7 @@ const DRAW = {
     if (it.dir === 'h') web(ctx, P(it.x, it.y + 0.11, 1.6), 30, 0.2, 2.9);
     else web(ctx, P(it.x + 0.11, it.y, 1.6), 30, 0.2, 2.9);
   },
-  hbunting(ctx, it) { garland(ctx, wallPoints(it), '#2a1f3a', (x, y, k) => flag(ctx, x, y, k % 2 ? '#8a4fd1' : '#ff8a1f')); },
+  hbunting(ctx, it) { garland(ctx, wallPoints(it), '#2a1f3a', (x, y, k) => flag(ctx, x, y, k % 2 ? '#8a4fd1' : '#ff8a1f'), it.k0); },
 
   // ---------- 크리스마스 ----------
   xmastree(ctx, it, now) {
@@ -225,7 +225,7 @@ const DRAW = {
       const on = Math.floor(now / 600 + k) % 2 === 0, col = BULB[k % 4];
       if (on) glow(ctx, { x, y }, 8, col === '#ff4d4d' ? '255,77,77' : col === '#ffd34d' ? '255,211,77' : col === '#4dd17a' ? '77,209,122' : '77,166,255', 0.7);
       ctx.fillStyle = on ? col : shade(col, 0.55); ctx.beginPath(); ctx.ellipse(x, y + 2, 1.7, 2.4, 0, 0, Math.PI * 2); ctx.fill();
-    });
+    }, it.k0);
   },
 
   // ---------- 여름휴가 ----------
@@ -290,7 +290,7 @@ const DRAW = {
     ctx.lineWidth = 5.5;
     for (let i = 0; i < 8; i++) { ctx.strokeStyle = i % 2 ? '#ffffff' : '#ff5a4a'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 8.5, 10, 0, i * Math.PI / 4, (i + 1) * Math.PI / 4); ctx.stroke(); }
   },
-  bunting(ctx, it) { const C = ['#ff7a59', '#ffd34d', '#22a7c4', '#5ac487', '#e48bb4']; garland(ctx, wallPoints(it), '#6a7a80', (x, y, k) => flag(ctx, x, y, C[k % 5])); },
+  bunting(ctx, it) { const C = ['#ff7a59', '#ffd34d', '#22a7c4', '#5ac487', '#e48bb4']; garland(ctx, wallPoints(it), '#6a7a80', (x, y, k) => flag(ctx, x, y, C[k % 5]), it.k0); },
 
   // ---------- 바닥에 까는 것 (FE-63): 바닥 캐시에 그린다 ----------
   rugweb(ctx, it) { // 거미줄 무늬 둥근 러그
@@ -354,11 +354,12 @@ export function drawDecor(ctx, it, now = 0) {
   if (fn) fn(ctx, it, now);
 }
 
-/** 깊이 정렬용 상자 (타일 단위). 벽 소품은 벽 앞면에 얇게, 나는 것은 높이 */
+/** 깊이 정렬용 상자 (타일 단위). 벽 소품은 벽 앞면에 바닥까지 얇은 판으로 (벽 조각처럼), 나는 것은 높이.
+ *  벽 소품을 공중에 띄우면 그 아래 낮은 가구보다 "위 = 앞" 이 되어 정렬에 순환이 생기고, 순환에 걸린 캐릭터는 줄 뒤로 그려진다 (FE-65) */
 export function decorBox(it) {
   const z1 = DECOR_HEIGHT[it.type] || 1;
   if (it.kind === 'wall') {
-    const len = it.len || 1, z0 = it.type === 'cobweb' ? 1.2 : it.z ? it.z - 0.35 : 0.9;
+    const len = it.len || 1, z0 = 0;
     if (it.z) return it.dir === 'h' ? { x0: it.x, y0: it.y + 0.07, x1: it.x + len, y1: it.y + 0.12, z0, z1: it.z + 0.05 } : { x0: it.x + 0.07, y0: it.y, x1: it.x + 0.12, y1: it.y + len, z0, z1: it.z + 0.05 };
     return it.dir === 'h' ? { x0: it.x, y0: it.y + 0.11, x1: it.x + len, y1: it.y + 0.16, z0, z1 } : { x0: it.x + 0.11, y0: it.y, x1: it.x + 0.16, y1: it.y + len, z0, z1 };
   }

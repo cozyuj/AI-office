@@ -129,7 +129,8 @@ export function planDecor(theme, data) {
         const open = i === w.len || w.doors.includes(i);
         if (!open && start === null) start = i;
         if (open && start !== null) {
-          if (i - start >= 2) out.push({ type: set.garland, x: w.dir === 'h' ? w.x + start : w.x, y: w.dir === 'h' ? w.y : w.y + start, len: i - start, dir: w.dir, z: w.h, outer: !!w.outer, rail: !!w.rail, seed: (w.x + w.y + start) % 5, kind: 'wall' });
+          // 한 칸씩 나눈다: 벽 길이만 한 상자 하나는 깊이 정렬에 순환을 만들어 줄이 캐릭터 위로 그려진다 (FE-65). k0: 깃발 색 순서를 이어 가는 번호
+          if (i - start >= 2) for (let j = start; j < i; j++) out.push({ type: set.garland, x: w.dir === 'h' ? w.x + j : w.x, y: w.dir === 'h' ? w.y : w.y + j, len: 1, k0: (j - start) * 3, dir: w.dir, z: w.h, outer: !!w.outer, rail: !!w.rail, seed: (w.x + w.y + start) % 5, kind: 'wall' });
           start = null;
         }
       }

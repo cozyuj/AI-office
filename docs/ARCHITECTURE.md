@@ -9,7 +9,7 @@ Claude Code 세션이 지금 무엇을 하는지 아이소메트릭 사무실 �
 
 ```
 Claude Code 세션 (여러 터미널, 여러 프로젝트, 워크트리)
-  │  ~/.claude/settings.json hooks (11개 이벤트)
+  │  ~/.claude/settings.json hooks (12개 이벤트)
   ▼
 hooks/emit.js            stdin JSON → POST 127.0.0.1:<port>/hook (Node 만 사용, 1초 타임아웃, 항상 exit 0)
   │
@@ -105,7 +105,8 @@ Claude Code 2.1.x 훅 payload 기준. 서브에이전트가 낸 도구 호출은
 | Notification(elicitation_*, agent_needs_input) | main | mydesk | ask | message 앞 40자 | status=waiting |
 | PreToolUse(AskUserQuestion) | main | mydesk | ask | "질문 있어요" | status=waiting |
 | Stop | main | 휴식 방* | rest | "휴식 중" / "커피 마시는 중" / "바람 쐬는 중" | status=idle. last_assistant_message 앞 60자 + 간 곳 로그 |
-| PreCompact | main | 현재 위치 | compact | "기억 정리 중" | |
+| PreCompact | main | 현재 위치 | compact | "기억 정리 중" | 쉬는 중 자동 압축(백그라운드)은 기록만 |
+| PostCompact | main | 원래대로 | think / rest | | 기억 정리 중일 때만. SessionStart(compact)도 같은 정리 |
 | TaskCompleted | – | – | – | – | 로그만 ("✅ {task_subject}") |
 | SessionEnd | 세션 | elevator | leave | "퇴근" | status=ended, 10초 뒤 세션 제거 |
 
@@ -222,7 +223,7 @@ public/
 |---|---|
 | `bin/ai-office.js` | `ai-office` (설치 + 훅 등록 + 서버 + 브라우저), `install [--force]`, `install-hooks`, `uninstall-hooks`, `start`, `demo`, `doctor`, `compact` |
 | `hooks/emit.js` | 훅 명령. stdin → POST. 실패 무시 (`emit.sh` 는 예전 curl 버전. 등록돼 있으면 install-hooks 가 emit.js 로 바꾼다) |
-| `scripts/install-hooks.js` | `settings.json` 백업 후 11개 이벤트에 emit.js 항목 병합, 이미 있으면 건너뜀, `--remove` 로 제거 |
+| `scripts/install-hooks.js` | `settings.json` 백업 후 12개 이벤트에 emit.js 항목 병합, 이미 있으면 건너뜀, `--remove` 로 제거 |
 | `lib/nodepath.js` | 훅 명령에 넣을 Node 경로: `~/.ai-office/node` > Homebrew Cellar 버전 폴더 → 버전 없는 opt 링크 > 현재 Node. Node 를 업그레이드해도 훅이 안 깨지게 |
 | `scripts/demo.js` | 가짜 세션들이 읽기→검색→실행→수정→서브에이전트→질문→휴식 시나리오를 반복 POST |
 | `scripts/bump-version.js` | 버전을 package.json · app/package.json · tauri.conf.json · Cargo.toml 에 동시 반영 (`npm run bump:patch|minor`) |

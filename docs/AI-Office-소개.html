@@ -94,7 +94,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <dt>서버</dt><dd>Node.js 18+ · <code>http</code> 표준 모듈만 · 상태 머신 + JSONL 저널 · SSE 푸시</dd>
   <dt>프런트</dt><dd>바닐라 ES 모듈 · Canvas 2D 아이소메트릭 렌더러(빌드 없음, 번들러 없음) · 캐릭터는 미리 구운 webp 스프라이트 시트(Kenney Mini Characters, CC0), 머리·몸통 레이어를 겹치고 음영 마스크로 색을 칠함 · 폰트 D2Coding + NanumSquare</dd>
   <dt>데스크톱 앱</dt><dd>Tauri 2 (Rust) 메뉴바·트레이 앱 · macOS(Apple Silicon)·Windows(x64) · Node 22.12 사이드카 번들 · tauri-plugin-updater 자동 업데이트(서명 검증)</dd>
-  <dt>입력</dt><dd>Claude Code 훅 11종 등록 (<code>~/.claude/settings.json</code>, <code>hooks/emit.js</code> 가 POST). 상태 머신은 TaskCompleted 까지 12종을 처리</dd>
+  <dt>입력</dt><dd>Claude Code 훅 12종 등록 (<code>~/.claude/settings.json</code>, <code>hooks/emit.js</code> 가 POST). 상태 머신은 TaskCompleted 까지 13종을 처리</dd>
   <dt>배포</dt><dd>npm <code>claude-ai-office</code> · Homebrew tap <code>cozyuj/tap</code>(cask <code>ai-office</code>, formula <code>claude-ai-office</code>) · GitHub Release(DMG·NSIS·<code>latest.json</code>, 고정 이름 링크)</dd>
   <dt>CI</dt><dd>GitHub Actions: push·PR 마다 Ubuntu·Windows·macOS 테스트, 태그 <code>v*</code> 마다 맥·Windows 앱 빌드·서명·릴리스 + Windows 설치 스모크</dd>
   <dt>화면 언어</dt><dd><code>public/js/i18n.js</code>: 한국어 원문 + 영어 사전·패턴 규칙, DOM 은 MutationObserver, 캔버스는 <code>tr()</code></dd>
@@ -125,7 +125,7 @@ footer { margin-top: 48px; font-size: 12.5px; color: var(--muted); border-top: 1
   <rect class="box" x="32" y="192" width="196" height="54"/><text class="t" x="44" y="214">claude 세션 C</text><text class="s" x="44" y="234">~/proj-b</text>
   <rect class="box" x="32" y="262" width="196" height="54"/><text class="t" x="44" y="284">훅: hooks/emit.js</text><text class="s" x="44" y="304">POST /hook · 1초 타임아웃 · exit 0</text>
   <!-- 설정 파일 -->
-  <rect class="box" x="32" y="350" width="196" height="46"/><text class="t" x="44" y="370">~/.claude/settings.json</text><text class="s" x="44" y="388">훅 11종 등록 (install-hooks.js)</text>
+  <rect class="box" x="32" y="350" width="196" height="46"/><text class="t" x="44" y="370">~/.claude/settings.json</text><text class="s" x="44" y="388">훅 12종 등록 (install-hooks.js)</text>
   <!-- 서버 -->
   <rect class="grp" x="300" y="30" width="330" height="366"/><text class="gt" x="312" y="22">LOCAL SERVER · node server.js · :4777</text>
   <rect class="box acc" x="318" y="52" width="294" height="60"/><text class="t" x="330" y="74">lib/state.js 상태 머신</text><text class="s" x="330" y="94">floors → sessions → agents · sweep() 1초</text>
@@ -241,6 +241,7 @@ LogEntry{ t, floorId, sessionId, agentId, agentName, icon, text }   // 최근 50
 <tr><td>PreToolUse(AskUserQuestion)</td><td>main</td><td>mydesk</td><td>ask</td><td>"질문 있어요". status=waiting → 브라우저 알림·소리·탭 배지</td></tr>
 <tr><td>Stop</td><td>main</td><td>휴식 방*</td><td>rest</td><td>휴게실 "휴식 중" / 카페 "커피 마시는 중" / 테라스 "바람 쐬는 중". status=idle</td></tr>
 <tr><td>PreCompact</td><td>main</td><td>현재 위치</td><td>compact</td><td>"기억 정리 중"</td></tr>
+<tr><td>PostCompact</td><td>main</td><td>원래대로</td><td>think / rest</td><td>기억 정리 중일 때만</td></tr>
 <tr><td>TaskCompleted</td><td>–</td><td>–</td><td>–</td><td>로그만 "✅ {task_subject}"</td></tr>
 <tr><td>SessionEnd</td><td>세션</td><td>elevator</td><td>leave</td><td>status=ended, 10초 뒤 세션 제거. 마지막 세션이면 층도 제거</td></tr>
 </table></div>
