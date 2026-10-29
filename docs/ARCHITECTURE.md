@@ -77,7 +77,9 @@ RoomId = 'library' | 'dev' | 'research' | 'server' | 'meeting' | 'lounge' | 'caf
          // cafe/terrace 는 서버의 "휴식 방" id. 층 레이아웃이 실제 편의시설(헬스장·구내식당 …)로 별칭한다 (6절)
 ```
 
-세션 생명주기 (sweep 은 1초마다, transcript stat 은 세션당 1분에 한 번)
+세션 생명주기 (sweep 은 1초마다, transcript stat 은 세션당 1분에 한 번, 일하는 중·답 기다림이면 10초)
+- 허락 요청·질문(waiting)은 도구가 끝나면(PostToolUse) 답을 받은 것으로 보고 고민 중으로 → Dock·메뉴바 빨간 점이 바로 꺼진다
+- Esc 중단은 Stop 훅이 오지 않는다 → 마지막 훅 뒤 transcript 의 마지막 대화 줄이 `[Request interrupted by user…]` 면 휴식 방으로 "중단됨", 서브에이전트는 퇴근
 - 30분 무활동 → 휴식 방으로 "자리 비움"
 - 10분 무활동부터 transcript 를 확인해 60분 동안 갱신이 없으면 퇴근 처리 (터미널을 그냥 닫은 경우)
 - 2시간 무활동 → 퇴근. SessionEnd 후 10초 뒤 제거

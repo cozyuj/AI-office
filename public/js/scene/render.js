@@ -209,16 +209,17 @@ const srnd = (i, s) => { const x = Math.sin(i * 12.9898 + s * 78.233) * 43758.54
 export function drawThemeBackdrop(ctx, w, h, now) {
   const t = MAP.SKIN;
   if (!t) return;
-  const sky = { halloween: ['#1a1230', '#2e1a3e'], christmas: ['#16203a', '#2a2346'], summer: ['#8fd3f4', '#dff4fb'] }[t];
+  const night = t !== 'summer' || MAP.THEME === 'dark'; // 다크 모드의 여름은 어두운 바닥에 맞춰 여름밤 하늘
+  const sky = { halloween: ['#1a1230', '#2e1a3e'], christmas: ['#16203a', '#2a2346'], summer: night ? ['#0d2342', '#1f4a6e'] : ['#8fd3f4', '#dff4fb'] }[t];
   const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
   const sec = now / 1000;
-  if (t !== 'summer') for (let i = 0; i < 110; i++) { // 별
+  if (night) for (let i = 0; i < 110; i++) { // 별
     const tw = 0.35 + 0.5 * Math.abs(Math.sin(sec * 0.8 + i));
     ctx.fillStyle = `rgba(255,245,225,${tw * 0.8})`; ctx.fillRect(srnd(i, 1) * w, srnd(i, 2) * h, 1 + (i % 3 === 0), 1 + (i % 3 === 0));
   }
   const mx = w * 0.86, my = h * 0.14;
-  if (t === 'halloween' || t === 'christmas') { // 달
+  if (night) { // 달
     const r = Math.min(w, h) * (t === 'halloween' ? 0.07 : 0.045);
     const gl = ctx.createRadialGradient(mx, my, r * 0.6, mx, my, r * 3.2); gl.addColorStop(0, 'rgba(255,236,190,0.35)'); gl.addColorStop(1, 'rgba(255,236,190,0)');
     ctx.fillStyle = gl; ctx.fillRect(mx - r * 3.2, my - r * 3.2, r * 6.4, r * 6.4);
@@ -235,7 +236,13 @@ export function drawThemeBackdrop(ctx, w, h, now) {
     const ph = (sec / (9 + srnd(i, 6) * 6) + srnd(i, 7)) % 1, x = srnd(i, 8) * w + Math.sin(sec * 0.7 + i) * 14, y = ph * (h + 20) - 10;
     ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(x, y, 1.2 + (i % 3) * 0.7, 0, Math.PI * 2); ctx.fill();
   }
-  if (t === 'summer') {
+  if (t === 'summer' && night) for (let i = 0; i < 24; i++) { // 반딧불
+    const x = (srnd(i, 12) * w + Math.sin(sec * 0.3 + i) * 40) % w, y = h * (0.35 + srnd(i, 13) * 0.6) + Math.cos(sec * 0.4 + i * 2) * 20;
+    const a = 0.25 + 0.6 * Math.max(0, Math.sin(sec * 1.3 + i * 1.7));
+    const gl = ctx.createRadialGradient(x, y, 0, x, y, 7); gl.addColorStop(0, `rgba(250,240,150,${a})`); gl.addColorStop(1, 'rgba(250,240,150,0)');
+    ctx.fillStyle = gl; ctx.fillRect(x - 7, y - 7, 14, 14);
+  }
+  if (t === 'summer' && !night) {
     const gl = ctx.createRadialGradient(mx, my, 10, mx, my, Math.min(w, h) * 0.5); gl.addColorStop(0, 'rgba(255,245,190,0.75)'); gl.addColorStop(0.25, 'rgba(255,240,170,0.25)'); gl.addColorStop(1, 'rgba(255,240,170,0)');
     ctx.fillStyle = gl; ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(mx, my, Math.min(w, h) * 0.045, 0, Math.PI * 2); ctx.fill();
