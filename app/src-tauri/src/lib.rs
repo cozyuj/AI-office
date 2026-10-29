@@ -504,6 +504,9 @@ pub fn run() {
                     let dot = n > 0 || update.is_some();
                     if let Some(t) = handle.tray_by_id("main") {
                         let dark = menubar_dark(&t).unwrap_or_else(|| system_dark(&handle));
+                        // 업데이트 뒤 재시작은 새 프로세스가 먼저 떠서 Dock 이 이전 프로세스의 배지를 들고 있다.
+                        // 없음→없음 설정은 무시되므로 처음 한 번은 켰다가 지워서 확실히 비운다 (FE-64)
+                        if last.is_none() && !dot { set_app_badge(&handle, true); }
                         if last != Some((dot, dark)) {
                             let (img, template) = tray_image(dot, dark);
                             let _ = t.set_icon_with_as_template(Some(img), template);

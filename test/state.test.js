@@ -87,12 +87,23 @@ test('PostToolUseFailure: 실패 로그', () => {
   assert.match(updates[1].log.text, /Bash 실패: Exit code 1 Error: boom/);
 });
 
-test('AskUserQuestion 후 PostToolUse 가 와도 ask 상태 유지 (답을 기다리는 중)', () => {
+test('AskUserQuestion 은 답할 때까지 waiting, 답하면(PostToolUse) 다시 고민 중 (FE-64)', () => {
   const { st, main, s } = fresh();
   st.apply(pre('AskUserQuestion', {}), 1000);
-  st.apply(post('AskUserQuestion'), 1100);
   assert.equal(main().activity, 'ask');
   assert.equal(s().status, 'waiting');
+  st.apply(post('AskUserQuestion'), 1100);
+  assert.equal(main().activity, 'think');
+  assert.equal(s().status, 'thinking');
+});
+
+test('허락 요청 → 승인해 도구가 끝나면(PostToolUse) waiting 이 풀린다 (FE-64)', () => {
+  const { st, s } = fresh();
+  st.apply(pre('Bash', { command: 'ls' }), 1000);
+  st.apply(base({ hook_event_name: 'Notification', notification_type: 'permission_prompt', message: 'Bash' }), 1100);
+  assert.equal(s().status, 'waiting');
+  st.apply(post('Bash'), 1200);
+  assert.equal(s().status, 'thinking');
 });
 
 test('서브에이전트: Agent 설명이 이름이 되고, 엘리베이터로 출퇴근, agent_id 로 도구 호출 구분', () => {
