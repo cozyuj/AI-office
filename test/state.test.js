@@ -87,12 +87,23 @@ test('PostToolUseFailure: 실패 로그', () => {
   assert.match(updates[1].log.text, /Bash 실패: Exit code 1 Error: boom/);
 });
 
-test('AskUserQuestion 후 PostToolUse 가 와도 ask 상태 유지 (답을 기다리는 중)', () => {
+test('AskUserQuestion 은 답할 때까지 waiting, 답하면(PostToolUse) 다시 고민 중 (FE-64)', () => {
   const { st, main, s } = fresh();
   st.apply(pre('AskUserQuestion', {}), 1000);
-  st.apply(post('AskUserQuestion'), 1100);
   assert.equal(main().activity, 'ask');
   assert.equal(s().status, 'waiting');
+  st.apply(post('AskUserQuestion'), 1100);
+  assert.equal(main().activity, 'think');
+  assert.equal(s().status, 'thinking');
+});
+
+test('허락 요청 → 승인해 도구가 끝나면(PostToolUse) waiting 이 풀린다 (FE-64)', () => {
+  const { st, s } = fresh();
+  st.apply(pre('Bash', { command: 'ls' }), 1000);
+  st.apply(base({ hook_event_name: 'Notification', notification_type: 'permission_prompt', message: 'Bash' }), 1100);
+  assert.equal(s().status, 'waiting');
+  st.apply(post('Bash'), 1200);
+  assert.equal(s().status, 'thinking');
 });
 
 test('서브에이전트: Agent 설명이 이름이 되고, 엘리베이터로 출퇴근, agent_id 로 도구 호출 구분', () => {
@@ -444,5 +455,63 @@ test('defaultFirstPrompt: isMeta·명령 메시지는 건너뛰고, 이미지로
   fs.writeFileSync(f, line({ type: 'user', message: { content: [{ type: 'text', text: '사진 보고 만들어 줘' }, { type: 'image', data: 'A'.repeat(1500 * 1024) }] } }));
   assert.equal(defaultFirstPrompt(f), '사진 보고 만들어 줘');
   assert.equal(defaultFirstPrompt(path.join(dir, 'none.jsonl')), null);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// ---------- Esc 중단 (FE-64) ----------
+test('Esc 중단: Stop 훅이 없어도 마지막 훅 뒤 transcript 의 중단 기록을 보고 10초 안에 쉬러 간다, 서브에이전트는 퇴근', () => {
+  const { ACTIVE_STAT_MS } = require('../lib/state');
+  let mtime = 900, interrupted = null, reads = 0;
+  const st = createState({ me: 't', statFile: () => ({ mtimeMs: mtime }), titleOf: () => null, firstPromptOf: () => null, interruptedOf: () => { reads++; return interrupted; } });
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '고쳐줘', transcript_path: '/t/s1.jsonl' }), 1000);
+  st.apply(pre('Agent', { description: 'Find', subagent_type: 'Explore' }), 1100);
+  st.apply(base({ hook_event_name: 'SubagentStart', agent_id: 'agent-1', agent_type: 'Explore', transcript_path: '/t/s1.jsonl' }), 1200);
+  st.apply(pre('Bash', { command: 'ls' }), 1300);
+  st.apply(base({ hook_event_name: 'Notification', notification_type: 'permission_prompt', message: 'Bash', transcript_path: '/t/s1.jsonl' }), 1400);
+  st.sweep(1500);
+  assert.equal(reads, 0, 'transcript 가 훅 뒤로 바뀌지 않았으면 읽지 않는다');
+  mtime = 5000; // 사용자가 Esc → transcript 에 중단 기록
+  interrupted = 4900;
+  st.sweep(1500 + ACTIVE_STAT_MS / 2);
+  assert.equal(st.get('s1').status, 'waiting', '10초 간격 전에는 그대로');
+  st.sweep(1500 + ACTIVE_STAT_MS);
+  assert.equal(st.get('s1').status, 'idle');
+  assert.ok(REST_ROOMS.includes(st.get('s1').agents.main.room));
+  assert.equal(st.get('s1').agents.main.bubble, '중단됨');
+  assert.equal(st.get('s1').agents['agent-1'].room, 'elevator');
+  st.sweep(1500 + ACTIVE_STAT_MS + SUBAGENT_LEAVE_MS);
+  assert.equal(st.get('s1').agents['agent-1'], undefined);
+});
+
+test('Esc 중단: 중단 기록이 마지막 훅보다 앞이거나(이미 다시 일함) 쉬는 세션이면 건드리지 않는다', () => {
+  let mtime = 900;
+  const st = createState({ me: 't', statFile: () => ({ mtimeMs: mtime }), titleOf: () => null, firstPromptOf: () => null, interruptedOf: () => 800 });
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: '고쳐줘', transcript_path: '/t/s1.jsonl' }), 1000);
+  mtime = 2000;
+  st.sweep(1500);
+  assert.equal(st.get('s1').status, 'thinking');
+  const st2 = createState({ me: 't', statFile: () => ({ mtimeMs: 9000 }), titleOf: () => null, firstPromptOf: () => null, interruptedOf: () => { throw new Error('쉬는 세션은 읽지 않는다'); } });
+  st2.apply(base({ hook_event_name: 'Stop', transcript_path: '/t/s1.jsonl' }), 3000);
+  st2.sweep(3000 + STAT_INTERVAL_MS);
+  assert.equal(st2.get('s1').status, 'idle');
+});
+
+test('defaultInterrupted: 마지막 대화 줄이 중단 기록이면 그 시각, 그 뒤에 대화가 이어졌으면 null', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { defaultInterrupted } = require('../lib/state');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-int-'));
+  const f = path.join(dir, 't.jsonl');
+  const line = (o) => JSON.stringify(o) + '\n';
+  const asst = line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash' }] }, timestamp: '2026-10-29T00:00:00.000Z' });
+  const stop = (t) => line({ type: 'user', message: { content: [{ type: 'text', text: t }] }, timestamp: '2026-10-29T00:00:05.000Z' });
+  fs.writeFileSync(f, asst + stop('[Request interrupted by user]') + line({ type: 'file-history-snapshot' }));
+  assert.equal(defaultInterrupted(f), Date.parse('2026-10-29T00:00:05.000Z'));
+  fs.writeFileSync(f, asst + stop('[Request interrupted by user for tool use]'));
+  assert.equal(defaultInterrupted(f), Date.parse('2026-10-29T00:00:05.000Z'));
+  fs.writeFileSync(f, stop('[Request interrupted by user]') + line({ type: 'user', message: { content: '다시 해줘' }, timestamp: '2026-10-29T00:01:00.000Z' }));
+  assert.equal(defaultInterrupted(f), null);
+  fs.writeFileSync(f, asst + stop('중단 얘기: [Request interrupted by user] 를 보면'));
+  assert.equal(defaultInterrupted(f), null, '문장 중간은 중단이 아니다');
+  assert.equal(defaultInterrupted(path.join(dir, 'none.jsonl')), null);
   fs.rmSync(dir, { recursive: true, force: true });
 });
