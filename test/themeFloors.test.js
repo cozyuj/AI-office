@@ -91,3 +91,27 @@ test('서버·클라이언트 테마 id 가 같다', async () => {
   const C = await styleP;
   assert.deepEqual(FS.THEME_IDS, C.THEME_IDS);
 });
+
+test('깊이 정렬: 모든 구조 × 테마에서 정적 엔티티에 순환이 없다 — 벽 줄은 한 칸씩 (FE-65)', async () => {
+  const C = await styleP;
+  const M = await mapP;
+  const R = await import('../public/js/scene/render.js');
+  for (const preset of C.PRESET_IDS) for (const t of C.THEME_IDS) {
+    M.setFloorStyle(`${t}/${preset}`);
+    assert.ok(M.DECOR.filter((it) => it.kind === 'wall').every((it) => (it.len || 1) === 1), `${t}/${preset}: 벽 소품은 한 칸`);
+    const order = R.sortEntities([]);
+    // 그린 순서에서 뒤에 오는 것이 앞의 것보다 "뒤"면 순환을 끊느라 순서가 틀린 것
+    let bad = 0;
+    for (let i = 0; i < order.length; i++) for (let j = i + 1; j < order.length; j++) if (R.compare(order[j], order[i]) < 0) bad++;
+    assert.equal(bad, 0, `${t}/${preset}: 깊이 순서가 어긋난 쌍 ${bad}개`);
+    // 자리·휴식 장소에 선 캐릭터: 그보다 뒤에 있는 것(벽 줄 포함)은 모두 먼저 그린다
+    const tiles = [...Object.values(M.SLOTS).flat(), ...Object.values(M.REST_SPOTS).flat().map((r) => r.tile)];
+    for (const [x, y] of tiles) {
+      const A = R.makeEntity({ x0: x + 0.25, y0: y + 0.25, x1: x + 0.75, y1: y + 0.75, z0: 0, z1: 2.2 }, () => {}, { isActor: true });
+      const o = R.sortEntities([A]), k = o.indexOf(A);
+      const over = o.slice(k + 1).filter((e) => R.compare(A, e) > 0).map((e) => e.label);
+      assert.deepEqual(over, [], `${t}/${preset}: (${x},${y}) 캐릭터 위로 그려지는 뒤쪽 것`);
+    }
+  }
+  M.setFloorStyle('warm');
+});

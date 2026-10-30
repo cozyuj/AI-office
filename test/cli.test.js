@@ -67,12 +67,12 @@ test('install-hooks: emit.sh 항목이 있으면 emit.js 명령으로 교체, �
   const run = (...a) => execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'install-hooks.js'), ...a], { env: { ...process.env, CLAUDE_SETTINGS: settings }, encoding: 'utf8' });
   let out = run('--app-dir', ROOT);
   let h = JSON.parse(fs.readFileSync(settings, 'utf8')).hooks;
-  assert.equal(Object.keys(h).length, 11);
+  assert.equal(Object.keys(h).length, 12);
   const stop = h.Stop.flatMap((g) => g.hooks).map((x) => x.command);
   assert.ok(stop.some((c) => c.endsWith('emit.js"')) && !stop.some((c) => c.endsWith('emit.sh')), '교체됨');
   assert.ok(stop.includes('/other/tool --hook'), '다른 훅 유지');
   out = run('--app-dir', ROOT);
-  assert.match(out, /added 0, skipped 11/);
+  assert.match(out, /added 0, skipped 12/);
   run('--remove');
   h = JSON.parse(fs.readFileSync(settings, 'utf8')).hooks;
   assert.deepEqual(h, { Stop: [{ matcher: '', hooks: [{ type: 'command', command: '/other/tool --hook' }] }] });
@@ -98,7 +98,7 @@ test('CLI: install 이 AI_OFFICE_HOME/app 에 복사하고 doctor 가 동작한�
   assert.ok(h.PreToolUse[0].hooks[0].command.includes(path.join(home, 'app', 'hooks', 'emit.js')));
   const doc = execFileSync(process.execPath, [path.join(ROOT, 'bin', 'ai-office.js'), 'doctor'], { env, encoding: 'utf8' });
   assert.match(doc, /node\s+v/);
-  assert.match(doc, /훅 11개 등록/);
+  assert.match(doc, /훅 12개 등록/);
 });
 
 test('install-hooks --node: 지정한 node 경로로 훅 명령을 만든다', () => {
