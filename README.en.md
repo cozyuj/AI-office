@@ -134,6 +134,7 @@ Shortcuts work when no input field has focus.
 |---|---|
 | `0` – `9` | Go to floor number (7 → 7F; for 12F press `1` then `2`) |
 | `←` `→` (or `↑` `↓`) | Previous / next floor |
+| `N` | 🙋 Cycle through sessions waiting for you, longest wait first, and follow them (click the `🙋 Waiting N` badge in the header for the list: floor · title · permission/question · time waited) |
 | `F` | 📍 Follow the selected session's Claude |
 | `A` | Follow the latest session automatically |
 | `O` | 🏢 Building view |
@@ -142,7 +143,7 @@ Shortcuts work when no input field has focus.
 | `S` | Waiting chime |
 | `T` | Light / dark theme |
 | `/` | Focus the log search |
-| `Esc` | Close shortcut panel · customizer · settings · building view → clear search → stop following (one step at a time) |
+| `Esc` | Close shortcut panel · waiting list · customizer · settings · building view → clear search → stop following (one step at a time) |
 | `?` | Shortcut panel |
 
 ## Character looks and names

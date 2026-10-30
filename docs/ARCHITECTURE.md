@@ -55,6 +55,7 @@ Session {
   title: string              // 훅 session_title > transcript 의 마지막 custom-title > 첫 요청 앞부분
   firstPrompt, lastPrompt    // 첫 요청(transcript 앞 1MB 에서 복원), 최근 요청
   status: 'thinking' | 'working' | 'waiting' | 'idle' | 'ended'
+  waitingSince, waitingFor   // 답 기다리기 시작한 시각 · 'permission' | 'question'. 기다리는 동안 처음 값 유지, waiting 이 아니면 null (FE-73, 오래 기다린 순 목록)
   cwd, branch, worktree      // 헤더·툴팁 표시용
   transcriptPath             // 제목 갱신·생존 확인(stat)·기억 용량용
   context: { tokens, limit, pct } | null // 기억 용량 (FE-70). 아래 생명주기 참고

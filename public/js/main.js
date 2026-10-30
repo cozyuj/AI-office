@@ -16,6 +16,7 @@ import { createFloorStylePicker } from './floorStylePicker.js';
 import { layoutOfPreset } from './scene/map.js';
 import { buildLayout, roomLabelIn } from './scene/layouts.js';
 import { attach as attachI18n, setLang, getLang, tr } from './i18n.js';
+import { createWaitQueue } from './waitQueue.js';
 import { createStatsView } from './statsView.js';
 
 const canvas = document.getElementById('office');
@@ -139,6 +140,15 @@ bubblesBtn.onclick = () => store.setBubbleMode(store.bubbleMode === 'selected' ?
 canvas.addEventListener('pointerdown', () => { if (store.followCamera) store.setFollowCamera(false); }); // 드래그하면 따라가기 해제
 store.subscribe((kind) => { if (kind === 'option') renderTools(); });
 renderTools();
+
+// ---------- 🙋 답 기다리는 세션 큐 (FE-73): 고르면 그 층·세션으로 가서 캐릭터를 따라간다 ----------
+const waitQueue = createWaitQueue({
+  onPick: (id) => {
+    if (overview.visible) setOverview(false);
+    store.selectSession(id);
+    if (!store.followCamera) followBtn.click();
+  },
+});
 
 // ---------- 탭 제목 "(7F) ai-office" 고정 + 파비콘 (대기 세션이 있으면 빨간 점) ----------
 const BASE_TITLE = 'AI Office';
@@ -325,13 +335,14 @@ keysModal.addEventListener('click', (e) => { if (e.target === keysModal || e.tar
 
 // ---------- 키보드 단축키 ----------
 let digitBuf = '', digitAt = 0; // 숫자 연타 버퍼 (10층 이상)
-const KEYS_HELP = '숫자 층 번호로 이동 (12F 는 1,2 연타) · ←/→ 이전·다음 층 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기 · ? 이 도움말';
+const KEYS_HELP = '숫자 층 번호로 이동 (12F 는 1,2 연타) · ←/→ 이전·다음 층 · N 답 기다리는 세션 · F 따라가기 · A 자동 따라가기 · D 데모 · O 전체 보기 · B 말풍선 · S 소리 · T 테마 · / 로그 검색 · Esc 닫기 · ? 이 도움말';
 document.addEventListener('keydown', (e) => {
   const t = e.target;
   const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
   const modalOpen = !document.getElementById('customize').classList.contains('hidden');
   if (e.key === 'Escape') {
     if (keysOpen()) { setKeys(false); return; }
+    if (waitQueue.isOpen()) { waitQueue.close(); return; }
     if (modalOpen) { customizer.close(); return; }
     if (settingsOpen()) { setSettings(false); return; }
     if (overview.visible) { setOverview(false); return; }
@@ -355,6 +366,7 @@ document.addEventListener('keydown', (e) => {
   switch (e.key) {
     case 'ArrowLeft': case 'ArrowUp': if (floors.length) store.selectFloor(floors[(idx - 1 + floors.length) % floors.length].id); break;
     case 'ArrowRight': case 'ArrowDown': if (floors.length) store.selectFloor(floors[(idx + 1) % floors.length].id); break;
+    case 'n': case 'N': waitQueue.next(); break;
     case 'f': case 'F': followBtn.click(); break;
     case 'a': case 'A': store.setAutoFollow(!store.autoFollow); break;
     case 'd': case 'D': demoBtn.click(); break;
