@@ -28,6 +28,13 @@
         <div id="head-sub" class="head-sub">훅 이벤트를 기다리는 중</div>
       </div>
       <div class="head-tools seg">
+        <div id="wait-wrap" class="hidden">
+          <button id="wait-btn" class="tool wait-btn">🙋 답 기다림 <b id="wait-count" class="wait-count">0</b></button>
+          <div id="wait-menu" class="wait-menu hidden">
+            <div class="wait-head"><span>오래 기다린 순</span><span class="muted">누르면 그 세션으로 · <kbd>N</kbd> 다음</span></div>
+            <div id="wait-list" class="wait-list"></div>
+          </div>
+        </div>
         <button id="overview-btn" class="tool hidden" title="층을 건물처럼 쌓아 한눈에 (O)">🏢 전체 보기</button>
         <button id="follow-btn" class="tool" title="선택한 세션의 Claude 를 카메라가 따라갑니다 (F)">📍 따라가기</button>
         <div id="settings-wrap">
@@ -127,6 +134,7 @@
     <table class="keys-table">
       <tr><td><kbd>0</kbd>~<kbd>9</kbd></td><td>층 번호로 이동 (7 → 7F, 12F 는 <kbd>1</kbd> <kbd>2</kbd> 연타)</td></tr>
       <tr><td><kbd>←</kbd> <kbd>→</kbd> <span class="muted">(<kbd>↑</kbd> <kbd>↓</kbd>)</span></td><td>이전 · 다음 층</td></tr>
+      <tr><td><kbd>N</kbd></td><td>답 기다리는 세션 차례로 고르기 (오래 기다린 순)</td></tr>
       <tr><td><kbd>F</kbd></td><td>선택한 세션 따라가기 (카메라)</td></tr>
       <tr><td><kbd>A</kbd></td><td>최근 세션 자동으로 따라가기</td></tr>
       <tr><td><kbd>O</kbd></td><td>전체 보기 (건물 단면) ↔ 사무실</td></tr>

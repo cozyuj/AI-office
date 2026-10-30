@@ -102,6 +102,9 @@ const DICT = {
   '드래그로 이동': 'Drag to pan', '휠로 확대': 'wheel to zoom', '캐릭터를 클릭하면 세션 선택': 'click a character to select its session',
   '숫자 층 번호로 이동 (12F 는 1,2 연타)': 'Digits go to a floor number (12F: press 1, 2)', '←/→ 이전·다음 층': '←/→ previous · next floor', 'F 따라가기': 'F follow', 'A 자동 따라가기': 'A auto-follow', 'D 데모': 'D demo', 'O 전체 보기': 'O building view', 'B 말풍선': 'B bubbles', 'S 소리': 'S sound', 'T 테마': 'T theme', '/ 로그 검색': '/ log search', 'Esc 닫기': 'Esc close', '? 이 도움말': '? this help',
   '어디서 무엇을 하나 ': 'Who goes where ',
+  // 답 기다리는 세션 큐 (FE-73)
+  '🙋 답 기다림': '🙋 Waiting', '오래 기다린 순': 'Longest wait first', '누르면 그 세션으로 ·': 'click to jump ·', '다음': 'next', '🔐 허락': '🔐 Permission', '❓ 질문': '❓ Question',
+  '답 기다리는 세션 차례로 고르기 (오래 기다린 순)': 'Cycle through sessions waiting for you (longest wait first)', 'N 답 기다리는 세션': 'N waiting sessions',
 };
 
 // ---------- 패턴 규칙 (템플릿 문자열) ----------
@@ -141,6 +144,7 @@ const RULES = [
   [/^프로젝트 (\d+)개$/, (m) => `${m[1]} project${m[1] === '1' ? '' : 's'}`],
   [/^(\d+)명 근무 중$/, (m) => `${m[1]} at work`],
   [/^(\d+)명 대기$/, (m) => `${m[1]} waiting`],
+  [/^답을 기다리는 세션 (\d+)개 — 가장 오래: (.+) \(N 으로 차례로 고르기\)$/, (m) => `${m[1]} session${m[1] === '1' ? '' : 's'} waiting for you — longest: ${tr(m[2])} (press N to cycle)`],
   [/^(\d+)건$/, (m) => `${m[1]} entries`],
   [/^(\d+) \/ (\d+)건$/, (m) => `${m[1]} / ${m[2]} entries`],
   [/^(\d+)초$/, (m) => `${m[1]}s`],

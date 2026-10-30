@@ -556,3 +556,31 @@ test('백그라운드 훅: 같은 도구의 Post 가 Pre 보다 먼저 적용되
   st.apply(pre('Read', { file_path: '/a/c.js' }, { tool_use_id: 'r2' }), 1300);
   assert.equal(main().activity, 'read', '다음 도구는 그대로');
 });
+
+test('답 기다린 시각·이유 (FE-73): 처음 기다리기 시작한 시각을 두고, 답을 받거나 쉬면 비운다', () => {
+  const { st, s, updates } = fresh();
+  st.apply(base({ hook_event_name: 'SessionStart', source: 'startup' }), 1000);
+  assert.equal(s().waitingSince, null);
+  st.apply(pre('Bash', { command: 'rm -rf build' }), 2000);
+  assert.equal(s().waitingSince, null, '도구 실행만으로는 기다리는 게 아니다');
+  st.apply(base({ hook_event_name: 'Notification', notification_type: 'permission_prompt', message: 'Bash 허락' }), 3000);
+  assert.equal(s().waitingSince, 3000);
+  assert.equal(s().waitingFor, 'permission');
+  assert.equal(updates.at(-1).session.waitingSince, 3000, 'update 로 화면에 보낸다');
+  st.apply(base({ hook_event_name: 'Notification', notification_type: 'permission_prompt', message: '또' }), 4000);
+  assert.equal(s().waitingSince, 3000, '계속 기다리는 동안은 처음 시각');
+  st.apply(post('Bash'), 5000);
+  assert.equal(s().status, 'thinking');
+  assert.equal(s().waitingSince, null);
+  assert.equal(s().waitingFor, null);
+  st.apply(pre('AskUserQuestion', { questions: [{ question: '어느 쪽?' }] }), 6000);
+  assert.equal(s().waitingSince, 6000);
+  assert.equal(s().waitingFor, 'question');
+  st.apply(base({ hook_event_name: 'Stop' }), 7000);
+  assert.equal(s().waitingSince, null);
+  st.apply(base({ hook_event_name: 'Notification', notification_type: 'elicitation_dialog', message: 'MCP 입력' }), 8000);
+  assert.equal(s().waitingFor, 'question');
+  st.sweep(8000 + AWAY_MS);
+  assert.equal(s().status, 'away');
+  assert.equal(s().waitingSince, null, '자리 비움으로 바뀌어도 비운다 → 다음에 기다리면 새 시각');
+});

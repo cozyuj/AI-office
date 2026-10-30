@@ -228,6 +228,18 @@ class Store {
   // ---------- 파생 ----------
   waitingSessions() { return this.sessionsSorted().filter((s) => s.status === 'waiting'); }
   waitingOfFloor(floorId) { return this.waitingSessions().filter((s) => s.floorId === floorId); }
+  /** 답 기다리는 세션을 오래 기다린 순으로 (FE-73). 기다린 시각이 없는 예전 서버면 마지막 활동 시각으로 */
+  waitingQueue() {
+    const since = (s) => s.waitingSince || s.lastActivity || 0;
+    return this.waitingSessions().sort((a, b) => since(a) - since(b) || (a.id < b.id ? -1 : 1));
+  }
+  /** 단축키 N: 지금 고른 세션 다음으로 오래 기다린 세션 (끝이면 처음으로, 대기 목록 밖이면 가장 오래 기다린 세션). 없으면 null */
+  nextWaiting() {
+    const q = this.waitingQueue();
+    if (!q.length) return null;
+    const i = q.findIndex((s) => s.id === this.selectedSessionId);
+    return q[(i + 1) % q.length];
+  }
   floorsSorted() { return [...this.floors.values()].sort((a, b) => b.lastActivity - a.lastActivity); }
   floorsByNo() { return [...this.floors.values()].sort((a, b) => b.no - a.no); }
   sessionsSorted() { return [...this.sessions.values()].sort((a, b) => b.lastActivity - a.lastActivity); }
