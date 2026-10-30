@@ -121,10 +121,31 @@ const LIN = Array.from({ length: 256 }, (_, i) => { const c = i / 255; return c 
 const SRGB = Array.from({ length: 4096 }, (_, i) => { const l = i / 4095; return Math.round(255 * (l <= 0.0031308 ? l * 12.92 : 1.055 * l ** (1 / 2.4) - 0.055)); });
 const toSrgb = (l) => SRGB[Math.min(4095, Math.max(0, Math.round(l * 4095)))];
 const hexLin = (h) => [0, 2, 4].map((i) => LIN[parseInt(h.slice(i, i + 2), 16)]);
-const tints = new Map(); // `${name}|${part}|${색들}` → canvas (최근 것만)
-const TINT_KEEP = 16;
+/**
+ * 색 입힌 레이어 캐시: 최근에 그린 것만 (FE-69). 한 장이 1792×1240 (약 8.9MB) 라
+ * 개수(keep)를 넘거나 idleMs 동안 안 그린 조합은 비운다. 맵 순서 = 최근 사용 순
+ */
+export function createTintCache({ keep = 16, idleMs = 30000, clock = () => performance.now() } = {}) {
+  const map = new Map(); // key → { im, used }
+  function prune(now) {
+    for (const [k, v] of map) { if (map.size > keep || v.used < now - idleMs) map.delete(k); else break; }
+  }
+  return {
+    get(key) {
+      const now = clock(), v = map.get(key);
+      if (v) { v.used = now; map.delete(key); map.set(key, v); }
+      prune(now);
+      return v;
+    },
+    set(key, im) { const v = { im, used: clock() }; map.set(key, v); prune(v.used); return v; },
+    sweep() { prune(clock()); },
+    get size() { return map.size; },
+  };
+}
+const tints = createTintCache();
 /** 레이어 그림과 그 안의 y 시작. 색을 바꿀 게 없거나 마스크가 아직 없으면 원래 시트 */
 function layerOf(name, part, colors) {
+  tints.sweep();
   const im = sheetOf(name);
   if (!im) return null;
   const pi = SHEET.PARTS.indexOf(part);
@@ -132,8 +153,9 @@ function layerOf(name, part, colors) {
   const want = SHEET.MASKS.map((m, mi) => [m, mi]).filter(([m]) => m.part === part && colors[m.id]);
   if (!want.length) return plain;
   const key = `${name}|${part}|${want.map(([m]) => colors[m.id]).join(',')}`;
-  let c = tints.get(key);
-  if (c) { tints.delete(key); tints.set(key, c); return { im: c, y0: 0 }; }
+  const hit = tints.get(key);
+  if (hit) return { im: hit.im, y0: 0 };
+  let c;
   const mask = maskOf(name);
   if (!mask) return plain;
   try {
@@ -157,8 +179,9 @@ function layerOf(name, part, colors) {
     }
     cx.putImageData(out, 0, 0);
   } catch { return plain; }
-  tints.set(key, c);
-  while (tints.size > TINT_KEEP) tints.delete(tints.keys().next().value);
+  const entry = tints.set(key, c);
+  // 다 칠했으면 GPU 쪽 이미지로 바꾸고, 픽셀을 읽느라 CPU 메모리에 둔 작업용 캔버스는 버린다 (FE-69)
+  if (typeof createImageBitmap === 'function') createImageBitmap(c).then((bm) => { entry.im = bm; }).catch(() => {});
   return { im: c, y0: 0 };
 }
 
