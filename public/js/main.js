@@ -16,6 +16,7 @@ import { createFloorStylePicker } from './floorStylePicker.js';
 import { layoutOfPreset } from './scene/map.js';
 import { buildLayout, roomLabelIn } from './scene/layouts.js';
 import { attach as attachI18n, setLang, getLang, tr } from './i18n.js';
+import { createStatsView } from './statsView.js';
 
 const canvas = document.getElementById('office');
 const scene = createScene(canvas, store);
@@ -318,6 +319,8 @@ const keysOpen = () => !keysModal.classList.contains('hidden');
 function setKeys(open) { keysModal.classList.toggle('hidden', !open); }
 document.getElementById('keys-btn').onclick = () => { setSettings(false); setKeys(true); };
 document.getElementById('floor-style-btn').onclick = () => { setSettings(false); if (store.selectedFloorId) floorStylePicker.open(store.selectedFloorId, settingsBtn); };
+const statsView = createStatsView(); // 오늘의 근무 기록 (FE-72)
+document.getElementById('stats-btn').onclick = () => { setSettings(false); statsView.open(); };
 keysModal.addEventListener('click', (e) => { if (e.target === keysModal || e.target.closest('[data-action="close"]')) setKeys(false); }); // 바깥 클릭 · 닫기 버튼
 
 // ---------- 키보드 단축키 ----------

@@ -141,6 +141,7 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 | 층 인테리어 | 지금 보는 층의 인테리어 프리셋·테마 (층 행의 🎨 와 같음) | |
 | 언어 | 한국어 / English. 화면 문구·캔버스 글자·알림이 바뀐다. 세션 제목·프롬프트·Claude 메시지는 쓴 그대로 | |
 | 시간대 조명 | 실제 시각에 따라 창문·테라스·실내 빛이 아침(06~10)·낮(10~17)·저녁(17~20)·밤(20~06)으로 바뀐다. `자동` 외에 `끔` 이나 시간대 하나로 고정 가능 | |
+| 근무 기록 | 📊 오늘의 근무 기록 모달 (아래 참고) | |
 | 단축키 | 키보드 단축키 표 패널 | `?` |
 
 단축키는 입력창에 커서가 없을 때 동작하고, `?` 를 누르면 단축키 패널이 뜹니다(화면 아래 힌트에 마우스를 올려도 보임).
@@ -207,6 +208,18 @@ node bin/ai-office.js            # 또는 npm run install-hooks && npm start
 
 층이 둘 이상이면 헤더에 🏢 **전체 보기**(`O`)가 나타납니다. 층들을 건물처럼 세로로 쌓아, 층마다 미니 사무실 위에 캐릭터 점과 세션 수·상태(`답 기다림` / `작업 중` / `생각 중` / `조용함`)를 보여 줍니다. 층마다 고른 인테리어 스타일이 미니 사무실에도 반영됩니다. 층을 클릭하면 그 층 사무실로 들어갑니다. `Esc` 또는 같은 버튼으로 닫습니다.
 
+## 오늘의 근무 기록
+
+![오늘의 근무 기록](docs/screenshots/fe-72-daily-log.png)
+
+**⚙️ 설정 → 근무 기록 📊 보기…** 를 누르면 하루 동안 세션·프로젝트(층)별로 무엇을 했는지 요약해 보여 줍니다.
+
+- **일한 시간**(생각 중 + 작업 중) · **답 기다린 시간**(허락·질문 대기) · **요청 수**(프롬프트) · **도구 사용**(종류별) · **고친 파일 수**(Edit·Write 한 파일, 중복 제외) · **서브에이전트 수**
+- 맨 위 합계, 프로젝트별·세션별 표(막대: 주황 = 일한 시간, 노랑 = 답 기다림), 도구 종류별 횟수
+- `‹` `›`(또는 `←` `→`)로 어제·그제 … 날짜 이동, **오늘** 로 돌아오기. 오늘 화면은 열려 있는 동안 10초마다 새로 고친다
+
+집계는 서버가 상태가 바뀔 때마다 쌓아 `~/.ai-office/stats/YYYY-MM-DD.json`(로컬 날짜)에 5초마다 묶어 저장하고, 30일이 지난 파일은 지웁니다. 원본 이벤트가 아니라 하루 합계만 남습니다. 데모 세션은 세지 않고, 서버를 다시 켜도 그날 기록에 이어서 쌓입니다(저널 재생은 다시 세지 않음). 서버가 꺼져 있던 동안은 기록되지 않으며, `--no-journal` 로 띄우면 메모리에만 둡니다. API: `GET /api/stats?date=YYYY-MM-DD`(생략하면 오늘).
+
 ## 메뉴바 앱 (Tauri)
 
 웹 버전을 그대로 창에 담은 상주 앱입니다(맥 메뉴바 · Windows 트레이). 앱이 Node 서버를 직접 띄우고(이미 떠 있으면 재사용) 아이콘을 왼쪽이나 오른쪽 클릭하면 메뉴가 뜹니다. 메뉴는 열기 · 숨기기 · 항상 위 · 로그인 시 자동 실행 · 훅 다시 설치 · 업데이트 확인 · 업데이트 적용 · 종료입니다. 답을 기다리는 세션이 있거나 받아 둔 업데이트가 있으면 카카오톡처럼 메뉴바 아이콘과 Dock(Windows 는 작업 표시줄) 아이콘에 **빨간 점**이 뜹니다. 숫자는 없고, 무엇인지는 아이콘에 마우스를 올리면 툴팁으로 보입니다. **로그인 시 자동 실행**은 처음 실행 때 켜지며, 자동으로 켜질 땐 창 없이 메뉴바에만 뜹니다. 메뉴에서 끌 수 있습니다. 창을 닫아도 메뉴바에 남고, 종료하면 서버도 함께 내려갑니다(앱이 강제 종료돼도 서버가 스스로 끝납니다). 앱에는 Node 가 내장되어 있고, 첫 실행 때 서버 파일을 `~/.ai-office/app` 에, Node 를 `~/.ai-office/node` 에 복사하고 그 경로로 훅을 등록하므로 앱을 옮기거나 지워도 훅이 깨지지 않습니다.
@@ -228,10 +241,11 @@ npm run app:build    # app/src-tauri/target/release/bundle/ 에 .app / .dmg
 Claude Code 세션 ─hooks─▶ hooks/emit.js ─POST /hook─▶ server.js ─SSE /events─▶ public/ (canvas)
 ```
 
-- `server.js` 훅 수신, 상태 머신 적용, SSE 중계, 정적 서빙, 데모 켜고 끄기(`/api/demo/start|stop`), 세션 치우기(`DELETE /api/sessions/:id`)
+- `server.js` 훅 수신, 상태 머신 적용, SSE 중계, 정적 서빙, 데모 켜고 끄기(`/api/demo/start|stop`), 세션 치우기(`DELETE /api/sessions/:id`), 근무 기록(`GET /api/stats`)
 - `lib/normalize.js` 훅 payload 축소 + 도구 → 방/말풍선 해석
 - `lib/state.js` 층/세션/캐릭터 상태 머신, `lib/project.js` cwd → git 저장소·브랜치·worktree
 - `lib/journal.js` 이벤트 JSONL 기록(`~/.ai-office/events.jsonl`) + 기동 시 재생, 주기 압축
+- `lib/dailyStats.js` 오늘의 근무 기록: 일별 집계(`~/.ai-office/stats/YYYY-MM-DD.json`, 30일 보관), `GET /api/stats`
 - `public/js/scene/*` 아이소메트릭 맵·가구·캐릭터(스프라이트 `characters.js`, 시트는 `public/assets/characters/`)·A*·카메라·시간대 조명(`daylight.js`)·층 스타일(`floorStyle.js`)
 - `public/js/overview.js` 전체 보기, `customize.js` 캐릭터 고르기 모달, `names.js` 세션별 이름, `panels.js` 좌/우 패널
 - `bin/ai-office.js` CLI, `scripts/install-hooks.js` 훅 등록/제거, `scripts/demo.js` 데모
