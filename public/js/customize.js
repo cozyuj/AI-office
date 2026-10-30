@@ -38,10 +38,8 @@ export function createCustomizer(store, avatars) {
   let armed = null; // 지우기 확인 중인 커스텀 값 (× 를 한 번 더 누르면 지운다)
 
   function targets() {
-    const list = [['me', `${store.me} (나)`], ['claude', 'Claude 기본'], ['sub', '서브에이전트 기본']];
-    const f = store.selectedFloor();
-    if (f) list.push([`floor:${f.id}`, `${f.no}F ${f.name} 의 Claude`]);
-    return list;
+    // Claude 세션은 늘 세션마다 랜덤이라 고를 대상이 아니다 (FE-74)
+    return [['me', `${store.me} (나)`], ['sub', '서브에이전트 기본']];
   }
   const allowAuto = () => target !== 'me';
 

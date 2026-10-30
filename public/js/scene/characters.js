@@ -99,6 +99,13 @@ export function resolveCharacter(v, key = '') {
   return CHARACTERS[h % CHARACTERS.length];
 }
 
+/** Claude 세션은 늘 세션마다 랜덤 (FE-74): key 해시로 12명 중 하나, 같은 층에 이미 있는(taken) 캐릭터면 다음으로. 다 차면 해시 그대로 */
+export function pickCharacter(key = '', taken = new Set()) {
+  const start = CHARACTERS.indexOf(resolveCharacter('auto', key));
+  for (let i = 0; i < CHARACTERS.length; i++) { const c = CHARACTERS[(start + i) % CHARACTERS.length]; if (!taken.has(c)) return c; }
+  return CHARACTERS[start];
+}
+
 // ---------- 시트 불러오기 (브라우저에서만) ----------
 const sheets = new Map(); // 파일 이름 → HTMLImageElement
 function imageOf(file) {

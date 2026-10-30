@@ -13,7 +13,9 @@ test('영어 모드: 방·상태·말풍선·로그 문구를 번역한다', () 
     '자료실': 'Library', '고민 중…': 'thinking…', 'server.js 읽는 중': 'reading server.js', '"TODO" 검색 중': 'searching "TODO"',
     'npm test 실행 중': 'running npm test', '작업 완료 → ☕ 휴게실': 'done → ☕ Lounge', '세션 3개 · 작업 중': '3 sessions · working',
     '세션 1개 · 방금': '1 session · just now', '3분 12초': '3m 12s', '5분 전': '5 min ago', 'nccx (데모)': 'nccx (demo)', 'jinyu (나)': 'jinyu (me)',
+    '기억 용량 78% (156K / 200K 토큰)': 'Context used 78% (156K / 200K tokens)', '(318K / 1M 토큰)': '(318K / 1M tokens)', '기억': 'Memory',
     'Bash 실패: exit 1': 'Bash failed: exit 1', '🙋 질문 있어요': '🙋 I have a question', '· 4초': '· 4s', '헬스장 · 옥상정원': 'Gym · Rooftop Garden',
+    'lib/state.js 을 졸린 판다 도 고치는 중': '졸린 판다 is also editing lib/state.js', '⚠️ server.js 을 abcd1234 도 고치는 중': '⚠️ abcd1234 is also editing server.js', '겹침': 'Overlap',
   };
   for (const [ko, en] of Object.entries(cases)) assert.equal(I.tr(ko), en, ko);
 });
@@ -44,4 +46,14 @@ test('index.html 의 한글 문구는 모두 사전에 있다 (영어 화면에 
   const KEEP = new Set(['한국어']); // 언어 이름은 그 언어로 보인다
   const missing = [...texts].filter((t) => !KEEP.has(t) && /[가-힣]/.test(I.tr(t)));
   assert.deepEqual(missing, []);
+});
+
+test('기억 용량 게이지: 80% 주황 · 90% 빨강, 토큰 표기 (FE-70)', async () => {
+  const C = await import('../public/js/context.js');
+  assert.deepEqual([0, 79, 80, 89, 90, 100].map(C.ctxLevel), ['ok', 'ok', 'warn', 'warn', 'danger', 'danger']);
+  assert.deepEqual([999, 156000, 200000, 1000000, 1250000].map(C.fmtTokens), ['999', '156K', '200K', '1M', '1.3M']);
+  const c = { tokens: 318000, limit: 1000000, pct: 32 };
+  assert.equal(C.ctxLabel(c), '🧠 32%');
+  assert.equal(C.ctxTip(c), '기억 용량 32% (318K / 1M 토큰)');
+  assert.equal(I.tr(C.ctxTip(c)), 'Context used 32% (318K / 1M tokens)');
 });

@@ -125,6 +125,7 @@ Open **⚙️ Settings** in the header. Everything here is stored in this browse
 | Theme floors | `🎨 Pick manually` (default) or `📅 Auto by date` | |
 | Floor interior | Interior preset or theme of the floor you are viewing | |
 | Language | 한국어 / English | |
+| Work log | 📊 Daily work log (below) | |
 | Shortcuts | Keyboard shortcut panel | `?` |
 
 Shortcuts work when no input field has focus.
@@ -151,7 +152,7 @@ Shortcuts work when no input field has focus.
 
 Characters are the 12 [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) (CC0), baked at the office's isometric angle. They walk, sit in rest rooms, type while editing or running commands, and nod with a `!` when waiting for you. Subagents wear a yellow hard hat.
 
-⚙️ Settings → **Character looks** picks one of the 12 for four targets separately: **me / default Claude / default subagent / the Claude of the session you are viewing**. Claude targets default to **Auto** (a different character per session, the same in every browser). 🎲 random (a whole character or a mix of parts), ↺ reset, 🗑 delete the saved choice. Saved in this browser only.
+⚙️ Settings → **Character looks** picks the character for **me** and the **default subagent**. **Claude sessions are always random per session**: one of the 12 by session id hash, skipping characters already on the same floor, so several worktree sessions stay distinguishable. 🎲 random (a whole character or a mix of parts), ↺ reset, 🗑 delete the saved choice. Saved in this browser only.
 
 **Mix parts**: the parts rows in the same window change a character piece by piece — any of the 12 **heads** on any of the 12 **bodies**, **hair / top / bottom colors** (original, a palette, or any color from the picker; the original shading pattern is kept), and an **accessory** (glasses, sunglasses, mask, hearing aid from the Kenney pack). Walking, sitting, typing, nodding and the subagent hard hat all work with mixes.
 
@@ -174,6 +175,18 @@ Characters are the 12 [Kenney Mini Characters](https://kenney.nl/assets/mini-cha
 
 With two or more floors, 🏢 **Building view** (`O`) appears in the header. Floors are stacked like a building, each with a mini office, character dots and the session count and status (`waiting` / `working` / `thinking` / `quiet`). The interior preset of each floor shows in its mini office. Click a floor to enter it; `Esc` or the same button closes the view.
 
+## Daily work log
+
+![Daily work log](docs/screenshots/fe-72-daily-log-en.png)
+
+**⚙️ Settings → Work log 📊 Show…** summarizes a day per session and per project (floor).
+
+- **Time worked** (thinking + working) · **time waiting for you** (permission prompts and questions) · **prompts** · **tool calls** (by tool) · **edited files** (files touched by Edit/Write, counted once) · **subagents**
+- Totals at the top, tables per project and per session (bar: orange = worked, yellow = waiting), and counts per tool
+- `‹` `›` (or `←` `→`) move between days, **Today** jumps back. Today's view refreshes every 10 seconds while open
+
+The server accumulates the totals on every state change and writes them to `~/.ai-office/stats/YYYY-MM-DD.json` (local date) every 5 seconds; files older than 30 days are deleted. Only daily totals are kept, not raw events. Demo sessions are not counted, and a restarted server keeps adding to the same day (journal replay is not counted twice). Time while the server was down is not recorded; with `--no-journal` the totals stay in memory only. API: `GET /api/stats?date=YYYY-MM-DD` (today when omitted).
+
 ## Menu bar app (Tauri)
 
 A resident app that shows the web UI in a window. It starts the Node server itself (or reuses one that is already running) and lives in the menu bar / system tray; left- or right-click the icon for the menu: Open, Hide, Always on top, Launch at login, Reinstall hooks, Check for updates, Apply update and Quit. When a session is waiting for you or an update is ready, a **red dot** appears on the menu bar icon and on the Dock (Windows: taskbar) icon, like a chat app; there is no count, and the tooltip says what it is. **Launch at login** is turned on at first run; when started at login the app stays in the menu bar without a window. You can turn it off from the menu. Closing the window hides it; Quit stops the server too. Node is bundled: on first launch the app copies the server files to `~/.ai-office/app` and the Node binary to `~/.ai-office/node`, then registers the hooks, so moving or deleting the app does not break them.
@@ -195,10 +208,11 @@ npm run app:build    # .app / .dmg / .exe under app/src-tauri/target/release/bun
 Claude Code session ─hooks─▶ hooks/emit.js ─POST /hook─▶ server.js ─SSE /events─▶ public/ (canvas)
 ```
 
-- `server.js` receives hooks, applies the state machine, relays SSE, serves static files, starts/stops the demo (`/api/demo/start|stop`), dismisses sessions (`DELETE /api/sessions/:id`)
+- `server.js` receives hooks, applies the state machine, relays SSE, serves static files, starts/stops the demo (`/api/demo/start|stop`), dismisses sessions (`DELETE /api/sessions/:id`), serves the work log (`GET /api/stats`)
 - `lib/normalize.js` slims hook payloads and maps tools to rooms and bubbles
 - `lib/state.js` floor/session/character state machine, `lib/project.js` cwd → git repository, branch, worktree
 - `lib/journal.js` JSONL event journal (`~/.ai-office/events.jsonl`), replayed on start, compacted hourly
+- `lib/dailyStats.js` daily work log: per-day totals (`~/.ai-office/stats/YYYY-MM-DD.json`, kept 30 days), `GET /api/stats`
 - `public/js/scene/*` isometric map, furniture, characters (`avatar.js`), A*, camera, daylight (`daylight.js`), floor styles (`floorStyle.js`)
 - `public/js/overview.js` building view, `customize.js` customizer, `names.js` per-session names, `panels.js` side panels, `i18n.js` language
 - `bin/ai-office.js` CLI, `scripts/install-hooks.js` hook registration, `scripts/demo.js` demo

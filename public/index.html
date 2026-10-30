@@ -54,6 +54,7 @@
             <div class="settings-row"><span class="settings-label">테마 층</span><select id="theme-mode-select" class="tool" title="할로윈·크리스마스·여름휴가 테마 층 — 직접 고르기는 🎨 에서 층마다, 날짜에 맞춰 자동은 10/15~11/1 할로윈 · 12/1~12/26 크리스마스 · 7/15~8/31 여름휴가 (직접 고른 층은 그대로)"><option value="manual">🎨 직접 고르기</option><option value="season">📅 날짜에 맞춰 자동</option></select></div>
             <div class="settings-row"><span class="settings-label">층 인테리어</span><button id="floor-style-btn" class="tool" title="지금 보는 층의 인테리어 프리셋 (층별 안내의 🎨 와 같음) — 색과 사무실 구조가 바뀝니다">🎨 고르기…</button></div>
             <div class="settings-row"><span class="settings-label">언어</span><select id="lang-select" class="tool" title="화면 언어"><option value="ko">한국어</option><option value="en">English</option></select></div>
+            <div class="settings-row"><span class="settings-label">근무 기록</span><button id="stats-btn" class="tool" title="세션·프로젝트별 하루 요약 — 일한 시간·답 기다린 시간·도구·고친 파일·요청·서브에이전트">📊 보기…</button></div>
             <div class="settings-row"><span class="settings-label">단축키 <kbd>?</kbd></span><button id="keys-btn" class="tool" title="키보드 단축키 표">⌨️ 보기…</button></div>
           </div>
         </div>
@@ -126,6 +127,13 @@
       <div class="cz-options"></div>
     </div>
     <div class="modal-foot"><span class="muted">저장은 이 브라우저에만 남습니다 (localStorage)</span><button class="tool on" data-action="save">저장</button></div>
+  </div>
+</div>
+<div id="stats" class="modal hidden">
+  <div class="modal-card stats-card">
+    <div class="modal-head"><span>📊 오늘의 근무 기록</span><span class="stats-nav"><button class="tool" data-action="prev" title="하루 전 (←)">‹</button><span class="stats-date"></span><button class="tool" data-action="next" title="하루 뒤 (→)">›</button><button class="tool" data-action="today">오늘</button></span><button class="tool" data-action="close">닫기</button></div>
+    <div class="stats-body scroll"></div>
+    <div class="modal-foot"><span class="muted">로컬 날짜 기준 · 데모 제외 · 30일 보관</span></div>
   </div>
 </div>
 <div id="keys" class="modal hidden">

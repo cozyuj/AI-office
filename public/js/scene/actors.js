@@ -7,7 +7,8 @@ import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 import { tr } from '../i18n.js';
-import { drawCharacter, preloadCharacters, OFFICE_HEIGHT } from './characters.js';
+import { drawCharacter, preloadCharacters, pickCharacter, OFFICE_HEIGHT } from './characters.js';
+import { ctxLevel, ctxLabel, CTX_COLOR } from '../context.js';
 
 const SPEED = 3.6;          // 타일/초
 const LEAVE_TIMEOUT = 8000; // 퇴근 중 최대 대기
@@ -114,6 +115,14 @@ function drawPerson(ctx, a, now, character) {
     ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('!', fx, ty + 0.5);
   }
+  // 다른 세션도 같은 파일을 고치는 중 (FE-71): 머리 오른쪽 위 노란 경고 삼각형
+  if (a.conflict) {
+    const wx = fx + 13, wy = fy - OFFICE_HEIGHT - 2;
+    ctx.fillStyle = '#f2b632'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = 1.2; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(wx, wy - 8); ctx.lineTo(wx + 8, wy + 6); ctx.lineTo(wx - 8, wy + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#3a2a00'; ctx.font = `bold 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', wx, wy + 1.5);
+  }
   ctx.restore();
 }
 
@@ -157,6 +166,20 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
   ctx.beginPath(); ctx.arc(s.x - nw / 2 + 8, ny, 2.8, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#2b2f3a';
   ctx.fillText(name, s.x + 4, ny + 0.5);
+  // 기억 용량 게이지 (이름표 오른쪽, FE-70): 글자 + 아래 얇은 막대
+  if (a.context && !a.user) {
+    const c = a.context, level = ctxLevel(c.pct), color = CTX_COLOR[level];
+    ctx.font = `700 8px ${FONT}`;
+    const label = ctxLabel(c);
+    const gw = ctx.measureText(label).width + 10, gx = s.x + nw / 2 + 3;
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = level === 'ok' ? 'rgba(0,0,0,0.1)' : color;
+    ctx.lineWidth = 1;
+    roundRect(ctx, gx, ny - 7.5, gw, 15, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillRect(gx + 3, ny + 4.5, (gw - 6) * Math.min(1, c.pct / 100), 1.5);
+    ctx.fillText(label, gx + gw / 2, ny - 0.5);
+  }
   // 말풍선 (머리 위) — 본체와 꼬리를 한 경로로
   const roam = a.roam && a.roam.spot && a.roam.phase === 'stay' ? a.roam.spot : null; // 휴식 방 명소에 도착하면 그 자리 말풍선
   const amb = (a.ambient && a.ambient.phase !== 'back' ? a.ambient.spot : null) || roam;
@@ -218,6 +241,8 @@ export function createActors(store, scene, avatars) {
       if (!a) {
         const info = { name: store.nameOf(session, agent), color: store.colorOf(session, agent), kind: agent.kind, sessionId: session.id, agentId: agent.id };
         a = new Actor(key, info, [SPAWN.x, SPAWN.y]);
+        // Claude 세션 캐릭터: 세션마다 랜덤, 같은 층에 있는 캐릭터와 겹치지 않게 (FE-74)
+        if (agent.kind !== 'sub') a.character = pickCharacter(session.id, new Set([...actors.values()].filter((o) => !o.dead && o.character).map((o) => o.character)));
         actors.set(key, a);
         if (initial) { const t = slots.acquire(key, agent.room); a.x = t[0]; a.y = t[1]; a.room = agent.room; }
       }
@@ -234,10 +259,12 @@ export function createActors(store, scene, avatars) {
         a.goTo(t);
       }
       a.activity = agent.activity; a.bubble = agent.bubble; a.icon = agent.icon; a.since = agent.since;
+      a.context = agent.kind === 'main' ? session.context || null : null; // 기억 용량은 세션(=Claude) 단위 (FE-70)
       if (agent.activity === 'rest' && agent.bubble === SERVER_REST_BUBBLE[agent.room]) {
         const def = ROOM_DEFS[resolveRoom(agent.room)];
         if (def && def.rest && resolveRoom(agent.room) !== agent.room) { a.bubble = def.rest.bubble; a.icon = def.rest.icon; }
       }
+      a.conflict = agent.kind === 'main' && !!(session.conflicts && session.conflicts.length);
       a.selected = session.id === store.selectedSessionId;
       a.dim = !a.selected;
     }
@@ -257,7 +284,7 @@ export function createActors(store, scene, avatars) {
   function entityOf(a) {
     return makeEntity(
       { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 2.2 },
-      (ctx, t) => drawPerson(ctx, a, t, avatars.forActor(a, floorId)),
+      (ctx, t) => drawPerson(ctx, a, t, avatars.forActor(a)),
       { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor', isActor: true },
     );
   }

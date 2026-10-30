@@ -102,7 +102,7 @@ test('frameOf: 걷기 > 앉기 > 타이핑 > 끄덕임 > 서기, 칸은 행의 �
   }
 });
 
-test('avatarStore: 대상별 저장·기본값, 층 설정 우선, 나는 auto 불가', async () => {
+test('avatarStore: 대상별 저장·기본값, 나는 auto 불가, Claude 세션은 설정과 상관없이 늘 랜덤 (FE-74)', async () => {
   const mem = new Map();
   globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
   const { createAvatarStore } = await import('../public/js/avatarStore.js');
@@ -113,12 +113,10 @@ test('avatarStore: 대상별 저장·기본값, 층 설정 우선, 나는 auto �
   s.set('me', 'auto');
   assert.equal(s.get('me'), 'male-a', '나는 자동이 없다');
   s.set('claude', 'female-b');
-  const claude = { key: 's1/main', kind: 'main' };
-  assert.equal(s.forActor(claude, 'f1'), 'female-b');
-  s.set('floor:f1', 'auto');
-  const onFloor = s.forActor(claude, 'f1');
-  assert.ok(CHARACTERS.includes(onFloor), '층 설정이 auto 면 세션마다');
-  assert.equal(s.forActor(claude, 'f2'), 'female-b', '다른 층은 Claude 기본');
+  s.set('floor:f1', 'male-c');
+  const claude = { key: 's1/main', kind: 'main', sessionId: 's1' };
+  assert.ok(CHARACTERS.includes(s.forActor(claude)), 'Claude·층 설정이 있어도 세션마다 랜덤');
+  assert.equal(s.forActor({ ...claude, character: 'female-e' }), 'female-e', '장면이 고른 캐릭터');
   assert.ok(CHARACTERS.includes(s.forActor({ key: 's1/agent-1', kind: 'sub' }, 'f1')));
   assert.equal(s.forActor({ user: true }, 'f1'), 'male-a');
   s.set('me', 'mix:female-b.male-d.c4532f.-.-.glasses');
@@ -171,7 +169,7 @@ test('커스텀 저장소: 더하기·지우기, 지운 그림을 가리키던 �
   assert.equal(s.customs.list().length, 2);
   assert.equal(s.customs.list()[0].name, '고양이');
   s.set('claude', a.value); s.set('me', b.value); s.set('sub', a.value);
-  assert.equal(s.forActor({ key: 's1/main', kind: 'main' }, 'f1'), a.value, 'Claude 에 커스텀');
+  assert.ok(CHARACTERS.includes(s.forActor({ key: 's1/main', kind: 'main' })), 'Claude 는 커스텀을 골라 둬도 랜덤 (FE-74)');
   assert.equal(s.forActor({ user: true }, 'f1'), b.value, '나에게도 커스텀');
   assert.equal(s.forActor({ key: 's1/agent-1', kind: 'sub' }, 'f1'), a.value, '서브에도 커스텀');
 
@@ -184,7 +182,7 @@ test('커스텀 저장소: 더하기·지우기, 지운 그림을 가리키던 �
   again.customs.remove(a.value);
   assert.ok(notified > 0, '지우면 구독자에게 알린다');
   assert.equal(again.customs.has(a.value), false);
-  assert.equal(again.get('claude'), 'auto', '지운 그림을 쓰던 Claude 는 기본값(자동)');
+  assert.equal(again.get('claude'), 'auto', '지운 그림을 가리키던 예전 Claude 값은 기본값(자동)');
   assert.ok(CHARACTERS.includes(again.forActor({ key: 's1/main', kind: 'main' }, 'f1')));
   assert.equal(again.get('sub'), 'auto');
   assert.equal(again.get('me'), b.value, '남은 그림은 그대로');
@@ -222,4 +220,16 @@ test('색 입힌 레이어 캐시(FE-69): 최근 사용 순으로 개수를 넘�
   now += 15000; c.sweep();
   assert.equal(c.size, 1, '30초 동안 안 그린 c·d 는 비운다');
   assert.equal(c.get('a').im, 'A');
+});
+
+test('pickCharacter(FE-74): 같은 세션은 늘 같은 캐릭터, 같은 층에 있는 캐릭터는 피하고, 12명이 다 차면 해시 그대로', async () => {
+  const { pickCharacter, resolveCharacter, CHARACTERS } = await charsP;
+  assert.equal(pickCharacter('sess-a'), resolveCharacter('auto', 'sess-a'));
+  assert.equal(pickCharacter('sess-a'), pickCharacter('sess-a'));
+  const taken = new Set();
+  for (let i = 0; i < CHARACTERS.length; i++) taken.add(pickCharacter(`s${i % 3}-${i}`, taken));
+  assert.equal(taken.size, CHARACTERS.length, '12명까지는 모두 다르다');
+  assert.equal(pickCharacter('sess-b', taken), resolveCharacter('auto', 'sess-b'), '다 차면 해시');
+  const t1 = new Set([resolveCharacter('auto', 'sess-c')]);
+  assert.notEqual(pickCharacter('sess-c', t1), resolveCharacter('auto', 'sess-c'), '겹치면 다음 캐릭터');
 });

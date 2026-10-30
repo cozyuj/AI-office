@@ -584,3 +584,219 @@ test('답 기다린 시각·이유 (FE-73): 처음 기다리기 시작한 시각
   assert.equal(s().status, 'away');
   assert.equal(s().waitingSince, null, '자리 비움으로 바뀌어도 비운다 → 다음에 기다리면 새 시각');
 });
+
+test('defaultUsage: 마지막 assistant usage 합(input+cache_read+cache_creation), 서브에이전트·synthetic 은 건너뛰고 압축 직후면 postTokens (FE-70)', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { defaultUsage } = require('../lib/state');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-usage-'));
+  const f = path.join(dir, 't.jsonl');
+  const line = (o) => JSON.stringify(o) + '\n';
+  const asst = (input, read, create, extra = {}) => line({ type: 'assistant', message: { model: 'claude-opus-5-5', usage: { input_tokens: input, cache_read_input_tokens: read, cache_creation_input_tokens: create, output_tokens: 999 } }, ...extra });
+  fs.writeFileSync(f, asst(1, 1000, 0) + asst(2, 150000, 7000) + line({ type: 'user', message: { content: [{ type: 'tool_result', content: 'x' }] } }));
+  assert.deepEqual(defaultUsage(f), { tokens: 157002, model: 'claude-opus-5-5', peak: 0 });
+  fs.writeFileSync(f, asst(2, 150000, 7000) + asst(5, 500, 0, { isSidechain: true }) + line({ type: 'assistant', message: { model: '<synthetic>', usage: { input_tokens: 0, output_tokens: 0 } } }));
+  assert.equal(defaultUsage(f).tokens, 157002, '서브에이전트·synthetic 줄은 컨텍스트가 아니다');
+  fs.writeFileSync(f, asst(2, 296000, 0) + line({ type: 'system', subtype: 'compact_boundary', compactMetadata: { trigger: 'auto', preTokens: 296998, postTokens: 13867 } }));
+  assert.deepEqual(defaultUsage(f), { tokens: 13867, model: null, peak: 296998 });
+  // 큰 도구 결과 뒤에 있어도 1MB 까지는 찾는다, 그보다 앞은 읽지 않는다
+  fs.writeFileSync(f, asst(1, 9000, 0) + line({ type: 'user', message: { content: 'y'.repeat(300 * 1024) } }));
+  assert.equal(defaultUsage(f).tokens, 9001);
+  fs.writeFileSync(f, asst(1, 9000, 0) + line({ type: 'user', message: { content: 'y'.repeat(1100 * 1024) } }));
+  assert.equal(defaultUsage(f), null);
+  fs.writeFileSync(f, line({ type: 'user', message: { content: 'hi' } }));
+  assert.equal(defaultUsage(f), null);
+  assert.equal(defaultUsage(path.join(dir, 'none.jsonl')), null);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('contextLimit: 모델 이름에 [1m] 이 있거나 200K 를 넘은 적이 있으면 1M, 아니면 200K (FE-70)', () => {
+  const { contextLimit, CONTEXT_LIMIT, CONTEXT_LIMIT_1M } = require('../lib/state');
+  assert.equal(contextLimit('claude-opus-5-5'), CONTEXT_LIMIT);
+  assert.equal(contextLimit(null), CONTEXT_LIMIT);
+  assert.equal(contextLimit('claude-sonnet-4-5[1m]'), CONTEXT_LIMIT_1M);
+  assert.equal(contextLimit('claude-opus-5-5', 318000), CONTEXT_LIMIT_1M);
+  assert.equal(contextLimit('claude-opus-5-5', 200000), CONTEXT_LIMIT);
+});
+
+test('기억 용량: 훅이 오면 sweep 에서 읽어 context 를 붙이고, 세션당 읽기는 15초 간격, 1M 은 압축 뒤에도 유지 (FE-70)', () => {
+  const { CONTEXT_READ_MS } = require('../lib/state');
+  let usage = { tokens: 160000, model: 'claude-opus-5-5', peak: 0 };
+  let reads = 0;
+  const st = createState({ statFile: () => ({ mtimeMs: 1 }), usageOf: () => { reads++; return usage; } });
+  const updates = [];
+  st.on('update', (u) => updates.push(u));
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: 'hi' }), 1000);
+  assert.equal(reads, 0, '훅 처리 중에는 읽지 않는다 (저널 재생이 transcript 를 수백 번 읽지 않게)');
+  st.sweep(1001);
+  assert.equal(reads, 1);
+  assert.deepEqual(st.get('s1').context, { tokens: 160000, limit: 200000, pct: 80 });
+  assert.equal(updates.at(-1).session.context.pct, 80, '바뀌면 update 로 알린다');
+  // 15초 안의 훅·sweep 은 다시 읽지 않고, 지나면 밀린 것을 한 번 읽는다
+  usage = { tokens: 186000, model: 'claude-opus-5-5', peak: 0 };
+  st.apply(post('Read'), 2000);
+  st.sweep(2001); st.sweep(5000);
+  assert.equal(reads, 1);
+  assert.equal(st.get('s1').context.pct, 80);
+  st.sweep(1001 + CONTEXT_READ_MS);
+  assert.equal(reads, 2);
+  assert.equal(st.get('s1').context.pct, 93);
+  // 새 훅도 transcript 변화도 없으면 읽지 않는다
+  const n = updates.length;
+  st.sweep(1001 + CONTEXT_READ_MS * 3);
+  assert.equal(reads, 2);
+  assert.equal(updates.length, n, '값이 같으면 update 를 보내지 않는다');
+  // 200K 를 넘으면 1M 세션 → 압축 뒤 작아져도 1M 기준
+  usage = { tokens: 318000, model: 'claude-opus-5-5', peak: 0 };
+  st.apply(post('Read'), 100000); st.sweep(100000);
+  assert.deepEqual(st.get('s1').context, { tokens: 318000, limit: 1000000, pct: 32 });
+  usage = { tokens: 14000, model: null, peak: 318000 };
+  st.apply(base({ hook_event_name: 'PostCompact' }), 200000); st.sweep(200000);
+  assert.deepEqual(st.get('s1').context, { tokens: 14000, limit: 1000000, pct: 1 });
+  // 못 읽으면 이전 값 유지
+  usage = null;
+  st.apply(post('Read'), 300000); st.sweep(300000);
+  assert.equal(st.get('s1').context.tokens, 14000);
+});
+
+test('기억 용량: 훅 없이 transcript 만 자라도(긴 응답) stat 주기에 따라간다, transcript 가 없는 세션은 읽지 않는다 (FE-70)', () => {
+  let mtime = 1, reads = 0;
+  const st = createState({ statFile: () => ({ mtimeMs: mtime }), usageOf: () => { reads++; return { tokens: 1000 * reads, model: 'm', peak: 0 }; } });
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: 'hi' }), 1000);
+  st.sweep(1000);
+  assert.equal(st.get('s1').context.tokens, 1000);
+  mtime = 2;
+  st.sweep(1000 + 20000); // 일하는 중 → 10초 stat 에서 변화 발견, 15초 지났으니 바로 읽는다
+  assert.equal(st.get('s1').context.tokens, 2000);
+  st.apply({ session_id: 'demo', cwd: '/demo/x', hook_event_name: 'UserPromptSubmit', prompt: 'hi' }, 30000);
+  st.sweep(30000);
+  assert.equal(st.get('demo').context, null);
+  assert.equal(reads, 2);
+});
+
+// ---------- 동시 수정 경고 (FE-71) ----------
+function overlapRepo() {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-overlap-'));
+  const mk = (root, branch) => { fs.mkdirSync(path.join(root, '.git', 'refs', 'heads'), { recursive: true }); fs.writeFileSync(path.join(root, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`); };
+  const main = path.join(dir, 'office');
+  mk(main, 'main');
+  // worktree: 본 저장소 .git/worktrees/<이름> 을 가리키는 .git 파일
+  const wtGit = path.join(main, '.git', 'worktrees', 'fe');
+  fs.mkdirSync(wtGit, { recursive: true });
+  fs.writeFileSync(path.join(wtGit, 'HEAD'), 'ref: refs/heads/feature/FE\n');
+  const wt = path.join(dir, 'wt', 'office');
+  fs.mkdirSync(wt, { recursive: true });
+  fs.writeFileSync(path.join(wt, '.git'), `gitdir: ${wtGit}\n`);
+  const other = path.join(dir, 'other');
+  mk(other, 'main');
+  for (const r of [main, wt, other]) fs.mkdirSync(path.join(r, 'lib'), { recursive: true });
+  return { dir, main, wt, other, done: () => fs.rmSync(dir, { recursive: true, force: true }) };
+}
+function overlapState() {
+  const st = createState({ me: 'tester', statFile: () => ({ mtimeMs: Number.MAX_SAFE_INTEGER }) });
+  const updates = [];
+  st.on('update', (u) => updates.push(u));
+  const edit = (sid, cwd, file, t, extra = {}) => st.apply({ session_id: sid, cwd, transcript_path: '/x', hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: file }, tool_use_id: `${sid}-${t}`, ...extra }, t);
+  return { st, updates, edit };
+}
+
+test('동시 수정 경고: 다른 worktree 의 두 세션이 같은 상대 경로를 고치면 양쪽에 겹침 + 로그 한 줄 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, updates, edit } = overlapState();
+  st.apply({ session_id: 'a', cwd: r.main, transcript_path: '/x', hook_event_name: 'UserPromptSubmit', prompt: '상태 머신 고치기' }, 900);
+  edit('a', r.main, `${r.main}/lib/state.js`, 1000);
+  assert.deepEqual(st.get('a').conflicts, [], '혼자 고치면 겹침 없음');
+  edit('b', r.wt, `${r.wt}/lib/state.js`, 2000);
+  assert.deepEqual(st.get('b').conflicts, [{ file: 'lib/state.js', otherSessionId: 'a', at: 2000 }]);
+  assert.deepEqual(st.get('a').conflicts, [{ file: 'lib/state.js', otherSessionId: 'b', at: 2000 }]);
+  const warns = st.snapshot().log.filter((e) => e.icon === '⚠️');
+  assert.equal(warns.length, 1);
+  assert.equal(warns[0].sessionId, 'b');
+  assert.equal(warns[0].text, 'lib/state.js 을 상태 머신 고치기 도 고치는 중');
+  assert.ok(updates.some((u) => u.log && u.log.icon === '⚠️'), '경고 로그는 update 로 클라이언트에 간다');
+  assert.ok(updates.some((u) => u.session.id === 'a' && u.session.conflicts.length === 1), '상대 세션도 다시 보낸다');
+  // 같은 파일을 또 고쳐도 로그는 한 번만, 시각은 갱신
+  edit('b', r.wt, `${r.wt}/lib/state.js`, 3000);
+  assert.equal(st.snapshot().log.filter((e) => e.icon === '⚠️').length, 1);
+  assert.equal(st.get('a').conflicts[0].at, 3000);
+  // 다른 파일은 겹치지 않는다
+  edit('b', r.wt, `${r.wt}/lib/other.js`, 3100);
+  assert.equal(st.get('b').conflicts.length, 1);
+  r.done();
+});
+
+test('동시 수정 경고: 다른 저장소의 같은 상대 경로·읽기만 한 파일은 겹침이 아니다 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, edit } = overlapState();
+  edit('a', r.main, `${r.main}/lib/state.js`, 1000);
+  edit('b', r.other, `${r.other}/lib/state.js`, 2000);
+  assert.deepEqual(st.get('a').conflicts, []);
+  assert.deepEqual(st.get('b').conflicts, []);
+  st.apply({ session_id: 'c', cwd: r.wt, transcript_path: '/x', hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: `${r.wt}/lib/state.js` } }, 2100);
+  assert.deepEqual(st.get('c').conflicts, []);
+  assert.deepEqual(st.get('a').conflicts, []);
+  // 상대 경로 file_path 는 세션 cwd 기준
+  edit('d', r.wt, 'lib/state.js', 2200);
+  assert.deepEqual(st.get('d').conflicts.map((c) => c.otherSessionId), ['a']);
+  r.done();
+});
+
+test('동시 수정 경고: 같은 세션·그 서브에이전트가 같은 파일을 고치는 건 겹침이 아니다 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, edit } = overlapState();
+  edit('a', r.main, `${r.main}/lib/state.js`, 1000);
+  edit('a', r.main, `${r.main}/lib/state.js`, 1100);
+  edit('a', r.main, `${r.main}/lib/state.js`, 1200, { agent_id: 'sub1', agent_type: 'general-purpose' });
+  assert.deepEqual(st.get('a').conflicts, []);
+  assert.equal(st.snapshot().log.filter((e) => e.icon === '⚠️').length, 0);
+  // 다른 세션의 서브에이전트는 겹침 (부모 세션으로 친다)
+  edit('b', r.wt, `${r.wt}/lib/state.js`, 1300, { agent_id: 'sub2', agent_type: 'Explore' });
+  assert.deepEqual(st.get('b').conflicts.map((c) => c.otherSessionId), ['a']);
+  assert.deepEqual(st.get('a').conflicts.map((c) => c.otherSessionId), ['b']);
+  r.done();
+});
+
+test('동시 수정 경고: 30분 지난 수정은 겹치지 않고, 겹침도 30분 뒤 · 세션이 끝나면 풀린다 (FE-71)', () => {
+  const { OVERLAP_MS } = require('../lib/state');
+  const r = overlapRepo();
+  const { st, updates, edit } = overlapState();
+  const f = (root) => `${root}/lib/state.js`;
+  edit('a', r.main, f(r.main), 1000);
+  edit('b', r.wt, f(r.wt), 1000 + OVERLAP_MS + 1);
+  assert.deepEqual(st.get('b').conflicts, [], '30분 넘게 지난 수정과는 겹치지 않는다');
+  // 시간 만료
+  edit('c', r.main, f(r.main), 1000 + OVERLAP_MS + 2);
+  assert.equal(st.get('c').conflicts.length, 1);
+  st.sweep(1000 + OVERLAP_MS + 2 + OVERLAP_MS);
+  assert.equal(st.get('c').conflicts.length, 1, '딱 30분까지는 유지');
+  const n = updates.length;
+  st.sweep(1000 + OVERLAP_MS + 3 + OVERLAP_MS);
+  assert.deepEqual(st.get('c').conflicts, []);
+  assert.deepEqual(st.get('b').conflicts, []);
+  assert.ok(updates.slice(n).some((u) => u.session.id === 'c'), '풀리면 클라이언트에 알린다');
+  // 세션 종료
+  const t = 10 * OVERLAP_MS;
+  edit('a', r.main, f(r.main), t);
+  edit('b', r.wt, f(r.wt), t + 1);
+  assert.equal(st.get('a').conflicts.length, 1);
+  st.apply({ session_id: 'b', cwd: r.wt, transcript_path: '/x', hook_event_name: 'SessionEnd', reason: 'exit' }, t + 2);
+  assert.deepEqual(st.get('a').conflicts, [], '상대가 퇴근하면 풀린다');
+  assert.deepEqual(st.get('b').conflicts, []);
+  edit('c', r.main, f(r.main), t + 3);
+  assert.deepEqual(st.get('c').conflicts.map((c) => c.otherSessionId), ['a'], '끝난 세션과는 겹치지 않는다');
+  // 목록에서 치워도 풀린다
+  st.remove('a');
+  assert.deepEqual(st.get('c').conflicts, []);
+  r.done();
+});
+
+test('동시 수정 경고: 세션당 최근 수정 파일은 50개까지만 기억한다 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, edit } = overlapState();
+  for (let i = 0; i < 60; i++) edit('a', r.main, `${r.main}/lib/f${i}.js`, 1000 + i);
+  edit('b', r.wt, `${r.wt}/lib/f0.js`, 2000);
+  assert.deepEqual(st.get('b').conflicts, [], '오래된 기록은 밀려났다');
+  edit('b', r.wt, `${r.wt}/lib/f59.js`, 2001);
+  assert.equal(st.get('b').conflicts.length, 1);
+  r.done();
+});

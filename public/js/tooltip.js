@@ -1,5 +1,6 @@
 // 캐릭터/사람 목록 툴팁. 대상(agent, session)과 앵커 함수를 받아 매 프레임 위치를 갱신한다.
 import { store, ROOM_LABEL, elapsed, timeAgo } from './store.js';
+import { ctxLabel, ctxDetail } from './context.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -19,7 +20,9 @@ export function createTooltip() {
     const prompt = s.lastPrompt || s.firstPrompt || s.title;
     if (prompt) rows.push(['요청', `<span class="tt-prompt tt-prompt-wrap">"${esc(prompt.length > 160 ? prompt.slice(0, 159) + '…' : prompt)}"</span>`]);
     if (a.kind === 'sub' && a.type) rows.push(['종류', esc(a.type)]);
+    if (a.kind === 'main' && s.context) rows.push(['기억', `${ctxLabel(s.context)} <span class="muted">${ctxDetail(s.context)}</span>`]);
     if (s.branch) rows.push(['브랜치', `⎇ ${esc(s.branch)}${s.worktree ? ` <span class="muted">(worktree ${esc(s.worktree)})</span>` : ''}`]);
+    for (const c of store.conflictsOf(s)) rows.push(['겹침', `<span class="tt-warn">⚠️ ${esc(c.text)}</span>`]);
     if (s.cwd) rows.push(['경로', `<span class="tt-v mono">${esc(s.cwd)}</span>`]);
     return `
       <div class="tt-name"><span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : esc((store.nameOf(s, a) || '?')[0])}</span>${esc(store.nameOf(s, a))}${a.kind === 'sub' ? '<span class="sub">서브에이전트</span>' : ''}</div>
