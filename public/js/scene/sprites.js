@@ -236,16 +236,12 @@ const DRAW = {
     faceY(ctx, f.x + 0.2, f.x + 0.8, f.y + 0.88, 0.6, 1.6, '#8b6cff');
     faceY(ctx, f.x + 0.26, f.x + 0.74, f.y + 0.88, 0.9, 1.5, '#d9cfff');
   },
-  rack(ctx, f) {
+  rack(ctx, f, now) {
     const cx = f.x + 0.5, cy = f.y + 0.5;
     shadow(ctx, cx, cy, 0.32, 0.16, 0.16);
     box(ctx, cx - 0.24, cy - 0.24, 0.48, 0.48, 1.9, PURPLE, { top: '#9a86e0', left: '#8a6fd8', right: '#6a4fb8' });
     faceY(ctx, cx - 0.24, cx + 0.24, cy + 0.24, 1.45, 1.6, '#d9cfff');
-    const t = performance.now() / 1000;
-    for (let i = 0; i < 3; i++) {
-      const on = Math.sin(t * (1.3 + ((f.seed || 0) % 4) * 0.3) + i * 1.7 + (f.seed || 0)) > 0;
-      circle(ctx, cx - 0.14 + i * 0.14, cy + 0.24, 1.2, 1.7, on ? '#c8f0d4' : '#ffd27a');
-    }
+    if (now !== null) rackLeds(ctx, f, now ?? performance.now()); // null: 몸체만 (불빛은 장면이 매 프레임 따로, FE-68)
   },
   ac(ctx, f) {
     box(ctx, f.x + 0.15, f.y + 0.15, 0.7, 0.7, 1.85, '#ffffff', { left: '#eceef2', right: '#dcdfe5' });
@@ -536,21 +532,31 @@ const DRAW = {
     box(ctx, cx - 0.24, cy - 0.24, 0.48, 0.48, 0.07, c, { z0: 0.4, top: shade(c, 1.1) });
     box(ctx, cx - 0.24, cy - 0.26, 0.48, 0.07, 0.42, c, { z0: 0.47, top: shade(c, 1.1) });
   },
-  elevator(ctx, f) {
+  elevator(ctx, f, now) {
     box(ctx, f.x, f.y, 1, 0.5, 2.3, '#e6e8ee', { top: '#f3f4f7', left: '#dfe2e8', right: '#cfd3db' });
     const y = f.y + 0.5;
     faceY(ctx, f.x + 0.08, f.x + 0.48, y, 0.02, 2.0, '#b9c3d1');
     faceY(ctx, f.x + 0.52, f.x + 0.92, y, 0.02, 2.0, '#b9c3d1');
     faceY(ctx, f.x + 0.1, f.x + 0.46, y, 0.05, 1.97, '#c8d1dd');
     faceY(ctx, f.x + 0.54, f.x + 0.9, y, 0.05, 1.97, '#c8d1dd');
-    const t = Math.floor(performance.now() / 700) % 2;
+    const t = Math.floor((now ?? performance.now()) / 700) % 2;
     circle(ctx, f.x + 0.5, y, 2.15, 2.5, t ? '#ffb347' : '#e8683a');
   },
 };
 
-export function drawFurniture(ctx, f) {
+/** 서버 랙 불빛 셋 (now: ms) */
+export function rackLeds(ctx, f, now) {
+  const cx = f.x + 0.5, cy = f.y + 0.5, t = now / 1000;
+  for (let i = 0; i < 3; i++) {
+    const on = Math.sin(t * (1.3 + ((f.seed || 0) % 4) * 0.3) + i * 1.7 + (f.seed || 0)) > 0;
+    circle(ctx, cx - 0.14 + i * 0.14, cy + 0.24, 1.2, 1.7, on ? '#c8f0d4' : '#ffd27a');
+  }
+}
+
+/** now: 애니메이션 시각(ms). 없으면 지금. 랙에 null 을 주면 불빛 없이 몸체만 */
+export function drawFurniture(ctx, f, now) {
   const fn = DRAW[f.type];
-  if (fn) fn(ctx, f);
+  if (fn) fn(ctx, f, now);
   else box(ctx, f.x, f.y, f.w || 1, f.d || 1, 0.8, '#cccccc');
 }
 

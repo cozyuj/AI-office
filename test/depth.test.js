@@ -73,3 +73,29 @@ test('공유 스프라이트(FE-39): 같은 키의 정적 엔티티는 기준점
   assert.ok(keyed > 0 && groups.size < keyed / 3, `고유 스프라이트 ${groups.size}개 / 엔티티 ${keyed}개 — 공유가 거의 안 됨`);
   assert.ok(sortEntities([]).every((e) => e.dynamic || e.key), '동적이 아닌 정적 엔티티는 모두 키가 있어야 한다');
 });
+
+test('되풀이 애니메이션(FE-68): 반짝이 소품은 장면별 스프라이트, 매 프레임 그리는 건 유령·박쥐뿐, 전구·엘리베이터 장면은 실제와 같다', async () => {
+  const R = await renderP;
+  const M = await import('../public/js/scene/map.js');
+  // 그리기 호출을 문자열로 기록하는 컨텍스트
+  const rec = () => { const calls = []; return { calls, ctx: new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => { calls.push(`${String(k)}(${a.map((v) => (typeof v === 'number' ? v.toFixed(3) : typeof v)).join(',')})`); return { addColorStop() {} }; }), set: (t, k, v) => { calls.push(`${String(k)}=${v}`); t[k] = v; return true; } }) }; };
+  const phaseTime = ([period, frames], now) => { const step = period / frames; return (Math.floor(now / step) % frames) * step; };
+  for (const style of ['christmas/cool', 'christmas/mint', 'halloween/warm', 'summer/warm']) {
+    M.setFloorStyle(style);
+    R.sortEntities([]);
+    const dyn = new Set(R.STATIC.filter((e) => e.dynamic).map((e) => e.label));
+    assert.ok([...dyn].every((l) => l === 'decor:ghost' || l === 'decor:bat'), `${style}: 매 프레임 그리는 것 ${[...dyn]}`);
+    assert.ok(R.STATIC.filter((e) => e.label === 'rack').every((e) => e.live && !e.dynamic), '랙은 몸체 스프라이트 + 불빛');
+    const xl = new Set(R.STATIC.filter((e) => e.label === 'decor:xlights').map((e) => e.key));
+    assert.ok(xl.size <= 30, `${style}: 전구 줄 스프라이트 종류 ${xl.size}`);
+    // 전구 줄·엘리베이터는 장면 대표 시각으로 그려도 실제 시각과 똑같다 (스프라이트가 화면을 바꾸지 않는다)
+    for (const e of R.STATIC.filter((x) => x.label === 'decor:xlights' || x.label === 'elevator')) {
+      for (const now of [0, 333, 612, 1199, 98765.4]) {
+        const a = rec(), b = rec();
+        e.draw(a.ctx, now); e.draw(b.ctx, phaseTime(e.anim, now));
+        assert.deepEqual(a.calls, b.calls, `${style} ${e.label} @${now}`);
+      }
+    }
+  }
+  M.setFloorStyle('warm');
+});
