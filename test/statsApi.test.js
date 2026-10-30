@@ -52,8 +52,12 @@ test('GET /api/stats: 오늘 집계를 돌려주고, 재시작해도 저널 재�
     assert.equal(sum.projects.length, 1);
     const work1 = sum.totals.workMs;
 
-    await stop(srv); // SIGTERM → 저장
-    assert.ok(fs.existsSync(path.join(home, 'stats', `${sum.date}.json`)), 'stats/YYYY-MM-DD.json 에 저장');
+    // 5초마다 묶어 저장한다. Windows 는 SIGTERM 이 바로 끝내 종료 flush 를 못 믿으니 주기 저장을 기다린다
+    const file = path.join(home, 'stats', `${sum.date}.json`);
+    const saved = () => { try { const r0 = JSON.parse(fs.readFileSync(file, 'utf8')).sessions.st1; return r0.thinkMs + r0.workMs === work1 && r0.prompts === 1; } catch { return false; } };
+    for (let t0 = Date.now(); !saved() && Date.now() - t0 < 8000;) await sleep(200);
+    assert.ok(saved(), 'stats/YYYY-MM-DD.json 에 저장');
+    await stop(srv);
     srv = startServer(port, home);
     assert.ok(await waitPort(port, true), '다시 안 뜸');
     sum = (await get(port, '/api/stats')).json();
