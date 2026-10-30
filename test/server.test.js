@@ -14,7 +14,7 @@ function freePort() { return new Promise((resolve) => { const s = net.createServ
 function portOpen(port) { return new Promise((resolve) => { const c = net.connect(port, '127.0.0.1'); c.once('connect', () => { c.destroy(); resolve(true); }); c.once('error', () => resolve(false)); }); }
 async function waitPort(port, open, ms = 8000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if ((await portOpen(port)) === open) return true; await sleep(150); } return false; }
 function get(port, p) { return new Promise((resolve, reject) => { http.get({ host: '127.0.0.1', port, path: p }, (res) => { let b = ''; res.on('data', (c) => (b += c)); res.on('end', () => resolve(JSON.parse(b))); }).on('error', reject); }); }
-function post(port, p, body) { return new Promise((resolve, reject) => { const req = http.request({ host: '127.0.0.1', port, path: p, method: 'POST', headers: { 'content-type': 'application/json' } }, (res) => { res.resume(); res.on('end', resolve); }); req.on('error', reject); req.end(JSON.stringify(body)); }); }
+function post(port, p, body, headers = {}) { return new Promise((resolve, reject) => { const req = http.request({ host: '127.0.0.1', port, path: p, method: 'POST', headers: { 'content-type': 'application/json', ...headers } }, (res) => { res.resume(); res.on('end', resolve); }); req.on('error', reject); req.end(JSON.stringify(body)); }); }
 function startServer(port, home, extraEnv = {}) {
   const c = spawn(process.execPath, [path.join(ROOT, 'server.js')], { env: { ...process.env, AI_OFFICE_PORT: String(port), AI_OFFICE_HOME: home, CLAUDE_SETTINGS: path.join(home, 'settings.json'), ...extraEnv }, stdio: 'ignore' });
   return c;
@@ -37,6 +37,31 @@ test('데모가 꺼져 있으면 /demo/ 훅은 무시하고 저널에도 남기�
     const journal = fs.existsSync(path.join(home, 'events.jsonl')) ? fs.readFileSync(path.join(home, 'events.jsonl'), 'utf8') : '';
     assert.ok(journal.includes('real1'), '실제 세션은 저널에 남는다');
     assert.ok(!journal.includes('/demo/'), '데모 이벤트는 저널에 없어야 한다');
+  } finally { srv.kill('SIGKILL'); fs.rmSync(home, { recursive: true, force: true }); }
+});
+
+test('백그라운드 훅이 뒤섞여 도착해도 emit.js 시작 시각 순으로 적용한다 (FE-66)', async () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-srv-'));
+  const port = await freePort();
+  const srv = startServer(port, home);
+  try {
+    assert.ok(await waitPort(port, true), '서버가 안 뜸');
+    const base = { session_id: 'ord1', cwd: home, transcript_path: '/x' };
+    const t = Date.now();
+    const ts = (k) => ({ 'x-ai-office-ts': String(t + k) });
+    await post(port, '/hook', { ...base, hook_event_name: 'SessionStart', source: 'startup' }, ts(0));
+    await post(port, '/hook', { ...base, hook_event_name: 'UserPromptSubmit', prompt: 'hi' }, ts(1));
+    // 시작 순서: Pre(Read) → Post(Read) → Pre(Bash). 도착은 Pre(Bash) → Post(Read) → Pre(Read)
+    await post(port, '/hook', { ...base, hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'ls', description: '목록 보기' } }, ts(4));
+    await post(port, '/hook', { ...base, hook_event_name: 'PostToolUse', tool_name: 'Read', tool_input: { file_path: '/a/b.js' } }, ts(3));
+    await post(port, '/hook', { ...base, hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: '/a/b.js' } }, ts(2));
+    let st = await get(port, '/api/state');
+    assert.equal(st.sessions.length, 0, '기다리는 동안은 아직 적용 전');
+    await sleep(600);
+    st = await get(port, '/api/state');
+    const a = Object.values(st.sessions[0].agents)[0];
+    assert.equal(a.activity, 'run', '마지막으로 시작한 Bash 가 남는다');
+    assert.match(a.bubble, /목록 보기/);
   } finally { srv.kill('SIGKILL'); fs.rmSync(home, { recursive: true, force: true }); }
 });
 

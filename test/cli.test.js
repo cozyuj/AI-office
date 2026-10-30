@@ -12,8 +12,8 @@ const ROOT = path.join(__dirname, '..');
 const tmp = (p) => fs.mkdtempSync(path.join(os.tmpdir(), p));
 
 test('emit.js: 서버가 있으면 stdin 을 그대로 POST 한다', async () => {
-  const got = [];
-  const srv = http.createServer((req, res) => { let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => { got.push(JSON.parse(b)); res.writeHead(204).end(); }); });
+  const got = [], stamps = [];
+  const srv = http.createServer((req, res) => { let b = ''; stamps.push(Number(req.headers['x-ai-office-ts'])); req.on('data', (c) => (b += c)); req.on('end', () => { got.push(JSON.parse(b)); res.writeHead(204).end(); }); });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   const port = srv.address().port;
   const t0 = Date.now();
@@ -27,6 +27,7 @@ test('emit.js: 서버가 있으면 stdin 을 그대로 POST 한다', async () =>
   assert.equal(status, 0);
   assert.ok(Date.now() - t0 < 1500);
   assert.deepEqual(got, [{ hook_event_name: 'Stop', session_id: 'x' }]);
+  assert.ok(stamps[0] >= t0 - 5 && stamps[0] <= Date.now(), '프로세스 시작 시각을 헤더로 보낸다 (FE-66)');
 });
 
 test('emit.js: --port 인자가 env 보다 우선한다', async () => {
@@ -71,8 +72,17 @@ test('install-hooks: emit.sh 항목이 있으면 emit.js 명령으로 교체, �
   const stop = h.Stop.flatMap((g) => g.hooks).map((x) => x.command);
   assert.ok(stop.some((c) => c.endsWith('emit.js"')) && !stop.some((c) => c.endsWith('emit.sh')), '교체됨');
   assert.ok(stop.includes('/other/tool --hook'), '다른 훅 유지');
+  const ours = (ev) => h[ev].flatMap((g) => g.hooks).find(isOurs);
+  for (const ev of ['PreToolUse', 'PostToolUse', 'PostToolUseFailure']) assert.equal(ours(ev).async, true, `${ev} 는 백그라운드 (FE-66)`);
+  for (const ev of ['Stop', 'SessionStart', 'SessionEnd', 'UserPromptSubmit']) assert.equal(ours(ev).async, undefined, `${ev} 는 동기`);
   out = run('--app-dir', ROOT);
   assert.match(out, /added 0, skipped 12/);
+  // 예전 설치(동기 PreToolUse)는 백그라운드로 바뀐다
+  const s0 = JSON.parse(fs.readFileSync(settings, 'utf8'));
+  delete s0.hooks.PreToolUse[0].hooks[0].async;
+  fs.writeFileSync(settings, JSON.stringify(s0));
+  assert.match(run('--app-dir', ROOT), /added 1, skipped 11/);
+  assert.equal(JSON.parse(fs.readFileSync(settings, 'utf8')).hooks.PreToolUse[0].hooks[0].async, true);
   run('--remove');
   h = JSON.parse(fs.readFileSync(settings, 'utf8')).hooks;
   assert.deepEqual(h, { Stop: [{ matcher: '', hooks: [{ type: 'command', command: '/other/tool --hook' }] }] });

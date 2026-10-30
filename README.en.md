@@ -37,7 +37,7 @@ That one line (1) copies the app to `~/.ai-office/app`, (2) registers hooks in `
 
 ### Hooks
 
-`scripts/install-hooks.js` registers `node hooks/emit.js` for Claude Code's hook events (SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, SubagentStart, SubagentStop, PreCompact, PostCompact). It needs only Node, no shell or curl (Windows included), and gives up silently within one second when the server is down, so Claude is never blocked.
+`scripts/install-hooks.js` registers `node hooks/emit.js` for Claude Code's hook events (SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, SubagentStart, SubagentStop, PreCompact, PostCompact). It needs only Node, no shell or curl (Windows included), and gives up silently within one second when the server is down, so Claude is never blocked. The per-tool hooks (PreToolUse, PostToolUse, PostToolUseFailure) run in the background (`async: true`) so Claude doesn't wait on them, and the server puts events that arrive out of order back in emit.js start-time order.
 
 ### Port
 
