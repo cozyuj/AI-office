@@ -544,3 +544,15 @@ test('defaultInterrupted: 마지막 대화 줄이 중단 기록이면 그 시각
   assert.equal(defaultInterrupted(path.join(dir, 'none.jsonl')), null);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('백그라운드 훅: 같은 도구의 Post 가 Pre 보다 먼저 적용되면 늦은 Pre 는 캐릭터를 움직이지 않고 기록만 남긴다 (FE-66)', () => {
+  const { st, main } = fresh();
+  st.apply(base({ hook_event_name: 'SessionStart', source: 'startup' }), 1000);
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: 'hi' }), 1100);
+  st.apply(post('Read', { tool_use_id: 'r1' }), 1200);
+  st.apply(pre('Read', { file_path: '/a/b.js' }, { tool_use_id: 'r1' }), 1201);
+  assert.equal(main().activity, 'think', '끝난 도구로 되돌아가지 않는다');
+  assert.ok(st.snapshot().log.some((e) => /b\.js/.test(e.text)), '기록은 남는다');
+  st.apply(pre('Read', { file_path: '/a/c.js' }, { tool_use_id: 'r2' }), 1300);
+  assert.equal(main().activity, 'read', '다음 도구는 그대로');
+});

@@ -11,7 +11,8 @@ Claude Code 세션이 지금 무엇을 하는지 아이소메트릭 사무실 �
 Claude Code 세션 (여러 터미널, 여러 프로젝트, 워크트리)
   │  ~/.claude/settings.json hooks (12개 이벤트)
   ▼
-hooks/emit.js            stdin JSON → POST 127.0.0.1:<port>/hook (Node 만 사용, 1초 타임아웃, 항상 exit 0)
+hooks/emit.js            stdin JSON → POST 127.0.0.1:<port>/hook (Node 만 사용, 1초 타임아웃, 항상 exit 0, 시작 시각을 X-AI-Office-Ts 헤더로)
+lib/reorder.js           시작 시각이 붙은 훅을 300ms 모았다가 그 순서로 적용 (백그라운드 훅의 도착 순서 보정)
   │
   ▼  POST /hook
 server.js (Node 18+, 외부 의존성 0, 127.0.0.1 에만 listen)
@@ -223,7 +224,7 @@ public/
 |---|---|
 | `bin/ai-office.js` | `ai-office` (설치 + 훅 등록 + 서버 + 브라우저), `install [--force]`, `install-hooks`, `uninstall-hooks`, `start`, `demo`, `doctor`, `compact` |
 | `hooks/emit.js` | 훅 명령. stdin → POST. 실패 무시 (`emit.sh` 는 예전 curl 버전. 등록돼 있으면 install-hooks 가 emit.js 로 바꾼다) |
-| `scripts/install-hooks.js` | `settings.json` 백업 후 12개 이벤트에 emit.js 항목 병합, 이미 있으면 건너뜀, `--remove` 로 제거 |
+| `scripts/install-hooks.js` | `settings.json` 백업 후 12개 이벤트에 emit.js 항목 병합, 이미 있으면 건너뜀, `--remove` 로 제거. 도구 훅 3종(PreToolUse · PostToolUse · PostToolUseFailure)은 `async: true` 로 등록해 Claude 가 Node 시작(약 40ms)을 기다리지 않는다 |
 | `lib/nodepath.js` | 훅 명령에 넣을 Node 경로: `~/.ai-office/node` > Homebrew Cellar 버전 폴더 → 버전 없는 opt 링크 > 현재 Node. Node 를 업그레이드해도 훅이 안 깨지게 |
 | `scripts/demo.js` | 가짜 세션들이 읽기→검색→실행→수정→서브에이전트→질문→휴식 시나리오를 반복 POST |
 | `scripts/bump-version.js` | 버전을 package.json · app/package.json · tauri.conf.json · Cargo.toml 에 동시 반영 (`npm run bump:patch|minor`) |

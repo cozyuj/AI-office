@@ -13,6 +13,9 @@ const EVENTS = [
   'PostToolUseFailure', 'Notification', 'Stop', 'SubagentStart', 'SubagentStop', 'PreCompact',
   'PostCompact',
 ];
+// 도구 훅은 한 번 쓸 때마다 두 번씩 불려 Claude 가 Node 시작(약 40ms)을 기다리게 된다 → 백그라운드로 (FE-66).
+// 순서가 뒤바뀌어 도착하는 것은 서버가 시작 시각 순으로 바로잡는다. 드문 이벤트는 그대로 동기
+const ASYNC = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure']);
 
 const SETTINGS = process.env.CLAUDE_SETTINGS || path.join(os.homedir(), '.claude', 'settings.json');
 const argAppDir = (() => { const i = process.argv.indexOf('--app-dir'); return i >= 0 ? process.argv[i + 1] : null; })();
@@ -31,7 +34,10 @@ function isOurs(h) {
   return h && h.type === 'command' && typeof h.command === 'string' && /hooks[\\/]emit\.(js|sh)"?(\s+--port\s+\d+)?\s*$/.test(h.command);
 }
 
-if (require.main !== module) { module.exports = { buildCommand, isOurs }; return; }
+/** 이 이벤트에 등록할 우리 훅 항목 */
+function hookEntry(ev, command = COMMAND) { return ASYNC.has(ev) ? { type: 'command', command, async: true } : { type: 'command', command }; }
+
+if (require.main !== module) { module.exports = { buildCommand, isOurs, hookEntry }; return; }
 
 let settings = {};
 if (fs.existsSync(SETTINGS)) {
@@ -53,12 +59,17 @@ for (const ev of EVENTS) {
     if (kept.length !== groups.length || has) removed++;
     if (kept.length) settings.hooks[ev] = kept; else delete settings.hooks[ev];
   } else if (has) {
-    // 이미 있지만 명령이 다르면(emit.sh → emit.js, 경로 변경) 교체
+    // 이미 있지만 명령이 다르면(emit.sh → emit.js, 경로 변경) 교체. 백그라운드 여부도 맞춘다 (FE-66)
     let replaced = false;
-    for (const g of groups) for (const h of g.hooks || []) if (isOurs(h) && h.command !== COMMAND) { h.command = COMMAND; replaced = true; }
+    const want = hookEntry(ev);
+    for (const g of groups) {
+      (g.hooks || []).forEach((h, i) => {
+        if (isOurs(h) && (h.command !== want.command || !!h.async !== !!want.async)) { const { async: _, ...rest } = h; g.hooks[i] = { ...rest, ...want }; replaced = true; }
+      });
+    }
     if (replaced) added++; else skipped++;
   } else {
-    groups.push({ matcher: '', hooks: [{ type: 'command', command: COMMAND }] });
+    groups.push({ matcher: '', hooks: [hookEntry(ev)] });
     settings.hooks[ev] = groups;
     added++;
   }
@@ -71,5 +82,5 @@ console.log(remove
   ? `removed from ${removed} event(s) → ${SETTINGS}`
   : `added ${added}, skipped ${skipped} (already present) → ${SETTINGS}`);
 console.log(`hook command: ${COMMAND}`);
-module.exports = { buildCommand, isOurs };
+module.exports = { buildCommand, isOurs, hookEntry };
 if (!remove) console.log(`새 Claude Code 세션부터 적용됩니다. 훅 포트: ${argPort || 4777}. 서버: ai-office start${argPort && argPort !== 4777 ? ` --port ${argPort}` : ''}`);

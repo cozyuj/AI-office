@@ -39,7 +39,7 @@ npx claude-ai-office
 
 ### 훅
 
-`scripts/install-hooks.js` 가 Claude Code 의 12개 이벤트(SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, SubagentStart, SubagentStop, PreCompact, PostCompact)에 `node hooks/emit.js` 를 등록합니다. 셸이나 curl 없이 Node 만으로 동작하고(Windows 포함), 서버가 꺼져 있어도 1초 안에 조용히 포기하므로 Claude 를 절대 막지 않습니다.
+`scripts/install-hooks.js` 가 Claude Code 의 12개 이벤트(SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Notification, Stop, SubagentStart, SubagentStop, PreCompact, PostCompact)에 `node hooks/emit.js` 를 등록합니다. 셸이나 curl 없이 Node 만으로 동작하고(Windows 포함), 서버가 꺼져 있어도 1초 안에 조용히 포기하므로 Claude 를 절대 막지 않습니다. 도구를 쓸 때마다 불리는 PreToolUse · PostToolUse · PostToolUseFailure 는 백그라운드(`async: true`)로 돌려 Claude 가 기다리지 않게 하고, 뒤바뀌어 도착하는 순서는 서버가 emit.js 의 시작 시각 순으로 바로잡습니다.
 
 ### 포트
 
