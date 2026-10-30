@@ -130,13 +130,18 @@ export function renderPeople() {
         <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(name)}</span>
         <div class="person-body">
           <div class="person-name">${esc(name)}${a.kind === 'sub' ? '<span class="sub">서브</span>' : ''}<span class="room">${esc(store.roomLabel(a.room, s.floorId))}</span></div>
-          <div class="person-act ellipsis" data-tip="${esc(a.bubble)}">${a.icon || ''} ${esc(a.bubble)} <span class="ago">· ${elapsed(a.since, now)}</span></div>
+          <div class="person-act ellipsis" data-tip="${esc(a.bubble)}">${a.icon || ''} ${esc(a.bubble)} <span class="ago" data-since="${a.since}">· ${elapsed(a.since, now)}</span></div>
         </div>
       </div>`; }).join('')}
     </div>`;
   }).join('');
   $('people-count').textContent = count ? `${count}명 근무 중` : '';
   $('people').innerHTML = html || '<div class="muted" style="padding:6px 8px">이 층에는 아무도 없습니다</div>';
+}
+
+/** 1초마다: 경과 시간 글자만 바꾼다. 목록을 다시 만들지 않아 호버·툴팁이 유지된다 (FE-67) */
+export function tickPeople(now = Date.now()) {
+  for (const el of document.querySelectorAll('#people .ago[data-since]')) el.textContent = `· ${elapsed(Number(el.dataset.since), now)}`;
 }
 
 export function renderLog() {

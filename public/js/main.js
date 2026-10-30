@@ -1,6 +1,6 @@
 // 진입점: SSE 연결 → store 반영 → 패널/장면 갱신 루프.
 import { store } from './store.js';
-import { renderAll, renderHeader, renderPeople, bindPanelEvents } from './panels.js';
+import { renderAll, renderHeader, tickPeople, bindPanelEvents } from './panels.js';
 import { createScene } from './scene/index.js';
 import { createActors } from './scene/actors.js';
 import { project } from './scene/map.js';
@@ -65,19 +65,23 @@ settingsBtn.onclick = (e) => { e.stopPropagation(); setSettings(!settingsOpen())
 document.addEventListener('pointerdown', (e) => { if (settingsOpen() && !document.getElementById('settings-wrap').contains(e.target)) setSettings(false); });
 
 // ---------- 렌더 스케줄 ----------
-const stats = { last: 0, avg: 0, frames: 0, mode: 'active' }; // scene.frame 소요 ms (EMA), mode: active(60fps)|idle(20fps)
+const stats = { last: 0, avg: 0, frames: 0, mode: 'active' }; // scene.frame 소요 ms (EMA), mode: active(60fps)|idle(20fps)|background(10fps)
 let dirty = true;
 store.subscribe((kind) => { dirty = true; if (kind === 'snapshot') setLabels({ me: store.me }); });
 
 const IDLE_FRAME_MS = 1000 / 20; // 움직임이 없을 때 프레임 간격 (숨쉬기·깜빡임은 20fps 로 충분)
+const BACKGROUND_FRAME_MS = 1000 / 10; // 다른 앱을 보며 곁눈질할 때는 더 쉰다 (FE-67)
+let focused = document.hasFocus();
+addEventListener('focus', () => { focused = true; });
+addEventListener('blur', () => { focused = false; });
 let lastDraw = 0;
 function frame(now) {
   if (dirty) { renderAll(); dirty = false; }
   // 적응형 프레임(FE-39): 캐릭터 이동·카메라 조작·따라가기가 없으면 20fps 로 쉰다
   const busy = store.followCamera || scene.camera.active || actors.anyMoving();
-  if (!busy && now - lastDraw < IDLE_FRAME_MS) { requestAnimationFrame(frame); return; }
+  if (!busy && now - lastDraw < (focused ? IDLE_FRAME_MS : BACKGROUND_FRAME_MS)) { requestAnimationFrame(frame); return; }
   lastDraw = now;
-  stats.mode = busy ? 'active' : 'idle';
+  stats.mode = busy ? 'active' : focused ? 'idle' : 'background';
   if (store.followCamera) {
     const a = actors.selectedActor();
     if (a) {
@@ -97,8 +101,8 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
-// 경과 시간 표시는 1초마다 갱신
-setInterval(() => { renderPeople(); }, 1000);
+// 경과 시간 표시는 1초마다 갱신 (글자만)
+setInterval(() => { tickPeople(); }, 1000);
 
 // ---------- SSE ----------
 function connect() {
