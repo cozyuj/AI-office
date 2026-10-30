@@ -108,6 +108,8 @@ const DICT = {
   '드래그로 이동': 'Drag to pan', '휠로 확대': 'wheel to zoom', '캐릭터를 클릭하면 세션 선택': 'click a character to select its session',
   '숫자 층 번호로 이동 (12F 는 1,2 연타)': 'Digits go to a floor number (12F: press 1, 2)', '←/→ 이전·다음 층': '←/→ previous · next floor', 'F 따라가기': 'F follow', 'A 자동 따라가기': 'A auto-follow', 'D 데모': 'D demo', 'O 전체 보기': 'O building view', 'B 말풍선': 'B bubbles', 'S 소리': 'S sound', 'T 테마': 'T theme', '/ 로그 검색': '/ log search', 'Esc 닫기': 'Esc close', '? 이 도움말': '? this help',
   '어디서 무엇을 하나 ': 'Who goes where ',
+  // 기억 용량 (FE-70)
+  '기억': 'Memory',
 };
 
 // ---------- 패턴 규칙 (템플릿 문자열) ----------
@@ -133,6 +135,8 @@ const RULES = [
   [/^세션 종료 \((.+)\)$/, (m) => `session ended (${m[1]})`],
   [/^세션 (startup|resume|clear|compact|\w+)$/, (m) => `session ${m[1]}`],
   [/^기억 정리 \((.+)\)$/, (m) => `compacting memory (${m[1]})`],
+  [/^기억 용량 (\d+)% \((.+) \/ (.+) 토큰\)$/, (m) => `Context used ${m[1]}% (${m[2]} / ${m[3]} tokens)`],
+  [/^\((.+) \/ (.+) 토큰\)$/, (m) => `(${m[1]} / ${m[2]} tokens)`],
   [/^(.+) 출근$/, (m) => `${m[1]} arrived`],
   [/^(.+) 퇴근(: .*)?$/, (m) => `${m[1]} left${m[2] || ''}`],
   [/^(.+) 세션을 목록에서 치우기$/, (m) => `Dismiss this ${tr(m[1])} session`],
