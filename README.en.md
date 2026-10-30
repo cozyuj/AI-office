@@ -150,7 +150,7 @@ Shortcuts work when no input field has focus.
 
 Characters are the 12 [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) (CC0), baked at the office's isometric angle. They walk, sit in rest rooms, type while editing or running commands, and nod with a `!` when waiting for you. Subagents wear a yellow hard hat.
 
-⚙️ Settings → **Character looks** picks one of the 12 for four targets separately: **me / default Claude / default subagent / the Claude of the session you are viewing**. Claude targets default to **Auto** (a different character per session, the same in every browser). 🎲 random (a whole character or a mix of parts), ↺ reset, 🗑 delete the saved choice. Saved in this browser only.
+⚙️ Settings → **Character looks** picks the character for **me** and the **default subagent**. **Claude sessions are always random per session**: one of the 12 by session id hash, skipping characters already on the same floor, so several worktree sessions stay distinguishable. 🎲 random (a whole character or a mix of parts), ↺ reset, 🗑 delete the saved choice. Saved in this browser only.
 
 **Mix parts**: the parts rows in the same window change a character piece by piece — any of the 12 **heads** on any of the 12 **bodies**, **hair / top / bottom colors** (original, a palette, or any color from the picker; the original shading pattern is kept), and an **accessory** (glasses, sunglasses, mask, hearing aid from the Kenney pack). Walking, sitting, typing, nodding and the subagent hard hat all work with mixes.
 
