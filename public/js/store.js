@@ -293,6 +293,14 @@ class Store {
     const s = this.sessions.get(e.sessionId);
     return s && e.agentId === 'main' ? this.names.nameOf(s.id) : e.agentName;
   }
+  /** 동시 수정 경고 (FE-71): 세션의 겹침 → [{ file, who, title, text }] (who 는 상대 세션 캐릭터 이름) */
+  conflictsOf(session) {
+    return (session && session.conflicts || []).map((c) => {
+      const o = this.sessions.get(c.otherSessionId);
+      const who = o ? this.names.nameOf(o.id) : c.otherSessionId.slice(0, 8);
+      return { file: c.file, who, title: o ? o.title || o.id.slice(0, 8) : '', text: `${c.file} 을 ${who} 도 고치는 중` };
+    });
+  }
   setName(sessionId, name) { this.names.set(sessionId, name); this.emit('option'); }
   rerollName(sessionId) { this.names.reroll(sessionId); this.emit('option'); }
 

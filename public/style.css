@@ -247,6 +247,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .people-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px 2px; font-size: 11px; }
 .people-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #444; }
 .people-group .person.selected { background: transparent; }
+.people-warn { margin: 1px 8px 3px; padding: 2px 7px; border-radius: 6px; font-size: 11px; color: #7a5200; background: #fff4d6; border: 1px solid #f2d48a; }
+.tooltip .tt-warn { color: #b07a00; }
+:root[data-theme="dark"] .people-warn, :root:not([data-theme="light"]).auto-dark .people-warn { color: #f2d48a; background: #3a3220; border-color: #6b5524; }
 .people-group .person { padding: 5px 8px; }
 .log-item { border-left: 3px solid transparent; padding-left: 6px; }
 .log-item.cont { border-bottom: 0; padding-top: 0; }
