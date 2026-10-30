@@ -8,6 +8,7 @@ import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 import { tr } from '../i18n.js';
 import { drawCharacter, preloadCharacters, OFFICE_HEIGHT } from './characters.js';
+import { ctxLevel, ctxLabel, CTX_COLOR } from '../context.js';
 
 const SPEED = 3.6;          // 타일/초
 const LEAVE_TIMEOUT = 8000; // 퇴근 중 최대 대기
@@ -157,6 +158,20 @@ function drawOverlay(ctx, camera, a, now, bubbleMode) {
   ctx.beginPath(); ctx.arc(s.x - nw / 2 + 8, ny, 2.8, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#2b2f3a';
   ctx.fillText(name, s.x + 4, ny + 0.5);
+  // 기억 용량 게이지 (이름표 오른쪽, FE-70): 글자 + 아래 얇은 막대
+  if (a.context && !a.user) {
+    const c = a.context, level = ctxLevel(c.pct), color = CTX_COLOR[level];
+    ctx.font = `700 8px ${FONT}`;
+    const label = ctxLabel(c);
+    const gw = ctx.measureText(label).width + 10, gx = s.x + nw / 2 + 3;
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = level === 'ok' ? 'rgba(0,0,0,0.1)' : color;
+    ctx.lineWidth = 1;
+    roundRect(ctx, gx, ny - 7.5, gw, 15, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillRect(gx + 3, ny + 4.5, (gw - 6) * Math.min(1, c.pct / 100), 1.5);
+    ctx.fillText(label, gx + gw / 2, ny - 0.5);
+  }
   // 말풍선 (머리 위) — 본체와 꼬리를 한 경로로
   const roam = a.roam && a.roam.spot && a.roam.phase === 'stay' ? a.roam.spot : null; // 휴식 방 명소에 도착하면 그 자리 말풍선
   const amb = (a.ambient && a.ambient.phase !== 'back' ? a.ambient.spot : null) || roam;
@@ -234,6 +249,7 @@ export function createActors(store, scene, avatars) {
         a.goTo(t);
       }
       a.activity = agent.activity; a.bubble = agent.bubble; a.icon = agent.icon; a.since = agent.since;
+      a.context = agent.kind === 'main' ? session.context || null : null; // 기억 용량은 세션(=Claude) 단위 (FE-70)
       if (agent.activity === 'rest' && agent.bubble === SERVER_REST_BUBBLE[agent.room]) {
         const def = ROOM_DEFS[resolveRoom(agent.room)];
         if (def && def.rest && resolveRoom(agent.room) !== agent.room) { a.bubble = def.rest.bubble; a.icon = def.rest.icon; }

@@ -246,6 +246,11 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: 
 .people-group.selected { border-color: #f5c9b3; background: #fff8f4; }
 .people-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px 2px; font-size: 11px; }
 .people-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: #444; }
+/* 기억 용량 게이지 (FE-70): 80% 주황, 90% 빨강 */
+.ctx { position: relative; flex: none; font-size: 10px; font-weight: 700; padding: 0 5px 1px; border-radius: 4px; overflow: hidden; background: var(--blue-soft); color: var(--blue); }
+.ctx i { position: absolute; left: 0; bottom: 0; height: 2px; background: currentColor; opacity: .55; }
+.ctx.warn { background: var(--amber); color: #fff; }
+.ctx.danger { background: var(--red); color: #fff; }
 .people-group .person.selected { background: transparent; }
 .people-group .person { padding: 5px 8px; }
 .log-item { border-left: 3px solid transparent; padding-left: 6px; }

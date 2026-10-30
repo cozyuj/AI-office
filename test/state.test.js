@@ -556,3 +556,91 @@ test('백그라운드 훅: 같은 도구의 Post 가 Pre 보다 먼저 적용되
   st.apply(pre('Read', { file_path: '/a/c.js' }, { tool_use_id: 'r2' }), 1300);
   assert.equal(main().activity, 'read', '다음 도구는 그대로');
 });
+
+test('defaultUsage: 마지막 assistant usage 합(input+cache_read+cache_creation), 서브에이전트·synthetic 은 건너뛰고 압축 직후면 postTokens (FE-70)', () => {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const { defaultUsage } = require('../lib/state');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-usage-'));
+  const f = path.join(dir, 't.jsonl');
+  const line = (o) => JSON.stringify(o) + '\n';
+  const asst = (input, read, create, extra = {}) => line({ type: 'assistant', message: { model: 'claude-opus-5-5', usage: { input_tokens: input, cache_read_input_tokens: read, cache_creation_input_tokens: create, output_tokens: 999 } }, ...extra });
+  fs.writeFileSync(f, asst(1, 1000, 0) + asst(2, 150000, 7000) + line({ type: 'user', message: { content: [{ type: 'tool_result', content: 'x' }] } }));
+  assert.deepEqual(defaultUsage(f), { tokens: 157002, model: 'claude-opus-5-5', peak: 0 });
+  fs.writeFileSync(f, asst(2, 150000, 7000) + asst(5, 500, 0, { isSidechain: true }) + line({ type: 'assistant', message: { model: '<synthetic>', usage: { input_tokens: 0, output_tokens: 0 } } }));
+  assert.equal(defaultUsage(f).tokens, 157002, '서브에이전트·synthetic 줄은 컨텍스트가 아니다');
+  fs.writeFileSync(f, asst(2, 296000, 0) + line({ type: 'system', subtype: 'compact_boundary', compactMetadata: { trigger: 'auto', preTokens: 296998, postTokens: 13867 } }));
+  assert.deepEqual(defaultUsage(f), { tokens: 13867, model: null, peak: 296998 });
+  // 큰 도구 결과 뒤에 있어도 1MB 까지는 찾는다, 그보다 앞은 읽지 않는다
+  fs.writeFileSync(f, asst(1, 9000, 0) + line({ type: 'user', message: { content: 'y'.repeat(300 * 1024) } }));
+  assert.equal(defaultUsage(f).tokens, 9001);
+  fs.writeFileSync(f, asst(1, 9000, 0) + line({ type: 'user', message: { content: 'y'.repeat(1100 * 1024) } }));
+  assert.equal(defaultUsage(f), null);
+  fs.writeFileSync(f, line({ type: 'user', message: { content: 'hi' } }));
+  assert.equal(defaultUsage(f), null);
+  assert.equal(defaultUsage(path.join(dir, 'none.jsonl')), null);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('contextLimit: 모델 이름에 [1m] 이 있거나 200K 를 넘은 적이 있으면 1M, 아니면 200K (FE-70)', () => {
+  const { contextLimit, CONTEXT_LIMIT, CONTEXT_LIMIT_1M } = require('../lib/state');
+  assert.equal(contextLimit('claude-opus-5-5'), CONTEXT_LIMIT);
+  assert.equal(contextLimit(null), CONTEXT_LIMIT);
+  assert.equal(contextLimit('claude-sonnet-4-5[1m]'), CONTEXT_LIMIT_1M);
+  assert.equal(contextLimit('claude-opus-5-5', 318000), CONTEXT_LIMIT_1M);
+  assert.equal(contextLimit('claude-opus-5-5', 200000), CONTEXT_LIMIT);
+});
+
+test('기억 용량: 훅이 오면 sweep 에서 읽어 context 를 붙이고, 세션당 읽기는 15초 간격, 1M 은 압축 뒤에도 유지 (FE-70)', () => {
+  const { CONTEXT_READ_MS } = require('../lib/state');
+  let usage = { tokens: 160000, model: 'claude-opus-5-5', peak: 0 };
+  let reads = 0;
+  const st = createState({ statFile: () => ({ mtimeMs: 1 }), usageOf: () => { reads++; return usage; } });
+  const updates = [];
+  st.on('update', (u) => updates.push(u));
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: 'hi' }), 1000);
+  assert.equal(reads, 0, '훅 처리 중에는 읽지 않는다 (저널 재생이 transcript 를 수백 번 읽지 않게)');
+  st.sweep(1001);
+  assert.equal(reads, 1);
+  assert.deepEqual(st.get('s1').context, { tokens: 160000, limit: 200000, pct: 80 });
+  assert.equal(updates.at(-1).session.context.pct, 80, '바뀌면 update 로 알린다');
+  // 15초 안의 훅·sweep 은 다시 읽지 않고, 지나면 밀린 것을 한 번 읽는다
+  usage = { tokens: 186000, model: 'claude-opus-5-5', peak: 0 };
+  st.apply(post('Read'), 2000);
+  st.sweep(2001); st.sweep(5000);
+  assert.equal(reads, 1);
+  assert.equal(st.get('s1').context.pct, 80);
+  st.sweep(1001 + CONTEXT_READ_MS);
+  assert.equal(reads, 2);
+  assert.equal(st.get('s1').context.pct, 93);
+  // 새 훅도 transcript 변화도 없으면 읽지 않는다
+  const n = updates.length;
+  st.sweep(1001 + CONTEXT_READ_MS * 3);
+  assert.equal(reads, 2);
+  assert.equal(updates.length, n, '값이 같으면 update 를 보내지 않는다');
+  // 200K 를 넘으면 1M 세션 → 압축 뒤 작아져도 1M 기준
+  usage = { tokens: 318000, model: 'claude-opus-5-5', peak: 0 };
+  st.apply(post('Read'), 100000); st.sweep(100000);
+  assert.deepEqual(st.get('s1').context, { tokens: 318000, limit: 1000000, pct: 32 });
+  usage = { tokens: 14000, model: null, peak: 318000 };
+  st.apply(base({ hook_event_name: 'PostCompact' }), 200000); st.sweep(200000);
+  assert.deepEqual(st.get('s1').context, { tokens: 14000, limit: 1000000, pct: 1 });
+  // 못 읽으면 이전 값 유지
+  usage = null;
+  st.apply(post('Read'), 300000); st.sweep(300000);
+  assert.equal(st.get('s1').context.tokens, 14000);
+});
+
+test('기억 용량: 훅 없이 transcript 만 자라도(긴 응답) stat 주기에 따라간다, transcript 가 없는 세션은 읽지 않는다 (FE-70)', () => {
+  let mtime = 1, reads = 0;
+  const st = createState({ statFile: () => ({ mtimeMs: mtime }), usageOf: () => { reads++; return { tokens: 1000 * reads, model: 'm', peak: 0 }; } });
+  st.apply(base({ hook_event_name: 'UserPromptSubmit', prompt: 'hi' }), 1000);
+  st.sweep(1000);
+  assert.equal(st.get('s1').context.tokens, 1000);
+  mtime = 2;
+  st.sweep(1000 + 20000); // 일하는 중 → 10초 stat 에서 변화 발견, 15초 지났으니 바로 읽는다
+  assert.equal(st.get('s1').context.tokens, 2000);
+  st.apply({ session_id: 'demo', cwd: '/demo/x', hook_event_name: 'UserPromptSubmit', prompt: 'hi' }, 30000);
+  st.sweep(30000);
+  assert.equal(st.get('demo').context, null);
+  assert.equal(reads, 2);
+});

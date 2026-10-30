@@ -55,7 +55,8 @@ Session {
   firstPrompt, lastPrompt    // 첫 요청(transcript 앞 1MB 에서 복원), 최근 요청
   status: 'thinking' | 'working' | 'waiting' | 'idle' | 'ended'
   cwd, branch, worktree      // 헤더·툴팁 표시용
-  transcriptPath             // 제목 갱신·생존 확인(stat)용
+  transcriptPath             // 제목 갱신·생존 확인(stat)·기억 용량용
+  context: { tokens, limit, pct } | null // 기억 용량 (FE-70). 아래 생명주기 참고
   startedAt, lastActivity: number
   agents: { [agentId]: Agent } // 'main' + 서브에이전트들
   pendingSubagents: string[] // Agent 툴 PreToolUse 의 description 큐 (SubagentStart 와 짝지음)
@@ -86,6 +87,9 @@ RoomId = 'library' | 'dev' | 'research' | 'server' | 'meeting' | 'lounge' | 'caf
 - 2시간 무활동 → 퇴근. SessionEnd 후 10초 뒤 제거
 - 사용자가 화면에서 치운 세션(DELETE)은 저널에 `SessionEnd(reason: dismissed)` 로 남겨 재시작해도 되살아나지 않는다
 - 제목: 훅의 session_title 이 바뀔 때마다 따르고(분리된 세션), transcript 끝 64KB 의 custom-title 을 mtime 이 바뀌었을 때만 1분에 한 번 읽는다. 바뀌면 로그 "🏷️ 제목: …"
+- 기억 용량(context, FE-70): 훅이 오거나 transcript mtime 이 바뀌면 다음 sweep 에서 읽는다(세션당 15초에 한 번, 훅 처리 중에는 읽지 않음 → 저널 재생이 transcript 를 반복해 읽지 않는다).
+  transcript 끝 64KB(없으면 1MB 까지)에서 마지막 assistant 의 `usage.input_tokens + cache_read_input_tokens + cache_creation_input_tokens`, 압축 직후면 `compact_boundary` 의 `postTokens`. 서브에이전트(`isSidechain`)·`<synthetic>` 줄은 건너뛴다.
+  한도: transcript 의 모델 id 에는 `[1m]` 이 없다 → 모델 이름에 `[1m]`/`-1m` 이 있거나 그 세션이 200K 를 넘은 적이 있으면(압축 전 `preTokens` 포함) 1M, 아니면 200K. 화면은 캐릭터 이름표 옆·사람 목록에 🧠 N% (80% 주황, 90% 빨강)
 
 ## 3. 훅 이벤트 → 상태 전이
 
