@@ -114,6 +114,14 @@ function drawPerson(ctx, a, now, character) {
     ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('!', fx, ty + 0.5);
   }
+  // 다른 세션도 같은 파일을 고치는 중 (FE-71): 머리 오른쪽 위 노란 경고 삼각형
+  if (a.conflict) {
+    const wx = fx + 13, wy = fy - OFFICE_HEIGHT - 2;
+    ctx.fillStyle = '#f2b632'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = 1.2; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(wx, wy - 8); ctx.lineTo(wx + 8, wy + 6); ctx.lineTo(wx - 8, wy + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#3a2a00'; ctx.font = `bold 10px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('!', wx, wy + 1.5);
+  }
   ctx.restore();
 }
 
@@ -238,6 +246,7 @@ export function createActors(store, scene, avatars) {
         const def = ROOM_DEFS[resolveRoom(agent.room)];
         if (def && def.rest && resolveRoom(agent.room) !== agent.room) { a.bubble = def.rest.bubble; a.icon = def.rest.icon; }
       }
+      a.conflict = agent.kind === 'main' && !!(session.conflicts && session.conflicts.length);
       a.selected = session.id === store.selectedSessionId;
       a.dim = !a.selected;
     }

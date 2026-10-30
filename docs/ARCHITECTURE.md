@@ -59,6 +59,7 @@ Session {
   startedAt, lastActivity: number
   agents: { [agentId]: Agent } // 'main' + 서브에이전트들
   pendingSubagents: string[] // Agent 툴 PreToolUse 의 description 큐 (SubagentStart 와 짝지음)
+  conflicts: { file, otherSessionId, at }[] // 다른 세션도 같은 파일을 고치는 중 (FE-71, 아래 3절 추가 규칙)
 }
 
 Agent {                      // 화면의 캐릭터 한 명
@@ -116,6 +117,7 @@ Claude Code 2.1.x 훅 payload 기준. 서브에이전트가 낸 도구 호출은
 - 휴식 중인 캐릭터는 클라이언트(`actors.js` roamStep)가 그 방의 명소(`spots.js` REST_SPOTS)를 10~30초마다 옮겨 다니게 한다. 자리는 Slots 로 점유해 둘이 겹치지 않고, 새 이벤트가 오면 즉시 멈추고 해당 방으로 간다. "생동감" 이 꺼져 있으면 자리를 옮기지 않는다.
 - 2시간 동안 이벤트 없는 세션은 `ended` 로 간주해 정리한다 (터미널을 그냥 닫은 경우).
 - 서브에이전트가 있는 동안 main 은 meeting 에서 `delegate` 를 유지하되, main 이 직접 도구를 쓰면 그 도구 규칙을 따른다.
+- 동시 수정 경고 (FE-71): Edit·MultiEdit·Write·NotebookEdit 의 `file_path` 를 저장소 root(worktree 는 본 저장소로 묶음) + 체크아웃 기준 상대 경로로 기록한다(세션당 최근 50개). 다른 세션이 같은 key 를 30분 안에 고쳤으면 두 세션에 `conflicts` 를 붙이고 고친 쪽 로그에 `⚠️ <파일> 을 <상대 세션 제목> 도 고치는 중` 한 줄. 서브에이전트는 같은 session_id 라 같은 세션. 겹침은 마지막 겹친 수정 30분 뒤(sweep)나 어느 한쪽 세션이 끝나면 풀린다. 화면: 캐릭터 머리 위 노란 ⚠️, 툴팁 '겹침' 줄, 사람 목록 경고 줄.
 - `tool_response`, `prompt`, `last_assistant_message` 등 큰 필드는 normalize 단계에서 앞부분만 남기고 버린다 (메모리/SSE 크기 보호).
 
 ## 4. 도구 → 방 / 말풍선

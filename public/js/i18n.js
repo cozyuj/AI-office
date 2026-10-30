@@ -54,7 +54,7 @@ const DICT = {
   // 층 스타일
   '따뜻한 우드': 'Warm Wood', '쿨 그레이': 'Cool Gray', '민트': 'Mint', '라벤더': 'Lavender', '샌드': 'Sand', '파스텔': 'Pastel', '(데모)': '(demo)',
   // 툴팁
-  '지금': 'Now', '대상': 'Target', '요청': 'Prompt', '브랜치': 'Branch', '경로': 'Path', '종류': 'Type', '이어가기: ': 'Resume: ', ' — 클릭해 선택하면 우측 세션 카드에서 복사': ' — click to select, then copy from the session card',
+  '지금': 'Now', '대상': 'Target', '겹침': 'Overlap', '요청': 'Prompt', '브랜치': 'Branch', '경로': 'Path', '종류': 'Type', '이어가기: ': 'Resume: ', ' — 클릭해 선택하면 우측 세션 카드에서 복사': ' — click to select, then copy from the session card',
   // 배너·기타
   '방금': 'just now', '시작': 'start', '초기 위치': 'Reset view', '확대': 'Zoom in', '축소': 'Zoom out',
   // 긴 title 들
@@ -121,6 +121,7 @@ const RULES = [
   [/^(.+) 층으로 이동$/, (m) => `moved to ${m[1]}`],
   [/^(.+) 로 이동$/, (m) => `moving to ${m[1]}`],
   [/^제목: (.+)$/, (m) => `title: ${m[1]}`],
+  [/^(⚠️ )?(.+) 을 (.+) 도 고치는 중$/, (m) => `${m[1] || ''}${m[3]} is also editing ${m[2]}`],
   [/^완료: (.+)$/, (m) => `done: ${m[1]}`],
   [/^알림 수신 \((.+)\)$/, (m) => `notification (${m[1]})`],
   [/^세션 종료 \((.+)\)$/, (m) => `session ended (${m[1]})`],
