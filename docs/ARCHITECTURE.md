@@ -18,6 +18,7 @@ lib/reorder.js           시작 시각이 붙은 훅을 300ms 모았다가 그 �
 server.js (Node 18+, 외부 의존성 0, 127.0.0.1 에만 listen)
   ├─ 접근 검사   Host 루프백 · Origin 허용 목록 (9절)
   ├─ journal     payload 를 ~/.ai-office/events.jsonl 에 append → 기동 시 최근 2시간 재생
+  ├─ dailyStats  상태 전이·훅을 일별 집계 → ~/.ai-office/stats/YYYY-MM-DD.json (30일)   lib/dailyStats.js
   ├─ normalize   payload → 작은 Event (도구→방·말풍선, 큰 필드 자르기)        lib/normalize.js
   ├─ state       Event → 층/세션/캐릭터 상태 머신, 활동 로그 500건, sweep      lib/state.js
   └─ broadcast   SSE /events 로 snapshot · update · remove · floor · demo
@@ -60,6 +61,7 @@ Session {
   startedAt, lastActivity: number
   agents: { [agentId]: Agent } // 'main' + 서브에이전트들
   pendingSubagents: string[] // Agent 툴 PreToolUse 의 description 큐 (SubagentStart 와 짝지음)
+  conflicts: { file, otherSessionId, at }[] // 다른 세션도 같은 파일을 고치는 중 (FE-71, 아래 3절 추가 규칙)
 }
 
 Agent {                      // 화면의 캐릭터 한 명
@@ -120,6 +122,7 @@ Claude Code 2.1.x 훅 payload 기준. 서브에이전트가 낸 도구 호출은
 - 휴식 중인 캐릭터는 클라이언트(`actors.js` roamStep)가 그 방의 명소(`spots.js` REST_SPOTS)를 10~30초마다 옮겨 다니게 한다. 자리는 Slots 로 점유해 둘이 겹치지 않고, 새 이벤트가 오면 즉시 멈추고 해당 방으로 간다. "생동감" 이 꺼져 있으면 자리를 옮기지 않는다.
 - 2시간 동안 이벤트 없는 세션은 `ended` 로 간주해 정리한다 (터미널을 그냥 닫은 경우).
 - 서브에이전트가 있는 동안 main 은 meeting 에서 `delegate` 를 유지하되, main 이 직접 도구를 쓰면 그 도구 규칙을 따른다.
+- 동시 수정 경고 (FE-71): Edit·MultiEdit·Write·NotebookEdit 의 `file_path` 를 저장소 root(worktree 는 본 저장소로 묶음) + 체크아웃 기준 상대 경로로 기록한다(세션당 최근 50개). 다른 세션이 같은 key 를 30분 안에 고쳤으면 두 세션에 `conflicts` 를 붙이고 고친 쪽 로그에 `⚠️ <파일> 을 <상대 세션 제목> 도 고치는 중` 한 줄. 서브에이전트는 같은 session_id 라 같은 세션. 겹침은 마지막 겹친 수정 30분 뒤(sweep)나 어느 한쪽 세션이 끝나면 풀린다. 화면: 캐릭터 머리 위 노란 ⚠️, 툴팁 '겹침' 줄, 사람 목록 경고 줄.
 - `tool_response`, `prompt`, `last_assistant_message` 등 큰 필드는 normalize 단계에서 앞부분만 남기고 버린다 (메모리/SSE 크기 보호).
 
 ## 4. 도구 → 방 / 말풍선
@@ -147,6 +150,7 @@ Claude Code 2.1.x 훅 payload 기준. 서브에이전트가 낸 도구 호출은
 | GET | `/api/state` | 현재 전체 상태 JSON (snapshot 과 같은 모양) |
 | POST | `/api/floors/style` | `{ floorId, style }` 층 인테리어 프리셋 지정 (null 이면 자동) |
 | DELETE | `/api/sessions/:id` | 끝난/자리 비운 세션을 목록에서 치운다 |
+| GET | `/api/stats?date=YYYY-MM-DD` | 그날 근무 기록 요약 `{ date, today, totals, projects[], sessions[], dates[] }` (생략하면 오늘, 형식이 틀리면 400) |
 | POST | `/api/demo/start` · `/api/demo/stop` | 데모 세션 시작 / 중지(데모 세션 전부 제거) |
 | GET | `/` | `public/` 정적 파일 |
 
@@ -160,7 +164,7 @@ event: demo       data: { on }
 ```
 
 - 포트 기본 4777, `AI_OFFICE_PORT` 로 변경. 훅 명령에 포트가 박혀 있어(`lib/hookport.js` 로 읽음) 서버 포트와 다르면 화면에 경고한다.
-- 홈 폴더 `~/.ai-office` (`AI_OFFICE_HOME`). `--no-journal` 로 저널 끄기.
+- 홈 폴더 `~/.ai-office` (`AI_OFFICE_HOME`). `--no-journal` 로 저널 끄기 (근무 기록도 디스크에 쓰지 않고 메모리에만).
 - `AI_OFFICE_WATCH_PARENT=1` 이면 부모 프로세스(앱·CLI)가 강제 종료될 때 서버도 스스로 끝난다.
 
 ### 저널 (lib/journal.js)
@@ -168,6 +172,14 @@ event: demo       data: { on }
 - 훅 payload 를 큰 필드를 자른 채 한 줄씩 append (데모 이벤트는 남기지 않음).
 - 기동 시 최근 2시간(SESSION_TTL)만 시간 순서대로 `state.apply` 에 다시 흘려 상태를 복원한다.
 - 매시간 + 20MB 초과 시 오래된 줄을 버리고 다시 쓴다(압축). `ai-office compact` 로 즉시 압축, `ai-office doctor` 가 크기를 보여준다.
+
+### 근무 기록 (lib/dailyStats.js, FE-72)
+
+- 저널은 2시간만 남기므로 하루 요약은 원본 이벤트가 아니라 **세션별 하루 합계**로 따로 쌓는다: `stats/YYYY-MM-DD.json` = `{ date, sessions: { id → { title, project, cwd, branch, thinkMs, workMs, waitMs, prompts, tools: { 이름 → 횟수 }, files[], fileCount, subagents, firstAt, lastAt } } }`
+- 시간: 세션마다 `{ status, since }` 를 들고, 훅 적용 직전(`observe`)·직후와 1초 sweep(`sync`)마다 직전 상태로 머문 시간을 더한다. thinking → `thinkMs`, working → `workMs`, waiting → `waitMs` (idle·away·ended 는 세지 않음). 로컬 자정을 넘기면 날짜별로 나눈다. 요약의 "일한 시간" = thinking + working
+- 개수: 적용한 훅 payload 로 센다 — `UserPromptSubmit`(시스템 알림 제외) · `PreToolUse`(도구 이름별, Edit·MultiEdit·Write·NotebookEdit 의 파일 경로는 중복 없이) · `SubagentStart`
+- 데모 세션(`/demo/`)은 세지 않는다. 저널 재생은 이미 센 이벤트라 `daily` 를 부르지 않고, 재생이 끝난 뒤의 상태부터 시간을 잰다 → 재시작해도 이중 집계 없이 같은 날 파일에 이어 쌓인다 (꺼져 있던 동안은 빈다)
+- 쓰기는 5초마다 바뀐 날짜만 (임시 파일 → rename), 종료 시 한 번 더. 메모리에는 오늘·어제만. 30일이 지난 파일은 기동 시·날짜가 바뀔 때 지운다
 
 ## 6. 프론트엔드 모듈
 
@@ -188,6 +200,7 @@ public/
     customize.js, avatarStore.js   캐릭터 고르기 (대상별 12명 중 하나 / 자동 / 올린 그림)
     customCharacters.js            커스텀 캐릭터: PNG 투명 여백 자르기·256px 축소, dataURL 을 localStorage 에 (FE-56)
     floorStylePicker.js            층 🎨 → 인테리어 프리셋 선택 (서버에 저장)
+    statsView.js                   📊 오늘의 근무 기록 모달: GET /api/stats → 합계·프로젝트별·세션별·도구별, 날짜 이동 (FE-72)
     tooltip.js, texttip.js         캐릭터 툴팁, 잘린 글자 툴팁
     scene/
       layouts.js      층 레이아웃 생성기: 4열 × 띠 격자에 방 배치, 방 크기에 맞는 가구·서는 자리·휴식 명소

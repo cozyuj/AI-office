@@ -15,6 +15,7 @@ test('영어 모드: 방·상태·말풍선·로그 문구를 번역한다', () 
     '세션 1개 · 방금': '1 session · just now', '3분 12초': '3m 12s', '5분 전': '5 min ago', 'nccx (데모)': 'nccx (demo)', 'jinyu (나)': 'jinyu (me)',
     '기억 용량 78% (156K / 200K 토큰)': 'Context used 78% (156K / 200K tokens)', '(318K / 1M 토큰)': '(318K / 1M tokens)', '기억': 'Memory',
     'Bash 실패: exit 1': 'Bash failed: exit 1', '🙋 질문 있어요': '🙋 I have a question', '· 4초': '· 4s', '헬스장 · 옥상정원': 'Gym · Rooftop Garden',
+    'lib/state.js 을 졸린 판다 도 고치는 중': '졸린 판다 is also editing lib/state.js', '⚠️ server.js 을 abcd1234 도 고치는 중': '⚠️ abcd1234 is also editing server.js', '겹침': 'Overlap',
   };
   for (const [ko, en] of Object.entries(cases)) assert.equal(I.tr(ko), en, ko);
 });

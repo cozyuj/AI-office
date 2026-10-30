@@ -644,3 +644,131 @@ test('기억 용량: 훅 없이 transcript 만 자라도(긴 응답) stat 주기
   assert.equal(st.get('demo').context, null);
   assert.equal(reads, 2);
 });
+
+// ---------- 동시 수정 경고 (FE-71) ----------
+function overlapRepo() {
+  const fs = require('fs'); const os = require('os'); const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-office-overlap-'));
+  const mk = (root, branch) => { fs.mkdirSync(path.join(root, '.git', 'refs', 'heads'), { recursive: true }); fs.writeFileSync(path.join(root, '.git', 'HEAD'), `ref: refs/heads/${branch}\n`); };
+  const main = path.join(dir, 'office');
+  mk(main, 'main');
+  // worktree: 본 저장소 .git/worktrees/<이름> 을 가리키는 .git 파일
+  const wtGit = path.join(main, '.git', 'worktrees', 'fe');
+  fs.mkdirSync(wtGit, { recursive: true });
+  fs.writeFileSync(path.join(wtGit, 'HEAD'), 'ref: refs/heads/feature/FE\n');
+  const wt = path.join(dir, 'wt', 'office');
+  fs.mkdirSync(wt, { recursive: true });
+  fs.writeFileSync(path.join(wt, '.git'), `gitdir: ${wtGit}\n`);
+  const other = path.join(dir, 'other');
+  mk(other, 'main');
+  for (const r of [main, wt, other]) fs.mkdirSync(path.join(r, 'lib'), { recursive: true });
+  return { dir, main, wt, other, done: () => fs.rmSync(dir, { recursive: true, force: true }) };
+}
+function overlapState() {
+  const st = createState({ me: 'tester', statFile: () => ({ mtimeMs: Number.MAX_SAFE_INTEGER }) });
+  const updates = [];
+  st.on('update', (u) => updates.push(u));
+  const edit = (sid, cwd, file, t, extra = {}) => st.apply({ session_id: sid, cwd, transcript_path: '/x', hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: file }, tool_use_id: `${sid}-${t}`, ...extra }, t);
+  return { st, updates, edit };
+}
+
+test('동시 수정 경고: 다른 worktree 의 두 세션이 같은 상대 경로를 고치면 양쪽에 겹침 + 로그 한 줄 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, updates, edit } = overlapState();
+  st.apply({ session_id: 'a', cwd: r.main, transcript_path: '/x', hook_event_name: 'UserPromptSubmit', prompt: '상태 머신 고치기' }, 900);
+  edit('a', r.main, `${r.main}/lib/state.js`, 1000);
+  assert.deepEqual(st.get('a').conflicts, [], '혼자 고치면 겹침 없음');
+  edit('b', r.wt, `${r.wt}/lib/state.js`, 2000);
+  assert.deepEqual(st.get('b').conflicts, [{ file: 'lib/state.js', otherSessionId: 'a', at: 2000 }]);
+  assert.deepEqual(st.get('a').conflicts, [{ file: 'lib/state.js', otherSessionId: 'b', at: 2000 }]);
+  const warns = st.snapshot().log.filter((e) => e.icon === '⚠️');
+  assert.equal(warns.length, 1);
+  assert.equal(warns[0].sessionId, 'b');
+  assert.equal(warns[0].text, 'lib/state.js 을 상태 머신 고치기 도 고치는 중');
+  assert.ok(updates.some((u) => u.log && u.log.icon === '⚠️'), '경고 로그는 update 로 클라이언트에 간다');
+  assert.ok(updates.some((u) => u.session.id === 'a' && u.session.conflicts.length === 1), '상대 세션도 다시 보낸다');
+  // 같은 파일을 또 고쳐도 로그는 한 번만, 시각은 갱신
+  edit('b', r.wt, `${r.wt}/lib/state.js`, 3000);
+  assert.equal(st.snapshot().log.filter((e) => e.icon === '⚠️').length, 1);
+  assert.equal(st.get('a').conflicts[0].at, 3000);
+  // 다른 파일은 겹치지 않는다
+  edit('b', r.wt, `${r.wt}/lib/other.js`, 3100);
+  assert.equal(st.get('b').conflicts.length, 1);
+  r.done();
+});
+
+test('동시 수정 경고: 다른 저장소의 같은 상대 경로·읽기만 한 파일은 겹침이 아니다 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, edit } = overlapState();
+  edit('a', r.main, `${r.main}/lib/state.js`, 1000);
+  edit('b', r.other, `${r.other}/lib/state.js`, 2000);
+  assert.deepEqual(st.get('a').conflicts, []);
+  assert.deepEqual(st.get('b').conflicts, []);
+  st.apply({ session_id: 'c', cwd: r.wt, transcript_path: '/x', hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: `${r.wt}/lib/state.js` } }, 2100);
+  assert.deepEqual(st.get('c').conflicts, []);
+  assert.deepEqual(st.get('a').conflicts, []);
+  // 상대 경로 file_path 는 세션 cwd 기준
+  edit('d', r.wt, 'lib/state.js', 2200);
+  assert.deepEqual(st.get('d').conflicts.map((c) => c.otherSessionId), ['a']);
+  r.done();
+});
+
+test('동시 수정 경고: 같은 세션·그 서브에이전트가 같은 파일을 고치는 건 겹침이 아니다 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, edit } = overlapState();
+  edit('a', r.main, `${r.main}/lib/state.js`, 1000);
+  edit('a', r.main, `${r.main}/lib/state.js`, 1100);
+  edit('a', r.main, `${r.main}/lib/state.js`, 1200, { agent_id: 'sub1', agent_type: 'general-purpose' });
+  assert.deepEqual(st.get('a').conflicts, []);
+  assert.equal(st.snapshot().log.filter((e) => e.icon === '⚠️').length, 0);
+  // 다른 세션의 서브에이전트는 겹침 (부모 세션으로 친다)
+  edit('b', r.wt, `${r.wt}/lib/state.js`, 1300, { agent_id: 'sub2', agent_type: 'Explore' });
+  assert.deepEqual(st.get('b').conflicts.map((c) => c.otherSessionId), ['a']);
+  assert.deepEqual(st.get('a').conflicts.map((c) => c.otherSessionId), ['b']);
+  r.done();
+});
+
+test('동시 수정 경고: 30분 지난 수정은 겹치지 않고, 겹침도 30분 뒤 · 세션이 끝나면 풀린다 (FE-71)', () => {
+  const { OVERLAP_MS } = require('../lib/state');
+  const r = overlapRepo();
+  const { st, updates, edit } = overlapState();
+  const f = (root) => `${root}/lib/state.js`;
+  edit('a', r.main, f(r.main), 1000);
+  edit('b', r.wt, f(r.wt), 1000 + OVERLAP_MS + 1);
+  assert.deepEqual(st.get('b').conflicts, [], '30분 넘게 지난 수정과는 겹치지 않는다');
+  // 시간 만료
+  edit('c', r.main, f(r.main), 1000 + OVERLAP_MS + 2);
+  assert.equal(st.get('c').conflicts.length, 1);
+  st.sweep(1000 + OVERLAP_MS + 2 + OVERLAP_MS);
+  assert.equal(st.get('c').conflicts.length, 1, '딱 30분까지는 유지');
+  const n = updates.length;
+  st.sweep(1000 + OVERLAP_MS + 3 + OVERLAP_MS);
+  assert.deepEqual(st.get('c').conflicts, []);
+  assert.deepEqual(st.get('b').conflicts, []);
+  assert.ok(updates.slice(n).some((u) => u.session.id === 'c'), '풀리면 클라이언트에 알린다');
+  // 세션 종료
+  const t = 10 * OVERLAP_MS;
+  edit('a', r.main, f(r.main), t);
+  edit('b', r.wt, f(r.wt), t + 1);
+  assert.equal(st.get('a').conflicts.length, 1);
+  st.apply({ session_id: 'b', cwd: r.wt, transcript_path: '/x', hook_event_name: 'SessionEnd', reason: 'exit' }, t + 2);
+  assert.deepEqual(st.get('a').conflicts, [], '상대가 퇴근하면 풀린다');
+  assert.deepEqual(st.get('b').conflicts, []);
+  edit('c', r.main, f(r.main), t + 3);
+  assert.deepEqual(st.get('c').conflicts.map((c) => c.otherSessionId), ['a'], '끝난 세션과는 겹치지 않는다');
+  // 목록에서 치워도 풀린다
+  st.remove('a');
+  assert.deepEqual(st.get('c').conflicts, []);
+  r.done();
+});
+
+test('동시 수정 경고: 세션당 최근 수정 파일은 50개까지만 기억한다 (FE-71)', () => {
+  const r = overlapRepo();
+  const { st, edit } = overlapState();
+  for (let i = 0; i < 60; i++) edit('a', r.main, `${r.main}/lib/f${i}.js`, 1000 + i);
+  edit('b', r.wt, `${r.wt}/lib/f0.js`, 2000);
+  assert.deepEqual(st.get('b').conflicts, [], '오래된 기록은 밀려났다');
+  edit('b', r.wt, `${r.wt}/lib/f59.js`, 2001);
+  assert.equal(st.get('b').conflicts.length, 1);
+  r.done();
+});

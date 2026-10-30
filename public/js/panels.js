@@ -126,6 +126,7 @@ export function renderPeople() {
     const selected = s.id === store.selectedSessionId;
     return `<div class="people-group ${selected ? 'selected' : ''}" data-session="${esc(s.id)}">
       <div class="people-head"><span class="dot ${s.status}"></span><span class="people-title ellipsis" data-tip="${esc(s.title || s.id)}">${esc(s.title || `제목 없는 세션 · ${s.id.slice(0, 8)}`)}</span>${s.context ? `<span class="ctx ${ctxLevel(s.context.pct)}" data-tip="${esc(ctxTip(s.context))}">${ctxLabel(s.context)}<i style="width:${Math.min(100, s.context.pct)}%"></i></span>` : ''}<span class="muted">${STATUS_LABEL[s.status] || ''}</span></div>
+      ${store.conflictsOf(s).map((c) => `<div class="people-warn ellipsis" data-tip="${esc(c.title)}">⚠️ ${esc(c.text)}</div>`).join('')}
       ${agents.map((a) => { const name = store.nameOf(s, a); return `
       <div class="person ${selected ? 'selected' : 'dim'}" data-session="${esc(s.id)}" data-agent="${esc(a.id)}">
         <span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : initials(name)}</span>

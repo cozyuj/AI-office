@@ -22,6 +22,7 @@ export function createTooltip() {
     if (a.kind === 'sub' && a.type) rows.push(['종류', esc(a.type)]);
     if (a.kind === 'main' && s.context) rows.push(['기억', `${ctxLabel(s.context)} <span class="muted">${ctxDetail(s.context)}</span>`]);
     if (s.branch) rows.push(['브랜치', `⎇ ${esc(s.branch)}${s.worktree ? ` <span class="muted">(worktree ${esc(s.worktree)})</span>` : ''}`]);
+    for (const c of store.conflictsOf(s)) rows.push(['겹침', `<span class="tt-warn">⚠️ ${esc(c.text)}</span>`]);
     if (s.cwd) rows.push(['경로', `<span class="tt-v mono">${esc(s.cwd)}</span>`]);
     return `
       <div class="tt-name"><span class="avatar" style="background:${store.colorOf(s, a)}">${a.kind === 'sub' ? '부' : esc((store.nameOf(s, a) || '?')[0])}</span>${esc(store.nameOf(s, a))}${a.kind === 'sub' ? '<span class="sub">서브에이전트</span>' : ''}</div>

@@ -54,7 +54,7 @@ const DICT = {
   // 층 스타일
   '따뜻한 우드': 'Warm Wood', '쿨 그레이': 'Cool Gray', '민트': 'Mint', '라벤더': 'Lavender', '샌드': 'Sand', '파스텔': 'Pastel', '(데모)': '(demo)',
   // 툴팁
-  '지금': 'Now', '대상': 'Target', '요청': 'Prompt', '브랜치': 'Branch', '경로': 'Path', '종류': 'Type', '이어가기: ': 'Resume: ', ' — 클릭해 선택하면 우측 세션 카드에서 복사': ' — click to select, then copy from the session card',
+  '지금': 'Now', '대상': 'Target', '겹침': 'Overlap', '요청': 'Prompt', '브랜치': 'Branch', '경로': 'Path', '종류': 'Type', '이어가기: ': 'Resume: ', ' — 클릭해 선택하면 우측 세션 카드에서 복사': ' — click to select, then copy from the session card',
   // 배너·기타
   '방금': 'just now', '시작': 'start', '초기 위치': 'Reset view', '확대': 'Zoom in', '축소': 'Zoom out',
   // 긴 title 들
@@ -62,6 +62,12 @@ const DICT = {
   "가짜 세션 4개로 사무실을 북적이게 (실제 세션과 별도 층, '(데모)' 표시)": "Fill the office with 4 fake sessions (separate floors marked '(demo)')",
   '끝난 세션을 목록에서 치우기 (TTL 을 기다리지 않음)': 'Remove the finished session from the list now (without waiting for the TTL)',
   '나 / Claude / 서브에이전트 캐릭터 고르기 — 12명 중 하나 또는 머리·몸·색·소품 조합, 세션마다 자동 또는 직접 올린 PNG, 지금 보는 세션의 캐릭터 이름': 'Choose characters for me / Claude / subagents — one of 12 or a mix of head, body, colors and accessories, auto per session or a PNG you upload, and the name of the session you are viewing',
+  // 오늘의 근무 기록 (FE-72)
+  '근무 기록': 'Work log', '📊 보기…': '📊 Show…', '오늘의 근무 기록': 'Daily work log', '오늘': 'Today', '어제': 'Yesterday', '하루 전 (←)': 'Previous day (←)', '하루 뒤 (→)': 'Next day (→)',
+  '세션·프로젝트별 하루 요약 — 일한 시간·답 기다린 시간·도구·고친 파일·요청·서브에이전트': 'Daily summary per session and project — time worked, time waiting for you, tools, edited files, prompts, subagents',
+  '로컬 날짜 기준 · 데모 제외 · 30일 보관': 'Local dates · demo excluded · kept for 30 days', '이 날은 기록이 없습니다': 'No records for this day', '기록을 불러오지 못했습니다': 'Could not load the records',
+  '일한 시간': 'Time worked', '답 기다린 시간': 'Waiting for you', '기다린 시간': 'Waiting', '요청 수': 'Prompts', '서브에이전트 수': 'Subagents', '도구 사용': 'Tool calls', '도구': 'Tools', '고친 파일': 'Edited files', '프로젝트별': 'By project', '세션별': 'By session', '도구 종류별': 'By tool',
+  '일한 시간 (생각·작업)': 'Time worked (thinking · working)',
   // 커스텀 캐릭터 (FE-56)
   '내 캐릭터': 'My characters', '— 배경 없는 PNG 를 올리거나 끌어다 놓기 · 자동에는 섞이지 않음': '— upload or drop a PNG with a transparent background · never picked by auto', 'PNG 올리기': 'Upload PNG',
   '배경이 투명한 PNG 를 고르거나 여기에 끌어다 놓기': 'Choose a PNG with a transparent background, or drop it here', '커스텀 캐릭터': 'Custom character', '이 커스텀 캐릭터 지우기': 'Delete this custom character',
@@ -123,6 +129,7 @@ const RULES = [
   [/^(.+) 층으로 이동$/, (m) => `moved to ${m[1]}`],
   [/^(.+) 로 이동$/, (m) => `moving to ${m[1]}`],
   [/^제목: (.+)$/, (m) => `title: ${m[1]}`],
+  [/^(⚠️ )?(.+) 을 (.+) 도 고치는 중$/, (m) => `${m[1] || ''}${m[3]} is also editing ${m[2]}`],
   [/^완료: (.+)$/, (m) => `done: ${m[1]}`],
   [/^알림 수신 \((.+)\)$/, (m) => `notification (${m[1]})`],
   [/^세션 종료 \((.+)\)$/, (m) => `session ended (${m[1]})`],
@@ -150,6 +157,7 @@ const RULES = [
   [/^(\d+)초$/, (m) => `${m[1]}s`],
   [/^(\d+)분 (\d+)초$/, (m) => `${m[1]}m ${m[2]}s`],
   [/^(\d+)시간 (\d+)분$/, (m) => `${m[1]}h ${m[2]}m`],
+  [/^일한 시간 (.+) · 기다린 시간 (.+)$/, (m) => `worked ${tr(m[1])} · waiting ${tr(m[2])}`],
   [/^(\d+)초 전$/, (m) => `${m[1]}s ago`],
   [/^(\d+)분 전$/, (m) => `${m[1]} min ago`],
   [/^(\d+)시간 전$/, (m) => `${m[1]} h ago`],
