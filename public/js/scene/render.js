@@ -8,7 +8,7 @@ import { drawDecor, decorBox, DECOR_PAD, DECOR_DYNAMIC } from './decor.js';
 import { effectiveWeather } from '../weather.js';
 import * as MAP from './map.js';
 import { tr } from '../i18n.js';
-import { tile, drawFurniture, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
+import { tile, drawFurniture, rackLeds, wallPieces, drawWallPiece, drawDoorMat, drawDoorPost } from './sprites.js';
 import { resolve as resolveDaylight, setPeriod as setDaylightPeriod, palette as daylight } from './daylight.js';
 
 const EPS = 1e-3;
@@ -108,21 +108,25 @@ export function drawFloor(ctx, scale = 1) {
 const SHARED = new Map(); // key → { scale, canvas, dx, dy, w, h }
 export function sharedSpriteCount() { return SHARED.size; }
 function drawCached(ctx, e, now, scale) {
-  if (!cacheEnabled || e.dynamic || typeof document === 'undefined') { e.draw(ctx, now); return; }
+  if (!cacheEnabled || e.dynamic || typeof document === 'undefined') { e.draw(ctx, now); e.live?.(ctx, now); return; }
   const sc = Math.min(SPRITE_MAX_SCALE, Math.max(0.25, scale));
   if (e.key) {
-    let sp = SHARED.get(e.key);
+    // 되풀이 애니메이션(FE-68): 한 주기를 몇 장면으로 나눠 장면마다 스프라이트를 공유한다
+    let key = e.key, t = 0;
+    if (e.anim) { const [period, frames] = e.anim, step = period / frames, ph = Math.floor(now / step) % frames; key += `#${ph}`; t = ph * step; }
+    let sp = SHARED.get(key);
     if (!sp || Math.abs(sp.scale - sc) > sc * 0.02) {
       const pad = e.pad || 24;
       const x0 = e.sb.x0 - pad, y0 = e.sb.y0 - pad, w = e.sb.x1 - e.sb.x0 + pad * 2, h = e.sb.y1 - e.sb.y0 + pad * 2;
       const canvas = makeLayer(w * sc, h * sc);
       const c = canvas.getContext('2d');
       c.scale(sc, sc); c.translate(-x0, -y0);
-      e.draw(c, 0);
+      e.draw(c, t);
       sp = { scale: sc, canvas, dx: x0 - e.anchor.x, dy: y0 - e.anchor.y, w, h };
-      SHARED.set(e.key, sp);
+      SHARED.set(key, sp);
     }
     ctx.drawImage(sp.canvas, e.anchor.x + sp.dx, e.anchor.y + sp.dy, sp.w, sp.h);
+    e.live?.(ctx, now);
     return;
   }
   let sp = e._sprite;
@@ -350,6 +354,8 @@ const HEIGHT = {
   pooltable: 0.9, arcade: 1.75, beanbag: 0.6, pingpong: 0.95, lowshelf: 1.05, rug: 0.03, booth: 2.05, camera: 1.5, lightstand: 2.0, mic: 1.5, podium: 1.15, seat: 0.9,
 };
 const THIN = new Set(['chair', 'plant', 'sign', 'globe', 'seat', 'mic', 'floorlamp', 'camera', 'lightstand']); // footprint 를 안쪽으로 줄이는 얇은 소품
+// 되풀이 애니메이션 소품: [주기 ms, 장면 수]. 전구(600ms 깜빡임)·트리(500ms 3단)는 정확히, 불꽃은 한 주기를 6장면으로 (FE-68)
+const DECOR_ANIM = { xlights: [1200, 2], xmastree: [1500, 3], candles: [565, 6], lantern: [565, 6], torch: [628, 6], fireplace: [754, 6], cauldron: [1400, 8] };
 const PAD = { plant: 70, parasol: 70, wallscreen: 36, whiteboard: 36, pooltable: 36, pingpong: 36, booth: 44, floorlamp: 40, lightstand: 40, pond: 40, flowerbed: 36 };
 
 /** 현재 레이아웃의 가구·벽·문설주 엔티티와, 그들끼리의 "뒤" 관계 (한 번만 계산) */
@@ -361,9 +367,12 @@ function buildStatic() {
     const inset = THIN.has(f.type) ? 0.2 : 0.05;
     S.push(makeEntity(
       { x0: f.x + inset, y0: f.y + inset, x1: f.x + w - inset, y1: f.y + d - inset, z0: 0, z1: HEIGHT[f.type] || 1 },
-      (ctx) => drawFurniture(ctx, f),
+      // 서버 랙은 몸체만 스프라이트로, 불빛은 매 프레임 (FE-68). 엘리베이터 표시등은 두 장면
+      f.type === 'rack' ? (ctx) => drawFurniture(ctx, f, null) : (ctx, now) => drawFurniture(ctx, f, now),
       {
-        label: f.type, dynamic: f.type === 'rack' || f.type === 'elevator', pad: PAD[f.type] || 28,
+        label: f.type, pad: PAD[f.type] || 28,
+        live: f.type === 'rack' ? (ctx, now) => rackLeds(ctx, f, now) : undefined,
+        anim: f.type === 'elevator' ? [1400, 2] : undefined,
         // 위치를 뺀 모든 속성 + 위치로 정해지는 변형((x+y)%3: 야자수 크기, 아케이드 화면 색)
         key: `f:${f.type}|${w}|${d}|${f.face || ''}|${f.seed ?? ''}|${f.solid === false ? 0 : 1}|v${(f.x + f.y) % 3}`,
         anchor: project(f.x, f.y, 0),
@@ -379,13 +388,15 @@ function buildStatic() {
       }));
     }
   }
-  // 테마 소품 (FE-60): 반짝이·흔들리는 것은 매 프레임, 나머지는 같은 모양끼리 스프라이트 공유
+  // 테마 소품 (FE-60): 같은 모양끼리 스프라이트 공유. 되풀이해 반짝이는 것은 장면별 스프라이트(FE-68), 떠다니는 유령·박쥐만 매 프레임
   for (const it of DECOR) {
     if (it.kind === 'flat') continue; // 바닥 캐시에 그린다
-    const dynamic = DECOR_DYNAMIC.has(it.type);
+    const anim = DECOR_ANIM[it.type];
+    const dynamic = DECOR_DYNAMIC.has(it.type) && !anim;
+    const xl = it.type === 'xlights'; // 전구 줄은 seed 를 안 쓰고, 색(4)·깜빡임(2)이 k 의 4 주기
     S.push(makeEntity(decorBox(it), (ctx, now) => drawDecor(ctx, it, now), {
-      label: `decor:${it.type}`, dynamic, pad: DECOR_PAD[it.type] || 28,
-      key: dynamic ? undefined : `d:${it.type}|${it.seed}|${it.dir || ''}|${it.len || 0}|${it.w || 1}x${it.d || 1}|k${(it.k0 || 0) % 20}|z${it.z || 0}|${it.rail ? 'r' : it.outer ? 'o' : ''}`,
+      label: `decor:${it.type}`, dynamic, anim, pad: DECOR_PAD[it.type] || 28,
+      key: dynamic ? undefined : `d:${it.type}|${xl ? '' : it.seed}|${it.dir || ''}|${it.len || 0}|${it.w || 1}x${it.d || 1}|k${(it.k0 || 0) % (xl ? 4 : 20)}|z${it.z || 0}|${it.rail ? 'r' : it.outer ? 'o' : ''}`,
       anchor: project(it.x, it.y, 0),
     }));
   }
