@@ -27,9 +27,14 @@ export function createScene(canvas, store) {
     },
   });
 
+  // 캔버스 크기는 바뀔 때만 읽는다. 매 프레임 getBoundingClientRect 는 DOM 이 바뀐 뒤 강제 레이아웃을 부른다 (FE-67)
+  let box = null;
+  const observed = typeof ResizeObserver !== 'undefined';
+  if (observed) new ResizeObserver(() => { box = null; }).observe(canvas);
   function resize() {
     const dpr = window.devicePixelRatio || 1;
-    const { width, height } = canvas.getBoundingClientRect();
+    if (!box || !observed) { const r = canvas.getBoundingClientRect(); box = { width: r.width, height: r.height }; }
+    const { width, height } = box;
     const pw = Math.round(width * dpr), ph = Math.round(height * dpr);
     if (canvas.width !== pw || canvas.height !== ph) {
       canvas.width = pw; canvas.height = ph;
