@@ -207,3 +207,19 @@ test('커스텀 저장소: 더하기·지우기, 지운 그림을 가리키던 �
   mem.set('aiOffice.customCharacters.v1', 'not json');
   assert.deepEqual(createCustomCharacters().list(), []);
 });
+
+test('색 입힌 레이어 캐시(FE-69): 최근 사용 순으로 개수를 넘으면 오래된 것부터, 30초 동안 안 그린 조합은 비운다', async () => {
+  const { createTintCache } = await charsP;
+  let now = 0;
+  const c = createTintCache({ keep: 3, idleMs: 30000, clock: () => now });
+  for (const k of ['a', 'b', 'c']) { c.set(k, k.toUpperCase()); now += 10; }
+  assert.equal(c.get('a').im, 'A', '쓰면 가장 최근으로');
+  c.set('d', 'D');
+  assert.equal(c.size, 3);
+  assert.equal(c.get('b'), undefined, '가장 오래 안 쓴 b 가 빠진다');
+  assert.ok(c.get('a') && c.get('c') && c.get('d'));
+  now += 20000; c.get('a'); // a 만 계속 그린다
+  now += 15000; c.sweep();
+  assert.equal(c.size, 1, '30초 동안 안 그린 c·d 는 비운다');
+  assert.equal(c.get('a').im, 'A');
+});
