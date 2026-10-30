@@ -7,7 +7,7 @@ import { shadow, shade, FONT } from './sprites.js';
 import { roundRect, makeEntity } from './render.js';
 import { elapsed } from '../store.js';
 import { tr } from '../i18n.js';
-import { drawCharacter, preloadCharacters, OFFICE_HEIGHT } from './characters.js';
+import { drawCharacter, preloadCharacters, pickCharacter, OFFICE_HEIGHT } from './characters.js';
 
 const SPEED = 3.6;          // 타일/초
 const LEAVE_TIMEOUT = 8000; // 퇴근 중 최대 대기
@@ -218,6 +218,8 @@ export function createActors(store, scene, avatars) {
       if (!a) {
         const info = { name: store.nameOf(session, agent), color: store.colorOf(session, agent), kind: agent.kind, sessionId: session.id, agentId: agent.id };
         a = new Actor(key, info, [SPAWN.x, SPAWN.y]);
+        // Claude 세션 캐릭터: 세션마다 랜덤, 같은 층에 있는 캐릭터와 겹치지 않게 (FE-74)
+        if (agent.kind !== 'sub') a.character = pickCharacter(session.id, new Set([...actors.values()].filter((o) => !o.dead && o.character).map((o) => o.character)));
         actors.set(key, a);
         if (initial) { const t = slots.acquire(key, agent.room); a.x = t[0]; a.y = t[1]; a.room = agent.room; }
       }
@@ -257,7 +259,7 @@ export function createActors(store, scene, avatars) {
   function entityOf(a) {
     return makeEntity(
       { x0: a.x + 0.25, y0: a.y + 0.25, x1: a.x + 0.75, y1: a.y + 0.75, z0: 0, z1: 2.2 },
-      (ctx, t) => drawPerson(ctx, a, t, avatars.forActor(a, floorId)),
+      (ctx, t) => drawPerson(ctx, a, t, avatars.forActor(a)),
       { overlay: (ctx, cam, t) => drawOverlay(ctx, cam, a, t, store.bubbleMode), label: 'actor', isActor: true },
     );
   }
